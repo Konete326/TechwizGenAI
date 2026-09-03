@@ -1,12 +1,14 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import mermaid from "mermaid";
+import { DownloadSimple } from "@phosphor-icons/react";
 
 mermaid.initialize({ startOnLoad: false, theme: "dark" });
 
 function MermaidChart({ chart }) {
   const containerRef = useRef(null);
+  const [rendered, setRendered] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current || !chart) return;
@@ -15,20 +17,54 @@ function MermaidChart({ chart }) {
       .then(({ svg }) => {
         if (containerRef.current) {
           containerRef.current.innerHTML = svg;
+          setRendered(true);
         }
       })
       .catch(() => {
         if (containerRef.current) {
           containerRef.current.innerText = chart;
+          setRendered(false);
         }
       });
   }, [chart]);
 
+  const handleDownload = (e) => {
+    e.stopPropagation();
+    if (!containerRef.current) return;
+    const svgEl = containerRef.current.querySelector("svg");
+    if (!svgEl) return;
+    const svgData = new XMLSerializer().serializeToString(svgEl);
+    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `diagram-${Date.now()}.svg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div
-      ref={containerRef}
-      className="my-3 p-3 bg-zinc-950 rounded-lg border border-zinc-800 overflow-x-auto flex justify-center text-xs"
-    />
+    <div className="relative group my-3 bg-zinc-950 rounded-lg border border-zinc-800 overflow-hidden">
+      {rendered && (
+        <div className="absolute top-2 right-2 z-10">
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="p-1.5 rounded bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 border border-zinc-700/60 shadow transition-colors cursor-pointer"
+            title="Download Diagram (SVG)"
+            aria-label="Download diagram"
+          >
+            <DownloadSimple size={14} weight="bold" />
+          </button>
+        </div>
+      )}
+      <div
+        ref={containerRef}
+        className="p-4 overflow-x-auto flex justify-center text-xs"
+      />
+    </div>
   );
 }
 
