@@ -43,6 +43,15 @@ app.use(cors({
   },
   credentials: true
 }));
+app.use((req, res, next) => {
+  if (req.url && req.url.includes("//")) {
+    req.url = req.url.replace(/\/+/g, "/");
+  }
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
 app.use(compression());
 app.use(express.json({ limit: "10mb" }));
 app.use("/uploads", (req, res, next) => {
@@ -57,20 +66,20 @@ app.use("/uploads", (req, res, next) => {
 
 app.use("/api", apiLimiter);
 
-app.get("/api/health", (req, res) => {
+app.get(["/api/health", "/health"], (req, res) => {
   res.status(200).json({
     status: "ok",
     timestamp: new Date().toISOString()
   });
 });
 
-app.use("/api/auth", authRoutes);
-app.use("/api/ai", aiRoutes);
-app.use("/api/assets", assetRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api/analytics", analyticsRoutes);
-app.use("/api/dashboard", dashboardRoutes);
+app.use(["/api/auth", "/auth"], authRoutes);
+app.use(["/api/ai", "/ai"], aiRoutes);
+app.use(["/api/assets", "/assets"], assetRoutes);
+app.use(["/api/admin", "/admin"], adminRoutes);
+app.use(["/api/notifications", "/notifications"], notificationRoutes);
+app.use(["/api/analytics", "/analytics"], analyticsRoutes);
+app.use(["/api/dashboard", "/dashboard"], dashboardRoutes);
 
 app.use(errorHandler);
 

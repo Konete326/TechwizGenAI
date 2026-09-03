@@ -1,4 +1,21 @@
-export const VITE_API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-export const VITE_SERVER_URL = import.meta.env.VITE_SERVER_URL || VITE_API_URL.replace(/\/api\/?$/, "");
+const sanitizeApiUrl = (url) => {
+  if (!url) return "http://localhost:5000/api";
+  let clean = url.trim().replace(/\/+$/, "");
+  if (!clean.endsWith("/api")) {
+    clean = `${clean}/api`;
+  }
+  return clean;
+};
+
+const sanitizeServerUrl = (url, apiUrl) => {
+  if (url) return url.trim().replace(/\/+$/, "").replace(/\/api$/, "");
+  return apiUrl.replace(/\/api$/, "");
+};
+
+const rawApi = import.meta.env.VITE_API_URL;
+const rawServer = import.meta.env.VITE_SERVER_URL;
+
+export const VITE_API_URL = sanitizeApiUrl(rawApi);
+export const VITE_SERVER_URL = sanitizeServerUrl(rawServer, VITE_API_URL);
 
 export default VITE_API_URL;
