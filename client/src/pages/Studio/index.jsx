@@ -99,20 +99,14 @@ export function Studio() {
     await runStream(activeSessionId, "", null, true);
   };
 
-  const handleEditMessage = async (messageId, newText) => {
-    if (!token || !activeSessionId) return;
-    try {
-      const res = await fetch(`${VITE_API_URL}/ai/messages/${messageId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ text: newText })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setMessages((p) => p.slice(0, p.findIndex((m) => m.id === messageId) + 1).map((m) => (m.id === messageId ? { ...m, text: newText } : m)));
-        await runStream(activeSessionId, "", null, true);
-      }
-    } catch { toast.error("Failed to edit message"); }
+  const handleEditMessage = (text, attachment) => {
+    setInputPrompt(text || "");
+    if (attachment) setAttachedImage(attachment);
+    const textarea = document.querySelector("form textarea");
+    if (textarea) {
+      textarea.focus();
+      textarea.scrollIntoView({ behavior: "smooth" });
+    }
   };
 
   const handleStop = () => {
