@@ -1,0 +1,25 @@
+name: Server Tests (php-slim)
+on:
+  push:
+    branches:
+      - main
+      - fix-ci
+    paths:
+      - 'usage-based-subscriptions/server/php-slim/**'
+      - 'fixed-price-subscriptions/server/php-slim/**'
+      - '!**.md'
+  workflow_dispatch:
+  
+jobs:
+  server_test:
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime:
+          - server_type: php-slim
+            server_image: composer:2.2
+    uses: ./.github/workflows/server_test.yaml
+    secrets: inherit
+    with:
+      server_type: ${{ matrix.runtime.server_type }}
+      server_image: ${{ matrix.runtime.server_image }}

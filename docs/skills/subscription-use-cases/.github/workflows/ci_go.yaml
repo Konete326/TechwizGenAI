@@ -1,0 +1,27 @@
+name: Server Tests (Go)
+on:
+  push:
+    branches:
+      - main
+      - fix-ci
+    paths:
+      - 'usage-based-subscriptions/server/go/**'
+      - 'fixed-price-subscriptions/server/go/**'
+      - '!**.md'
+  workflow_dispatch:
+
+jobs:
+  server_test:
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime:
+          - server_type: go
+            server_image: golang:latest
+          - server_type: go
+            server_image: golang:1.17
+    uses: ./.github/workflows/server_test.yaml
+    secrets: inherit
+    with:
+      server_type: ${{ matrix.runtime.server_type }}
+      server_image: ${{ matrix.runtime.server_image }}

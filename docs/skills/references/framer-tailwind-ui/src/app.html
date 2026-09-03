@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="@pheralb_" />
+    <meta name="description" content="A beautiful library with SVG logos" />
+
+    <!-- Favicon -->
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="%sveltekit.assets%/images/svgl_svg.svg"
+    />
+    <link
+      rel="icon"
+      type="image/ico"
+      href="%sveltekit.assets%/images/svgl_ico.ico"
+    />
+
+    <!-- OG Images -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="SVGL" />
+    <meta
+      property="og:description"
+      content="A beautiful library with SVG logos"
+    />
+    <meta property="og:url" content="https://svgl.app" />
+    <meta
+      property="og:image"
+      content="https://svgl.app/images/screenshot_dark.png"
+    />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SVGL" />
+    <meta
+      name="twitter:description"
+      content="A beautiful library with SVG logos"
+    />
+    <meta name="twitter:creator" content="@pheralb_" />
+    <meta
+      name="twitter:image"
+      content="https://svgl.app/images/screenshot_dark.png"
+    />
+
+    <!-- Preload Fonts -->
+    <link
+      rel="preload"
+      href="%sveltekit.assets%/fonts/Geist.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="preload"
+      href="%sveltekit.assets%/fonts/GeistMono.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin="anonymous"
+    />
+
+    <!-- Manifest -->
+    <link rel="manifest" href="%sveltekit.assets%/manifest.json" />
+
+    <!-- Analytics -->
+    <script
+      defer
+      src="https://umami.pheralb.dev/script.js"
+      data-website-id="c0310f77-a87c-4c80-ba04-c6767cf94507"
+    ></script>
+
+    <!-- Title -->
+    <title>A beautiful library with SVG logos - SVGL</title>
+    %sveltekit.head%
+  </head>
+  <body
+    class="overscroll-none bg-neutral-100 font-sans text-black antialiased selection:bg-neutral-300 dark:bg-neutral-950 dark:text-white dark:selection:bg-neutral-700"
+    data-sveltekit-preload-data="hover"
+  >
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>

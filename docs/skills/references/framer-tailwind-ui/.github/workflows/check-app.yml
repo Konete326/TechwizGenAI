@@ -1,0 +1,47 @@
+name: 🧑‍🚀 Check
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    name: ⚙️ Linting
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run Eslint
+        run: pnpm lint
+        env:
+          PUBLIC_SVGL_VERSION: v5
+
+  check-svgs:
+    runs-on: ubuntu-latest
+    name: 📦 Check SVGs
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Check SVGs size
+        run: pnpm check:size
+
+      - name: Check unused SVGs
+        run: pnpm check:data

@@ -1,0 +1,62 @@
+.env
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.byebug_history
+
+**/Debug/**
+**/project-cache/**
+**/.vs/**
+**/obj/**
+
+# Dependencies
+node_modules
+package-lock.json
+yarn.lock
+!/yarn.lock
+composer.lock
+
+# Ruby files
+Gemfile.lock
+
+# Python files
+__pycache__
+venv
+env
+
+# PHP files
+vendor
+logs
+
+# Java files
+.settings
+target/
+.classpath
+.factorypath
+.project
+
+# Typescript
+dist
+
+# React
+build
+
+# Next.js
+.next
+
+# act
+.secrets
+
+spec/examples.txt
+sample-ci/
+
+#parcel
+.parcel-cache
+dist
+
+#idea
+.idea
+
+# Terraform files
+.terraform*
+terraform.tfstate*

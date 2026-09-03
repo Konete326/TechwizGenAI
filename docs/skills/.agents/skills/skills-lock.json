@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "premium-saas-design": {
+      "source": "hermeticormus/libreuiux-claude-code",
+      "sourceType": "github",
+      "skillPath": "plugins/design-mastery/skills/premium-saas-design/SKILL.md",
+      "computedHash": "7ab1199ec0316817e3b6b61dde6bc48bfd017bbcd05ce5c29c1022be242b6940"
+    }
+  }
+}

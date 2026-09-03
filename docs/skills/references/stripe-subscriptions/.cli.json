@@ -1,0 +1,16 @@
+{
+  "name": "subscription-with-per-seat-prices",
+  "configureDotEnv": true,
+  "integrations": [
+    {
+      "name": "usage-based-subscriptions",
+      "clients": ["react"],
+      "servers": ["java", "node", "php-slim", "python", "ruby", "go", "dotnet"]
+    },
+    {
+      "name": "fixed-price-subscriptions",
+      "clients": ["vanillajs", "react"],
+      "servers": ["java", "node", "php-slim", "python", "ruby", "go", "dotnet"]
+    }
+  ]
+}

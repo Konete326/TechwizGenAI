@@ -1,0 +1,25 @@
+name: Server Tests (dotnet)
+on:
+  push:
+    branches:
+      - main
+      - fix-ci
+    paths:
+      - 'usage-based-subscriptions/server/dotnet/**'
+      - 'fixed-price-subscriptions/server/dotnet/**'
+      - '!**.md'
+  workflow_dispatch:
+
+jobs:
+  server_test:
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime:
+          - server_type: dotnet
+            server_image: mcr.microsoft.com/dotnet/sdk:6.0
+    uses: ./.github/workflows/server_test.yaml
+    secrets: inherit
+    with:
+      server_type: ${{ matrix.runtime.server_type }}
+      server_image: ${{ matrix.runtime.server_image }}

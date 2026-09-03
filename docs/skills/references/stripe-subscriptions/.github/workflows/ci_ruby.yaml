@@ -1,0 +1,27 @@
+name: Server Tests (Ruby)
+on:
+  push:
+    branches:
+      - main
+      - fix-ci
+    paths:
+      - 'usage-based-subscriptions/server/ruby/**'
+      - 'fixed-price-subscriptions/server/ruby/**'
+      - '!**.md'
+  workflow_dispatch:
+  
+jobs:
+  server_test:
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime:
+          - server_type: ruby
+            server_image: ruby:latest
+          - server_type: ruby
+            server_image: ruby:2.7
+    uses: ./.github/workflows/server_test.yaml
+    secrets: inherit
+    with:
+      server_type: ${{ matrix.runtime.server_type }}
+      server_image: ${{ matrix.runtime.server_image }}

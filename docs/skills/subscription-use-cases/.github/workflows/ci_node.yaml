@@ -1,0 +1,27 @@
+name: Server Tests (Node)
+on:
+  push:
+    branches:
+      - main
+      - fix-ci
+    paths:
+      - 'usage-based-subscriptions/server/node/**'
+      - 'fixed-price-subscriptions/server/node/**'
+      - '!**.md'
+  workflow_dispatch:
+  
+jobs:
+  server_test:
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime:
+          - server_type: node
+            server_image: node:latest
+          - server_type: node
+            server_image: node:lts
+    uses: ./.github/workflows/server_test.yaml
+    secrets: inherit
+    with:
+      server_type: ${{ matrix.runtime.server_type }}
+      server_image: ${{ matrix.runtime.server_image }}

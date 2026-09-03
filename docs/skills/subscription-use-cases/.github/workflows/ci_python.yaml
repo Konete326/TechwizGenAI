@@ -1,0 +1,28 @@
+name: Server Tests (Python)
+on:
+  push:
+    branches:
+      - main
+      - fix-ci
+    paths:
+      - 'usage-based-subscriptions/server/python/**'
+      - 'fixed-price-subscriptions/server/python/**'
+      - '!**.md'
+  workflow_dispatch:
+  
+jobs:
+  server_test:
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime:
+          - server_type: python
+            server_image: python:latest
+          - server_type: python
+            server_image: python:3.8
+    uses: ./.github/workflows/server_test.yaml
+    secrets: inherit
+    with:
+      server_type: ${{ matrix.runtime.server_type }}
+      server_image: ${{ matrix.runtime.server_image }}
+
