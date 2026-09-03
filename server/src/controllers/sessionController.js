@@ -1,11 +1,16 @@
 import { ChatSession } from "../models/ChatSession.js";
 import { ChatMessage } from "../models/ChatMessage.js";
 
+const VALID_PERSONAS = ["general", "architect", "analyst", "writer", "diagrammer"];
+
 export const createSession = async (req, res, next) => {
   try {
+    const { persona = "general" } = req.body || {};
+    const safePersona = VALID_PERSONAS.includes(persona) ? persona : "general";
     const session = await ChatSession.create({
       userId: req.user._id,
       title: "New Chat",
+      persona: safePersona,
       createdAt: new Date(),
       updatedAt: new Date()
     });
@@ -14,6 +19,7 @@ export const createSession = async (req, res, next) => {
       data: {
         id: session._id.toString(),
         title: session.title,
+        persona: session.persona,
         createdAt: session.createdAt,
         updatedAt: session.updatedAt
       }
@@ -31,6 +37,7 @@ export const getSessions = async (req, res, next) => {
       data: sessions.map((s) => ({
         id: s._id.toString(),
         title: s.title,
+        persona: s.persona || "general",
         createdAt: s.createdAt,
         updatedAt: s.updatedAt
       }))
@@ -78,21 +85,18 @@ export const deleteSession = async (req, res, next) => {
 export const renameSession = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title } = req.body;
-    if (!title || typeof title !== "string" || !title.trim()) {
-      return res.status(400).json({ success: false, message: "Title is required" });
-    }
-    const session = await ChatSession.findOneAndUpdate(
-      { _id: id, userId: req.user._id },
-      { title: title.trim(), updatedAt: new Date() },
-      { new: true }
-    );
+    const { title, persona } = req.body;
+    const updates = { updatedAt: new Date() };
+    if (title && typeof title === "string" && title.trim()) updates.title = title.trim();
+    if (persona && VALID_PERSONAS.includes(persona)) updates.persona = persona;
+    const session = await ChatSession.findOneAndUpdate({ _id: id, userId: req.user._id }, updates, { new: true });
     if (!session) return res.status(404).json({ success: false, message: "Session not found" });
     return res.status(200).json({
       success: true,
       data: {
         id: session._id.toString(),
         title: session.title,
+        persona: session.persona || "general",
         updatedAt: session.updatedAt
       }
     });
@@ -100,3 +104,5 @@ export const renameSession = async (req, res, next) => {
     next(error);
   }
 };
+
+export default { createSession, getSessions, getSessionMessages, deleteSession, renameSession };

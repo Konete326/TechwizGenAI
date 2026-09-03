@@ -4,17 +4,18 @@ import { Spinner } from "./spinner";
 import { Card, CardContent } from "./Card";
 import { cn } from "@/lib/utils";
 
-const DEFAULT_THINKING_STEPS = [
-  "Analyzing token distribution and query parameters...",
-  "Querying neural semantic index for contextual vectors...",
-  "Synthesizing deep reasoning paths across constraints...",
-  "Validating format contract against schema requirements...",
-  "Streaming generated response through pipeline..."
+const THINKING_STEPS = [
+  "Analyzing input context and query parameters...",
+  "Querying neural semantic index for relevant knowledge...",
+  "Formulating deep reasoning paths and logic steps...",
+  "Synthesizing structured code and document responses...",
+  "Validating formatting contracts and visual schemas...",
+  "Optimizing response clarity for low-latency streaming...",
+  "Assembling final tokens for instant presentation..."
 ];
 
 function useTimer() {
   const [seconds, setSeconds] = useState("0.0");
-
   useEffect(() => {
     const startTime = Date.now();
     const interval = setInterval(() => {
@@ -22,21 +23,26 @@ function useTimer() {
     }, 100);
     return () => clearInterval(interval);
   }, []);
-
   return seconds;
 }
 
-function useAutoScroll(scrollRef) {
+function useInfiniteLoopScroll(scrollRef) {
   useEffect(() => {
-    if (!scrollRef.current) return;
     const el = scrollRef.current;
-    const interval = setInterval(() => {
-      el.scrollTop += 1;
-      if (el.scrollTop + el.clientHeight >= el.scrollHeight) {
-        el.scrollTop = 0;
+    if (!el) return;
+    let reqId;
+    const scrollStep = () => {
+      if (el) {
+        el.scrollTop += 0.6;
+        const half = el.scrollHeight / 2;
+        if (el.scrollTop >= half) {
+          el.scrollTop -= half;
+        }
       }
-    }, 45);
-    return () => clearInterval(interval);
+      reqId = requestAnimationFrame(scrollStep);
+    };
+    reqId = requestAnimationFrame(scrollStep);
+    return () => cancelAnimationFrame(reqId);
   }, [scrollRef]);
 }
 
@@ -66,10 +72,11 @@ function ThinkingHeader({ elapsed }) {
   );
 }
 
-export function AiThinking({ className, steps = DEFAULT_THINKING_STEPS }) {
+export function AiThinking({ className, steps = THINKING_STEPS }) {
   const elapsed = useTimer();
   const scrollRef = useRef(null);
-  useAutoScroll(scrollRef);
+  useInfiniteLoopScroll(scrollRef);
+  const doubledSteps = steps.concat(steps);
 
   return (
     <div className="flex w-full justify-start animate-in fade-in-50 duration-200">
@@ -84,14 +91,14 @@ export function AiThinking({ className, steps = DEFAULT_THINKING_STEPS }) {
           <FadeOverlay />
           <div
             ref={scrollRef}
-            className="h-full overflow-y-auto px-4 py-3 space-y-2 no-scrollbar"
+            className="h-full overflow-y-auto px-4 py-3 space-y-2 no-scrollbar select-none"
           >
-            {steps.concat(steps).map((step, idx) => (
+            {doubledSteps.map((step, idx) => (
               <div
                 key={idx}
                 className="flex items-center gap-2 text-[11px] font-mono text-text-muted leading-relaxed"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-accent/60 shrink-0" />
+                <span className="w-1.5 h-1.5 rounded-full bg-accent/70 shrink-0 animate-pulse" />
                 <span className="truncate">{step}</span>
               </div>
             ))}

@@ -1,10 +1,33 @@
 import { VITE_API_URL } from "@/config/env";
 
+export function getFriendlyErrorMessage(error) {
+  if (!error) return "AI service is temporarily unavailable. Please try again shortly.";
+  const raw = typeof error === "string" ? error : (error.message || "");
+  const lower = raw.toLowerCase();
+  if (lower.includes("custom_api_failed") || lower.includes("custom api key")) {
+    return "Custom API key authentication failed or quota exceeded. Please check Settings.";
+  }
+  if (lower.includes("server error") || lower.includes("500") || lower.includes("failed to fetch") || lower.includes("network") || lower.includes("internal")) {
+    return "AI service is temporarily unavailable. Please try again in a moment.";
+  }
+  if (lower.includes("quota") || lower.includes("rate limit") || lower.includes("429") || lower.includes("resource_exhausted")) {
+    return "API request limit reached. Please wait a few seconds before trying again.";
+  }
+  if (lower.includes("401") || lower.includes("unauthorized") || lower.includes("token")) {
+    return "Session expired. Please sign in again to continue.";
+  }
+  return raw || "AI service is temporarily unavailable. Please try again shortly.";
+}
+
 export async function streamCompletion({
   sessionId,
   prompt,
   model = "gemini-3.7-flash",
   imageBase64 = null,
+  attachmentType = "none",
+  attachmentName = null,
+  attachmentData = null,
+  persona = "general",
   isRegenerate = false,
   onChunk,
   onComplete,
@@ -31,20 +54,43 @@ export async function streamCompletion({
       ? `${VITE_API_URL}/ai/sessions/${sessionId}/regenerate`
       : `${VITE_API_URL}/ai/sessions/${sessionId}/stream`;
 
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ prompt, model, imageBase64 }),
-      signal
-    });
+    let response;
+    let retries = 3;
+    let delay = 1500;
+
+    while (retries >= 0) {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ prompt, model, imageBase64, attachmentType, attachmentName, attachmentData, persona }),
+        signal
+      });
+
+      if (response.status === 500 && retries > 0) {
+        const cloned = response.clone();
+        const errData = await cloned.json().catch(() => ({}));
+        const msg = String(errData.message || "");
+        if (msg.toLowerCase().includes("busy") || msg.toLowerCase().includes("temporarily") || msg.toLowerCase().includes("unavailable")) {
+          retries--;
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          delay *= 1.5;
+          continue;
+        }
+      }
+      break;
+    }
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
       if (errData.error === "CUSTOM_API_FAILED" || (response.status === 401 && customApiKey)) {
         window.dispatchEvent(new CustomEvent("api_key_failed"));
-        throw new Error("Custom API key authentication failed or exceeded quota.");
+        throw new Error("Custom API key authentication failed or quota exceeded. Please check Settings.");
       }
-      throw new Error(errData.message || `Request failed with status ${response.status}`);
+      const candidate = errData.message || "";
+      if (!candidate || candidate.toLowerCase().includes("server error") || response.status >= 500) {
+        throw new Error("AI service is temporarily unavailable. Please try again in a moment.");
+      }
+      throw new Error(candidate);
     }
 
     const reader = response.body.getReader();
@@ -72,10 +118,20 @@ export async function streamCompletion({
         try {
           const parsed = JSON.parse(dataStr);
           if (parsed.error) {
+            if (parsed.error === "IMAGE_NOT_SUPPORTED") {
+              window.dispatchEvent(new CustomEvent("image_capability_failed"));
+              if (onComplete) onComplete();
+              return;
+            }
             if (parsed.error === "CUSTOM_API_FAILED") {
               window.dispatchEvent(new CustomEvent("api_key_failed"));
+              throw new Error("Custom API key authentication failed or quota exceeded. Please check Settings.");
             }
-            throw new Error(parsed.message || parsed.error);
+            const candidate = parsed.message || parsed.error;
+            if (typeof candidate === "string" && candidate.toLowerCase().includes("server error")) {
+              throw new Error("AI service is temporarily unavailable. Please try again in a moment.");
+            }
+            throw new Error(candidate);
           }
           if (parsed.text && onChunk) {
             onChunk(parsed.text);

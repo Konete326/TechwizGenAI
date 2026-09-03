@@ -1,47 +1,37 @@
 import { GoogleGenAI } from "@google/genai";
-import { geminiClient } from "../config/gemini.js";
 import { ChatSession } from "../models/ChatSession.js";
 import { ChatMessage } from "../models/ChatMessage.js";
 import { sanitizeText } from "../utils/validators.js";
+import { getAiClient, createModelStream, consumeStreamAndTrackUsage } from "../services/aiStreamService.js";
+import { handleSpecialRequest } from "../services/aiSpecialRequestService.js";
+import { buildUserParts } from "../services/documentParserService.js";
 
-const SYSTEM_INSTRUCTION = "You are TechwizGenAI, an elite, hyper-professional AI assistant. Tone: Maintain a strictly professional, authoritative, and direct tone. Never use jokes, sarcasm, or playful language. Do not use generic AI cliches like 'As an AI language model' or 'Here is your response'. Adaptive Length: If the user asks a short question, provide a highly concise, direct answer. If the user asks a detailed question, provide a comprehensive, deeply analytical response. Formatting: Output clean markdown only. NEVER use emojis, emoticons, or pictorial icons under any circumstances. Quality: Deliver exceptional, accurate, and highly engaging insights that reflect top-tier expertise to highly impress the user. Diagram Generation: When asked to create a diagram, flowchart, graph, or architectural layout, you must output strictly valid Mermaid.js syntax wrapped entirely inside a ```mermaid code block. Do not use any other diagramming syntax.";
+const SYSTEM_INSTRUCTION = "You are TechwizGenAI, an elite, hyper-professional AI assistant. Tone: Maintain a strictly professional, authoritative, and direct tone. Never use jokes, sarcasm, or playful language. Do not use generic AI cliches like 'As an AI language model' or 'Here is your response'. Adaptive Length: If the user asks a short question, provide a highly concise, direct answer. If the user asks a detailed question, provide a comprehensive, deeply analytical response. Formatting: Output clean markdown only. NEVER use emojis, emoticons, or pictorial icons under any circumstances. Quality: Deliver exceptional, accurate, and highly engaging insights that reflect top-tier expertise to highly impress the user. Data Charts: When asked to create or show a chart, graph, bar chart, line graph, pie chart, or dashboard metrics, you must output a ```chart code block containing strictly valid JSON in this format: {\"type\": \"bar\"|\"line\"|\"area\"|\"pie\", \"title\": \"Chart Title\", \"data\": [{\"name\": \"Label\", \"value\": 100}]}. Diagram Generation: When asked to create a flowchart, system architecture, or sequence diagram, output strictly valid Mermaid.js syntax wrapped inside a ```mermaid code block. If the user asks to generate, create, or draw a picture or image, you must reply EXACTLY with this format: [IMAGE_REQ: <detailed visual description>] and no other text. Document Generation: When asked to generate a CV, resume, document, report, spreadsheet, or PDF, you must reply EXACTLY with this format: [DOC_REQ: <extension> | <raw content>] and no other text. For CV/resume or report documents, structure with rich executive markdown using headers (# Title, ## Section, ### Role), bold highlights (**Skill**, **Company**), and bulleted achievements. Examples of extension: pdf, docx, csv, xlsx. Interactive Choices: Whenever you ask a clarifying question, present multiple options, or suggest logical next steps, provide 2 to 4 concise choices at the very end of your response formatted exactly as: [CHOICES: Option A | Option B | Option C]. Keep each choice under 6 words.";
 
 export const verifyApiKey = async (req, res) => {
   try {
     const apiKey = req.headers["x-custom-api-key"] || req.body.apiKey;
     if (!apiKey) return res.status(400).json({ success: false, message: "API key is required" });
     const testClient = new GoogleGenAI({ apiKey });
-    const resp = await testClient.models.generateContent({ model: "gemini-2.5-flash", contents: "ping" });
-    if (resp && resp.text) return res.status(200).json({ success: true, message: "API connection verified" });
+    const resp = await testClient.models.generateContent({ model: "gemini-3.5-flash-lite", contents: "ping" });
+    if (resp?.text) return res.status(200).json({ success: true, message: "API connection verified" });
     return res.status(400).json({ success: false, error: "CUSTOM_API_FAILED", message: "No response from model" });
   } catch (error) {
     return res.status(401).json({ success: false, error: "CUSTOM_API_FAILED", message: error.message || "Invalid custom API key" });
   }
 };
 
-export const editMessage = async (req, res, next) => {
+export const deleteMessageBranch = async (req, res, next) => {
   try {
     const { messageId } = req.params;
-    const { text } = req.body;
-    if (!text || typeof text !== "string") return res.status(400).json({ success: false, message: "Text is required" });
-
     const targetMsg = await ChatMessage.findById(messageId);
-    if (!targetMsg || targetMsg.role !== "user") return res.status(404).json({ success: false, message: "User message not found" });
-
+    if (!targetMsg) return res.status(404).json({ success: false, message: "Message not found" });
     const session = await ChatSession.findOne({ _id: targetMsg.sessionId, userId: req.user._id });
-    if (!session) return res.status(403).json({ success: false, message: "Unauthorized" });
-
-    targetMsg.text = sanitizeText(text);
-    await targetMsg.save();
-
-    await ChatMessage.deleteMany({ sessionId: session._id, createdAt: { $gt: targetMsg.createdAt } });
+    if (!session) return res.status(403).json({ success: false, message: "Unauthorized access to session" });
+    await ChatMessage.deleteMany({ sessionId: session._id, createdAt: { $gte: targetMsg.createdAt } });
     session.updatedAt = new Date();
     await session.save();
-
-    return res.status(200).json({
-      success: true,
-      data: { sessionId: session._id.toString(), messageId: targetMsg._id.toString(), text: targetMsg.text }
-    });
+    return res.status(200).json({ success: true, message: "Message branch deleted" });
   } catch (error) {
     next(error);
   }
@@ -52,17 +42,14 @@ export const regenerateSession = async (req, res, next) => {
     const { id: sessionId } = req.params;
     const session = await ChatSession.findOne({ _id: sessionId, userId: req.user._id });
     if (!session) return res.status(404).json({ success: false, message: "Session not found" });
-
     const lastMsg = await ChatMessage.findOne({ sessionId: session._id }).sort({ createdAt: -1 });
-    if (lastMsg && lastMsg.role === "model") {
-      await ChatMessage.deleteOne({ _id: lastMsg._id });
-    }
-
+    if (lastMsg?.role === "model") await ChatMessage.deleteOne({ _id: lastMsg._id });
     const lastUserMsg = await ChatMessage.findOne({ sessionId: session._id, role: "user" }).sort({ createdAt: -1 });
     if (!lastUserMsg) return res.status(400).json({ success: false, message: "No user message found" });
-
     req.body.prompt = lastUserMsg.text;
     req.body.imageBase64 = lastUserMsg.attachment;
+    req.body.attachmentType = lastUserMsg.attachmentType;
+    req.body.attachmentName = lastUserMsg.attachmentName;
     return streamChat(req, res, next, true);
   } catch (error) {
     next(error);
@@ -72,26 +59,20 @@ export const regenerateSession = async (req, res, next) => {
 export const streamChat = async (req, res, next, isRegenerate = false) => {
   try {
     const { id: sessionId } = req.params;
-    const { prompt, model, imageBase64 } = req.body;
+    const { prompt, model, imageBase64, attachmentType = "none", attachmentName = null, attachmentData = null, persona = "general" } = req.body;
     const customApiKey = req.headers["x-custom-api-key"];
-
-    const effectivePrompt = (prompt && typeof prompt === "string" && prompt.trim())
-      ? prompt.trim()
-      : (imageBase64 ? "Describe this image in detail and highlight key aspects." : "");
-    if (!effectivePrompt) return res.status(400).json({ success: false, message: "Prompt or image is required" });
+    const hasAttachment = Boolean(imageBase64 || attachmentData);
+    const effectivePrompt = (prompt && typeof prompt === "string" && prompt.trim()) ? prompt.trim() : (hasAttachment ? "Analyze the attached content in detail." : "");
+    if (!effectivePrompt) return res.status(400).json({ success: false, message: "Prompt or attachment is required" });
     const cleanPrompt = sanitizeText(effectivePrompt);
-
     const session = await ChatSession.findOne({ _id: sessionId, userId: req.user._id });
     if (!session) return res.status(404).json({ success: false, message: "Session not found" });
+    if (persona && session.persona !== persona) { session.persona = persona; await session.save(); }
 
     if (!isRegenerate) {
-      await ChatMessage.create({
-        sessionId: session._id,
-        role: "user",
-        text: cleanPrompt,
-        attachment: imageBase64 || null
-      });
-
+      const resolvedAttachment = attachmentType === "document" ? (attachmentData || null) : (imageBase64 || null);
+      const resolvedType = attachmentType !== "none" ? attachmentType : (imageBase64 ? "image" : "none");
+      await ChatMessage.create({ sessionId: session._id, role: "user", text: cleanPrompt, attachment: resolvedAttachment, attachmentType: resolvedType, attachmentName: attachmentName || null });
       if (session.title === "New Chat" || !session.title) {
         const words = cleanPrompt.trim().split(/\s+/).slice(0, 5).join(" ");
         session.title = words ? words.charAt(0).toUpperCase() + words.slice(1) : "New Chat";
@@ -100,79 +81,26 @@ export const streamChat = async (req, res, next, isRegenerate = false) => {
       }
     }
 
-    const pastMessages = await ChatMessage.find({ sessionId: session._id }).sort({ createdAt: 1 }).limit(20);
-    const historyContents = pastMessages.slice(0, -1).map((m) => ({ role: m.role, parts: [{ text: m.text }] }));
+    const past = await ChatMessage.find({ sessionId: session._id }).sort({ createdAt: 1 }).limit(20);
+    const history = past.slice(0, -1).map((m) => ({ role: m.role, parts: [{ text: m.text }] }));
+    const userParts = buildUserParts(cleanPrompt, { imageBase64, attachmentType, attachmentName, attachmentData });
 
-    const userParts = [{ text: cleanPrompt }];
-    if (imageBase64 && typeof imageBase64 === "string" && imageBase64.includes(",")) {
-      const [meta, rawData] = imageBase64.split(",");
-      const match = meta.match(/data:([^;]+);base64/);
-      userParts.push({ inlineData: { data: rawData, mimeType: match ? match[1] : "image/jpeg" } });
-    }
-
-    const contents = [...historyContents, { role: "user", parts: userParts }];
-    const targetModel = model || "gemini-3.7-flash";
-    const client = customApiKey ? new GoogleGenAI({ apiKey: customApiKey }) : geminiClient;
-
-    let responseStream;
-    try {
-      responseStream = await client.models.generateContentStream({
-        model: targetModel,
-        contents,
-        config: { systemInstruction: SYSTEM_INSTRUCTION }
-      });
-    } catch (apiErr) {
-      if (customApiKey) {
-        return res.status(401).json({
-          success: false,
-          error: "CUSTOM_API_FAILED",
-          message: apiErr.message || "Custom API key authentication failed or exceeded quota."
-        });
-      }
-      try {
-        responseStream = await client.models.generateContentStream({
-          model: "gemini-2.5-flash",
-          contents,
-          config: { systemInstruction: SYSTEM_INSTRUCTION }
-        });
-      } catch (fallbackErr) {
-        return next(fallbackErr);
-      }
-    }
+    const client = getAiClient(customApiKey);
+    const responseStream = await createModelStream({ client, model, contents: [...history, { role: "user", parts: userParts }], systemInstruction: SYSTEM_INSTRUCTION, customApiKey, persona: persona || session.persona });
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
     if (typeof res.flushHeaders === "function") res.flushHeaders();
 
-    let accumulatedText = "";
-    try {
-      for await (const chunk of responseStream) {
-        const chunkText = chunk.text || "";
-        if (chunkText) {
-          accumulatedText += chunkText;
-          res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
-        }
-      }
-    } catch (err) {
-      if (customApiKey) {
-        res.write(`data: ${JSON.stringify({ error: "CUSTOM_API_FAILED", message: err.message })}\n\n`);
-        return res.end();
-      }
-      accumulatedText = "Unable to connect to AI engine. Please verify network and API key.";
-      res.write(`data: ${JSON.stringify({ text: accumulatedText })}\n\n`);
+    const streamResult = await consumeStreamAndTrackUsage({ responseStream, promptText: cleanPrompt, userId: req.user._id, sessionId: session._id, res });
+
+    if (streamResult.isSpecialReq) {
+      return handleSpecialRequest({ specialType: streamResult.specialType, specialBuffer: streamResult.specialBuffer, customProvider: req.headers["x-ai-provider"], targetModel: model, cleanPrompt, userId: req.user._id, session, res, customApiKey });
     }
 
-    if (accumulatedText) {
-      await ChatMessage.create({ sessionId: session._id, role: "model", text: accumulatedText });
-      session.updatedAt = new Date();
-      if (session.title === "New Chat") {
-        const words = cleanPrompt.trim().split(/\s+/).slice(0, 3).join(" ");
-        session.title = words ? words.charAt(0).toUpperCase() + words.slice(1) : "New Chat";
-      }
-      await session.save();
-    }
-
+    session.updatedAt = new Date();
+    await session.save();
     res.write("data: [DONE]\n\n");
     res.end();
   } catch (error) {

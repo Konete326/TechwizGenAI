@@ -1,0 +1,103 @@
+import {
+  FilePdf,
+  FileCsv,
+  FileXls,
+  FileText,
+  DownloadSimple,
+  Eye,
+  ArrowSquareOut
+} from "@phosphor-icons/react";
+
+export function ArtifactPreviewer({ extension = "pdf", url, onOpenArtifact }) {
+  const ext = (extension || "pdf").toLowerCase().replace(/^\./, "");
+
+  const getIconInfo = () => {
+    switch (ext) {
+      case "pdf":
+        return { Icon: FilePdf, color: "text-rose-500 bg-rose-500/10 border-rose-500/20" };
+      case "csv":
+        return { Icon: FileCsv, color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" };
+      case "xlsx":
+      case "xls":
+        return { Icon: FileXls, color: "text-green-500 bg-green-500/10 border-green-500/20" };
+      case "docx":
+      case "doc":
+        return { Icon: FileText, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" };
+      default:
+        return { Icon: FileText, color: "text-purple-500 bg-purple-500/10 border-purple-500/20" };
+    }
+  };
+
+  const { Icon, color } = getIconInfo();
+
+  const handleDownload = () => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `document.${ext}`;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const handlePreview = () => {
+    if (onOpenArtifact) {
+      onOpenArtifact({ type: "document", extension: ext, url });
+    } else {
+      window.open(url, "_blank");
+    }
+  };
+
+  return (
+    <div className="my-3 w-full max-w-md rounded-xl border border-border bg-surface-card/95 p-3.5 shadow-sm transition-all hover:border-accent/40">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`p-2.5 rounded-lg border shrink-0 ${color}`}>
+            <Icon size={24} weight="fill" />
+          </div>
+          <div className="min-w-0">
+            <h4 className="text-xs font-semibold text-text-primary truncate">
+              Generated Document (.{ext})
+            </h4>
+            <p className="text-[11px] text-text-muted font-mono truncate">
+              Ready for viewing & download
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={handlePreview}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-surface hover:bg-surface-elevated border border-border text-xs font-medium text-text-primary transition-colors cursor-pointer"
+            title="Preview document"
+          >
+            <Eye size={13} weight="bold" />
+            <span>Preview</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-accent hover:bg-accent-hover text-xs font-medium text-white transition-colors cursor-pointer"
+            title="Download document"
+          >
+            <DownloadSimple size={13} weight="bold" />
+            <span>Download</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => window.open(url, "_blank")}
+            className="p-1.5 rounded-md bg-surface hover:bg-surface-elevated border border-border text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+            title="Open in new window"
+            aria-label="Open document in new window"
+          >
+            <ArrowSquareOut size={13} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default ArtifactPreviewer;

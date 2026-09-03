@@ -14,6 +14,11 @@ const chatSessionSchema = new mongoose.Schema(
       trim: true,
       maxlength: 100
     },
+    persona: {
+      type: String,
+      enum: ["general", "architect", "analyst", "writer", "diagrammer"],
+      default: "general"
+    },
     createdAt: {
       type: Date,
       default: Date.now

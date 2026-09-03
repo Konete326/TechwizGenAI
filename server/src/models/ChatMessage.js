@@ -22,6 +22,20 @@ const chatMessageSchema = new mongoose.Schema(
       type: String,
       default: null
     },
+    attachmentType: {
+      type: String,
+      enum: ["image", "document", "none"],
+      default: "none"
+    },
+    attachmentName: {
+      type: String,
+      default: null
+    },
+    tokensUsed: {
+      prompt: { type: Number, default: 0 },
+      completion: { type: Number, default: 0 },
+      total: { type: Number, default: 0 }
+    },
     createdAt: {
       type: Date,
       default: Date.now

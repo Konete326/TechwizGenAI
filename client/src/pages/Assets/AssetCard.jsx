@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, Trash, Eye } from "@phosphor-icons/react";
+import { Copy, Check, Trash, Eye, FilePdf, FileDoc, FileXls, FileCsv, FileText } from "@phosphor-icons/react";
 
 function CornerBracket() {
   return (
@@ -14,6 +14,7 @@ function CornerBracket() {
 
 export function AssetCard({ asset, onPreview, onDelete }) {
   const [copied, setCopied] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   const formatSize = (bytes) => {
     if (!bytes) return "0 KB";
@@ -32,6 +33,18 @@ export function AssetCard({ asset, onPreview, onDelete }) {
     }
   };
 
+  const ext = (asset.format || "").toLowerCase();
+  const imageFormats = ["png", "jpg", "jpeg", "webp", "gif", "svg"];
+  const isImage = imageFormats.includes(ext) || asset.resourceType === "image";
+
+  const renderDocIcon = () => {
+    if (ext === "pdf") return <FilePdf size={44} weight="fill" className="text-rose-500" />;
+    if (ext === "docx" || ext === "doc") return <FileDoc size={44} weight="fill" className="text-blue-500" />;
+    if (ext === "xlsx" || ext === "xls") return <FileXls size={44} weight="fill" className="text-emerald-500" />;
+    if (ext === "csv" || ext === "tsv") return <FileCsv size={44} weight="fill" className="text-teal-500" />;
+    return <FileText size={44} weight="fill" className="text-indigo-400" />;
+  };
+
   return (
     <div className="relative group rounded-[var(--radius-md)] bg-surface-card border border-border hover:border-accent/50 transition-all duration-200 overflow-hidden flex flex-col">
       <CornerBracket />
@@ -40,12 +53,23 @@ export function AssetCard({ asset, onPreview, onDelete }) {
         onClick={() => onPreview(asset)}
         className="relative h-40 bg-surface/50 overflow-hidden cursor-pointer flex items-center justify-center group/img"
       >
-        <img
-          src={asset.url}
-          alt={asset.title}
-          loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105"
-        />
+        {isImage && !imgError ? (
+          <img
+            src={asset.url}
+            alt={asset.title}
+            loading="lazy"
+            onError={() => setImgError(true)}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105"
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-1.5 p-4 text-center select-none">
+            {renderDocIcon()}
+            <span className="text-[11px] font-mono font-semibold text-text-muted uppercase">
+              {ext || "DOCUMENT"}
+            </span>
+          </div>
+        )}
+
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2">
           <span className="p-2 rounded-full bg-background/80 text-text-primary backdrop-blur">
             <Eye size={16} />
@@ -63,7 +87,13 @@ export function AssetCard({ asset, onPreview, onDelete }) {
           </h4>
           <div className="flex items-center justify-between text-[11px] font-mono text-text-muted mt-1">
             <span>{formatSize(asset.bytes)}</span>
-            <span>{new Date(asset.createdAt).toLocaleDateString()}</span>
+            {asset.ownerName ? (
+              <span className="text-[10px] text-accent font-mono truncate max-w-[90px]" title={asset.ownerName}>
+                {asset.ownerName}
+              </span>
+            ) : (
+              <span>{new Date(asset.createdAt).toLocaleDateString()}</span>
+            )}
           </div>
         </div>
 

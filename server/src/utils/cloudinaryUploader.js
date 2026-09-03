@@ -3,7 +3,7 @@ import { cloudinary } from "../config/cloudinary.js";
 export const uploadBufferToCloudinary = (buffer, folder = "techwiz_genai") => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
-      { folder, resource_type: "image" },
+      { folder, resource_type: "auto" },
       (error, result) => {
         if (error) {
           reject(error);
@@ -11,7 +11,7 @@ export const uploadBufferToCloudinary = (buffer, folder = "techwiz_genai") => {
           resolve({
             url: result.secure_url,
             publicId: result.public_id,
-            format: result.format || "webp",
+            format: result.format || "bin",
             bytes: result.bytes || buffer.length
           });
         }

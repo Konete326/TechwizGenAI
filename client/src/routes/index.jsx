@@ -8,6 +8,7 @@ import Settings from "../pages/Settings/index.jsx";
 import Profile from "../pages/Profile/index.jsx";
 import Notifications from "../pages/Notifications/index.jsx";
 import UsersView from "../pages/Users/index.jsx";
+import Analytics from "../pages/Analytics/index.jsx";
 import AuthLayout from "../pages/Auth/AuthLayout.jsx";
 
 export const router = createBrowserRouter([
@@ -46,6 +47,10 @@ export const router = createBrowserRouter([
       {
         path: "assets",
         element: <Assets />
+      },
+      {
+        path: "analytics",
+        element: <Analytics />
       },
       {
         path: "users",

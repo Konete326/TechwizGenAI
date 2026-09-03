@@ -95,6 +95,11 @@ export function NotificationBell() {
                         <span className="text-xs font-semibold text-text-primary truncate">
                           {n.title}
                         </span>
+                        {n.userName && (
+                          <span className="text-[9px] text-accent font-mono truncate max-w-[70px]">
+                            [{n.userName}]
+                          </span>
+                        )}
                         <ArrowRight size={11} className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                       </div>
                       <span className="text-[10px] font-mono text-text-muted shrink-0">

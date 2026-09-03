@@ -3,12 +3,13 @@ import {
   House,
   Sparkle,
   ImageSquare,
+  ChartLineUp,
   Gear,
   Users,
   User,
   X,
   HardDrive,
-  SidebarSimple,
+  SidebarSimple
 } from "@phosphor-icons/react";
 import logoImg from "@/assets/logo.png";
 
@@ -18,7 +19,7 @@ export function DashboardSidebar({
   isDrawerOpen,
   onCloseDrawer,
   usageDisplay,
-  percentUsed,
+  percentUsed
 }) {
   const user = (() => {
     try {
@@ -33,10 +34,12 @@ export function DashboardSidebar({
     { label: "Dashboard", href: "/dashboard", icon: House },
     { label: "Studio", href: "/studio", icon: Sparkle },
     { label: "Assets", href: "/assets", icon: ImageSquare },
+    { label: "Analytics", href: "/analytics", icon: ChartLineUp },
     ...(isAdmin ? [{ label: "Users", href: "/users", icon: Users }] : []),
     { label: "Profile", href: "/profile", icon: User },
-    { label: "Settings", href: "/settings", icon: Gear },
+    { label: "Settings", href: "/settings", icon: Gear }
   ];
+
   return (
     <>
       {isDrawerOpen && (
@@ -79,7 +82,12 @@ export function DashboardSidebar({
                 })}
               </nav>
             </div>
-            <div className="p-2.5 rounded-[var(--radius-md)] bg-surface border border-border space-y-1.5">
+            <Link
+              to="/assets"
+              onClick={onCloseDrawer}
+              className="block p-2.5 rounded-[var(--radius-md)] bg-surface hover:bg-surface-elevated border border-border hover:border-accent/40 space-y-1.5 transition-all cursor-pointer"
+              title="View Storage in Assets"
+            >
               <div className="flex items-center justify-between text-xs text-text-muted">
                 <span className="flex items-center gap-1.5 text-[11px] font-medium text-text-primary">
                   <HardDrive size={13} className="text-accent" /> Storage
@@ -89,7 +97,7 @@ export function DashboardSidebar({
               <div className="h-1.5 w-full bg-border rounded-full overflow-hidden">
                 <div className="h-full bg-accent rounded-full" style={{ width: `${percentUsed}%` }} />
               </div>
-            </div>
+            </Link>
           </div>
         </div>
       )}
@@ -103,20 +111,15 @@ export function DashboardSidebar({
           <div className={`flex items-center ${isCollapsed ? "flex-col gap-3 justify-center" : "justify-between px-1"}`}>
             <Link to="/dashboard" className="flex items-center gap-2.5 overflow-hidden" title="Techwiz GenAI">
               <img src={logoImg} alt="Techwiz GenAI" className="w-8 h-8 object-contain shrink-0" />
-              {!isCollapsed && (
-                <div className="flex flex-col min-w-0">
-                  <span className="font-semibold tracking-tight text-text-primary leading-tight text-sm truncate">Techwiz GenAI</span>
-                  <span className="text-[10px] font-mono text-text-muted">v2.3 Analytics</span>
-                </div>
-              )}
+              {!isCollapsed && <span className="font-bold text-text-primary text-sm tracking-tight truncate">Techwiz GenAI</span>}
             </Link>
             <button
               type="button"
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-surface border border-transparent hover:border-border transition-colors cursor-pointer"
+              className="p-1 rounded-[var(--radius-sm)] text-text-muted hover:text-text-primary hover:bg-surface border border-transparent hover:border-border transition-colors cursor-pointer"
               title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              <SidebarSimple size={16} />
+              <SidebarSimple size={18} />
             </button>
           </div>
 
@@ -131,24 +134,16 @@ export function DashboardSidebar({
                     `group flex items-center transition-colors btn-tactile ${
                       isCollapsed
                         ? "w-10 h-10 mx-auto justify-center rounded-[var(--radius-md)] " +
-                          (isActive
-                            ? "bg-accent/15 text-accent border border-accent/30 shadow-sm"
-                            : "text-text-muted hover:text-text-primary hover:bg-surface border border-transparent")
+                          (isActive ? "bg-accent/15 text-accent border border-accent/30 shadow-sm" : "text-text-muted hover:text-text-primary hover:bg-surface border border-transparent")
                         : "gap-3 px-2.5 py-2 rounded-[var(--radius-md)] text-sm font-medium " +
-                          (isActive
-                            ? "border-l-2 border-accent bg-accent/10 text-accent font-semibold"
-                            : "text-text-muted hover:text-text-primary hover:bg-surface border-l-2 border-transparent")
+                          (isActive ? "border-l-2 border-accent bg-accent/10 text-accent font-semibold" : "text-text-muted hover:text-text-primary hover:bg-surface border-l-2 border-transparent")
                     }`
                   }
                   title={isCollapsed ? item.label : undefined}
                 >
                   {({ isActive }) => (
                     <>
-                      <Icon
-                        size={isCollapsed ? 22 : 18}
-                        weight={isActive ? "fill" : "regular"}
-                        className={isActive ? "text-accent" : ""}
-                      />
+                      <Icon size={isCollapsed ? 22 : 18} weight={isActive ? "fill" : "regular"} className={isActive ? "text-accent" : ""} />
                       {!isCollapsed && <span className="truncate">{item.label}</span>}
                     </>
                   )}
@@ -159,13 +154,17 @@ export function DashboardSidebar({
         </div>
 
         {isCollapsed ? (
-          <div className="flex justify-center" title={`Storage: ${usageDisplay}`}>
-            <div className="w-9 h-9 rounded-[var(--radius-sm)] bg-surface border border-border flex items-center justify-center text-accent">
+          <Link to="/assets" className="flex justify-center" title={`Storage: ${usageDisplay} (View Assets)`}>
+            <div className="w-9 h-9 rounded-[var(--radius-sm)] bg-surface hover:bg-surface-elevated border border-border hover:border-accent/40 flex items-center justify-center text-accent transition-colors cursor-pointer">
               <HardDrive size={18} />
             </div>
-          </div>
+          </Link>
         ) : (
-          <div className="p-2.5 rounded-[var(--radius-md)] bg-surface border border-border space-y-1.5">
+          <Link
+            to="/assets"
+            className="block p-2.5 rounded-[var(--radius-md)] bg-surface hover:bg-surface-elevated border border-border hover:border-accent/40 space-y-1.5 transition-all cursor-pointer"
+            title="View Storage in Assets"
+          >
             <div className="flex items-center justify-between text-text-muted">
               <span className="flex items-center gap-1.5 text-text-primary font-medium text-[11px]">
                 <HardDrive size={13} className="text-accent" /> Storage
@@ -175,7 +174,7 @@ export function DashboardSidebar({
             <div className="h-1.5 w-full bg-border rounded-full overflow-hidden">
               <div className="h-full bg-accent rounded-full transition-all duration-300" style={{ width: `${percentUsed}%` }} />
             </div>
-          </div>
+          </Link>
         )}
       </aside>
     </>

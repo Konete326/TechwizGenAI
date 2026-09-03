@@ -1,4 +1,4 @@
-import { TrendUp, TrendDown } from "@phosphor-icons/react";
+import { TrendUp, Sparkle, ChatCircleText, HardDrives, Users } from "@phosphor-icons/react";
 
 function CornerBracket() {
   return (
@@ -11,13 +11,52 @@ function CornerBracket() {
   );
 }
 
-export function KpiCards({ kpis = [] }) {
-  if (!kpis.length) return null;
+export function KpiCards({ stats = {} }) {
+  const mbStorage = ((stats.totalStorageBytes || 0) / (1024 * 1024)).toFixed(2);
+  const totalGens = stats.totalGenerations || 0;
+  const activeSess = stats.activeSessions || 0;
+  const assetCount = stats.totalAssetCount || 0;
+  const isAdmin = Boolean(stats.isAdmin);
+
+  const cards = [
+    {
+      label: "AI Generations",
+      value: totalGens.toLocaleString(),
+      delta: "+100%",
+      sublabel: "Completed AI responses",
+      icon: Sparkle,
+      type: "sparkline"
+    },
+    {
+      label: "Active Sessions",
+      value: activeSess.toLocaleString(),
+      delta: "Live",
+      sublabel: "Conversational threads",
+      icon: ChatCircleText,
+      type: "bars"
+    },
+    {
+      label: "Cloud Storage",
+      value: `${mbStorage} MB`,
+      delta: `${assetCount} files`,
+      sublabel: `${stats.imageCount || 0} images, ${stats.documentCount || 0} docs`,
+      icon: HardDrives,
+      type: "progress"
+    },
+    {
+      label: isAdmin ? "Platform Users" : "Tokens Consumed",
+      value: isAdmin ? (stats.totalUsers || 1).toLocaleString() : (stats.totalUsers || 0).toLocaleString(),
+      delta: isAdmin ? "Active" : "Telemetry",
+      sublabel: isAdmin ? "Registered user accounts" : "Prompt and completion tokens",
+      icon: Users,
+      type: "sparkline"
+    }
+  ];
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-      {kpis.map((kpi) => {
-        const isUp = kpi.isPositive;
+      {cards.map((kpi) => {
+        const Icon = kpi.icon;
         return (
           <div
             key={kpi.label}
@@ -26,13 +65,12 @@ export function KpiCards({ kpis = [] }) {
             <CornerBracket />
 
             <div className="flex items-center justify-between text-xs text-text-muted">
-              <span className="font-medium uppercase tracking-wider text-[10px]">{kpi.label}</span>
-              <span
-                className={`inline-flex items-center gap-0.5 font-mono text-[11px] font-semibold ${
-                  isUp ? "text-emerald-500" : "text-rose-500"
-                }`}
-              >
-                {isUp ? <TrendUp size={12} weight="bold" /> : <TrendDown size={12} weight="bold" />}
+              <div className="flex items-center gap-1.5">
+                <Icon size={14} className="text-accent" />
+                <span className="font-medium uppercase tracking-wider text-[10px]">{kpi.label}</span>
+              </div>
+              <span className="inline-flex items-center gap-0.5 font-mono text-[11px] font-semibold text-emerald-500">
+                <TrendUp size={11} weight="bold" />
                 <span>{kpi.delta}</span>
               </span>
             </div>
@@ -42,7 +80,7 @@ export function KpiCards({ kpis = [] }) {
                 {kpi.value}
               </div>
 
-              {kpi.type === "sparkline-up" && (
+              {kpi.type === "sparkline" && (
                 <svg className="w-16 h-6 text-emerald-500" viewBox="0 0 64 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M0 20 Q16 18 24 12 T48 10 T64 4" />
                 </svg>
@@ -57,20 +95,14 @@ export function KpiCards({ kpis = [] }) {
                 </div>
               )}
 
-              {kpi.type === "sparkline-down" && (
-                <svg className="w-16 h-6 text-rose-500" viewBox="0 0 64 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M0 6 Q16 8 28 14 T48 16 T64 20" />
-                </svg>
-              )}
-
               {kpi.type === "progress" && (
                 <div className="w-16 h-2 bg-surface rounded-full overflow-hidden border border-border">
-                  <div className="h-full bg-accent rounded-full w-[65%]" />
+                  <div className="h-full bg-accent rounded-full w-[70%]" />
                 </div>
               )}
             </div>
 
-            <div className="text-[11px] font-mono text-text-muted">{kpi.sublabel}</div>
+            <div className="text-[11px] font-mono text-text-muted truncate">{kpi.sublabel}</div>
           </div>
         );
       })}

@@ -1,74 +1,13 @@
-import { useRef, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import mermaid from "mermaid";
-import { DownloadSimple } from "@phosphor-icons/react";
+import { Play } from "@phosphor-icons/react";
+import { ArtifactPreviewer } from "./ArtifactPreviewer";
+import { DashboardChart } from "./DashboardChart";
+import { parseChartFromText } from "./chartParser";
+import { MermaidChart } from "./MermaidChart";
+import { ChoiceChips } from "./ChoiceChips";
 
-mermaid.initialize({ startOnLoad: false, theme: "dark" });
-
-function MermaidChart({ chart }) {
-  const containerRef = useRef(null);
-  const [rendered, setRendered] = useState(false);
-
-  useEffect(() => {
-    if (!containerRef.current || !chart) return;
-    const id = "mermaid-" + Math.random().toString(36).substring(2, 9);
-    mermaid.render(id, chart)
-      .then(({ svg }) => {
-        if (containerRef.current) {
-          containerRef.current.innerHTML = svg;
-          setRendered(true);
-        }
-      })
-      .catch(() => {
-        if (containerRef.current) {
-          containerRef.current.innerText = chart;
-          setRendered(false);
-        }
-      });
-  }, [chart]);
-
-  const handleDownload = (e) => {
-    e.stopPropagation();
-    if (!containerRef.current) return;
-    const svgEl = containerRef.current.querySelector("svg");
-    if (!svgEl) return;
-    const svgData = new XMLSerializer().serializeToString(svgEl);
-    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `diagram-${Date.now()}.svg`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  return (
-    <div className="relative group my-3 bg-zinc-950 rounded-lg border border-zinc-800 overflow-hidden">
-      {rendered && (
-        <div className="absolute top-2 right-2 z-10">
-          <button
-            type="button"
-            onClick={handleDownload}
-            className="p-1.5 rounded bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 border border-zinc-700/60 shadow transition-colors cursor-pointer"
-            title="Download Diagram (SVG)"
-            aria-label="Download diagram"
-          >
-            <DownloadSimple size={14} weight="bold" />
-          </button>
-        </div>
-      )}
-      <div
-        ref={containerRef}
-        className="p-4 overflow-x-auto flex justify-center text-xs"
-      />
-    </div>
-  );
-}
-
-const markdownComponents = {
+const getMarkdownComponents = (onOpenArtifact) => ({
   p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed text-zinc-200">{children}</p>,
   h1: ({ children }) => <h1 className="font-bold text-zinc-100 mt-4 mb-2 text-base">{children}</h1>,
   h2: ({ children }) => <h2 className="font-semibold text-zinc-100 mt-3 mb-1.5 text-sm">{children}</h2>,
@@ -77,38 +16,107 @@ const markdownComponents = {
   ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
   li: ({ children }) => <li className="text-zinc-200 text-xs">{children}</li>,
   code: ({ inline, className, children, ...props }) => {
-    if (className && className.includes("language-mermaid")) {
-      return <MermaidChart chart={String(children).replace(/\n$/, "")} />;
+    const raw = String(children).replace(/\n$/, "");
+    const parsed = parseChartFromText(raw);
+    if (parsed) return <DashboardChart type={parsed.type} title={parsed.title} data={parsed.data} />;
+    if (className && className.includes("language-mermaid")) return <MermaidChart chart={raw} onOpenArtifact={onOpenArtifact} />;
+
+    const langMatch = /language-(html|javascript|js|jsx|svg)/i.exec(className || "");
+    const isSandboxable = Boolean(langMatch) && raw.split("\n").length > 3 && Boolean(onOpenArtifact);
+
+    if (isSandboxable) {
+      const lang = langMatch[1].toLowerCase();
+      const ext = lang === "javascript" ? "js" : lang;
+      return (
+        <div className="relative my-2.5 rounded-lg border border-zinc-800 bg-zinc-950 overflow-hidden group">
+          <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-900/80 border-b border-zinc-800 text-[11px] font-mono text-zinc-400">
+            <span className="uppercase tracking-wider font-semibold text-zinc-300">{lang}</span>
+            <button
+              type="button"
+              onClick={() => onOpenArtifact({ type: "code", extension: ext, content: raw })}
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-sans text-xs font-medium transition-colors cursor-pointer shadow-xs"
+              title="Open in Live Sandbox"
+            >
+              <Play size={11} weight="fill" />
+              <span>Open Interactive Sandbox</span>
+            </button>
+          </div>
+          <pre className="p-3.5 overflow-x-auto text-xs font-mono text-zinc-300 max-w-full">
+            <code {...props}>{children}</code>
+          </pre>
+        </div>
+      );
     }
-    return (
-      <code className="bg-zinc-800 text-zinc-100 px-1.5 py-0.5 rounded-md text-xs font-mono" {...props}>
-        {children}
-      </code>
-    );
+
+    return <code className="bg-zinc-800 text-zinc-100 px-1.5 py-0.5 rounded-md text-xs font-mono" {...props}>{children}</code>;
   },
   pre: ({ children, ...props }) => {
-    if (children?.props?.className?.includes("language-mermaid")) {
-      return children;
-    }
-    return (
-      <pre className="bg-zinc-950 p-3.5 rounded-lg overflow-x-auto text-xs font-mono my-2.5 border border-zinc-800 text-zinc-300" {...props}>
-        {children}
-      </pre>
-    );
+    if (children?.props?.className?.includes("language-mermaid") || children?.props?.className?.includes("language-chart")) return children;
+    if (/language-(html|javascript|js|jsx|svg)/i.test(children?.props?.className || "")) return children;
+    return <pre className="bg-zinc-950 p-3.5 rounded-lg overflow-x-auto text-xs font-mono my-2.5 border border-zinc-800 text-zinc-300 min-w-0 max-w-full" {...props}>{children}</pre>;
   },
-  a: ({ href, children }) => (
-    <a href={href} className="text-blue-400 hover:underline cursor-pointer" target="_blank" rel="noreferrer">
-      {children}
-    </a>
-  )
-};
+  a: ({ href, children }) => <a href={href} className="text-blue-400 hover:underline cursor-pointer" target="_blank" rel="noreferrer">{children}</a>
+});
 
-export function MarkdownRenderer({ content }) {
+export function MarkdownRenderer({ content, onOpenArtifact, onSelectChoice, isStreaming = false }) {
+  if (!content) return null;
+  const markdownComponents = getMarkdownComponents(onOpenArtifact);
+
+  let parsedChoices = [];
+  let displayContent = content;
+
+  const choiceMatch = /\[CHOICES:\s*([^\]]+)\]/i.exec(content);
+  if (choiceMatch) {
+    parsedChoices = choiceMatch[1].split("|").map((s) => s.trim()).filter(Boolean);
+    displayContent = content.replace(/\[CHOICES:\s*([^\]]+)\]/i, "").trim();
+  }
+
+  const matcher = /\[ARTIFACT:\s*([a-zA-Z0-9]+)\s*\|\s*([^\]]+)\]/g;
+
+  if (!matcher.test(displayContent)) {
+    return (
+      <div className="text-xs leading-relaxed break-words min-w-0 w-full overflow-hidden">
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          {displayContent}
+        </ReactMarkdown>
+        {parsedChoices.length > 0 && (
+          <ChoiceChips choices={parsedChoices} onSelectChoice={onSelectChoice} disabled={isStreaming} />
+        )}
+      </div>
+    );
+  }
+
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  matcher.lastIndex = 0;
+  while ((match = matcher.exec(displayContent)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({ type: "markdown", text: displayContent.slice(lastIndex, match.index) });
+    }
+    parts.push({ type: "artifact", extension: match[1].trim(), url: match[2].trim() });
+    lastIndex = matcher.lastIndex;
+  }
+  if (lastIndex < displayContent.length) {
+    parts.push({ type: "markdown", text: displayContent.slice(lastIndex) });
+  }
+
   return (
-    <div className="text-xs leading-relaxed break-words">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-        {content}
-      </ReactMarkdown>
+    <div className="text-xs leading-relaxed break-words min-w-0 w-full overflow-hidden space-y-2">
+      {parts.map((p, idx) => {
+        if (p.type === "artifact") {
+          return <ArtifactPreviewer key={idx} extension={p.extension} url={p.url} onOpenArtifact={onOpenArtifact} />;
+        }
+        if (!p.text.trim()) return null;
+        return (
+          <ReactMarkdown key={idx} remarkPlugins={[remarkGfm]} components={markdownComponents}>
+            {p.text}
+          </ReactMarkdown>
+        );
+      })}
+      {parsedChoices.length > 0 && (
+        <ChoiceChips choices={parsedChoices} onSelectChoice={onSelectChoice} disabled={isStreaming} />
+      )}
     </div>
   );
 }

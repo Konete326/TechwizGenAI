@@ -10,7 +10,7 @@ import {
   streamChat,
   verifyApiKey,
   regenerateSession,
-  editMessage
+  deleteMessageBranch
 } from "../controllers/aiController.js";
 import { verifyToken } from "../middleware/auth.js";
 
@@ -26,6 +26,6 @@ router.delete("/sessions/:id", deleteSession);
 router.patch("/sessions/:id", renameSession);
 router.post("/sessions/:id/stream", streamChat);
 router.post("/sessions/:id/regenerate", regenerateSession);
-router.put("/messages/:messageId", editMessage);
+router.delete("/messages/:messageId", deleteMessageBranch);
 
 export default router;

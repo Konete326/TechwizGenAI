@@ -28,6 +28,11 @@ export function NotificationCard({ notification, onRowClick, onRemove }) {
         <div className="space-y-1 min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h4 className="text-xs font-semibold text-text-primary truncate">{notification.title}</h4>
+            {notification.userName && (
+              <span className="text-[10px] text-accent font-mono bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20 truncate max-w-[120px]">
+                {notification.userName}
+              </span>
+            )}
             {!notification.readStatus && (
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
             )}

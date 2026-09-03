@@ -33,6 +33,11 @@ const notificationSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    targetRole: {
+      type: String,
+      enum: ["user", "admin", "all"],
+      default: "user"
+    },
     createdAt: {
       type: Date,
       default: Date.now

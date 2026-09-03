@@ -53,12 +53,13 @@ export function useChatSessions() {
     }
   }, [activeSessionId, fetchMessages]);
 
-  const createSession = async () => {
+  const createSession = async (persona = "general") => {
     if (!token) return null;
     try {
       const res = await fetch(`${VITE_API_URL}/ai/sessions`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ persona })
       });
       const data = await res.json();
       if (data.success && data.data?.id) {
@@ -112,6 +113,23 @@ export function useChatSessions() {
     }
   };
 
+  const updateSessionPersona = async (sessionId, persona) => {
+    if (!token || !sessionId || !persona) return;
+    try {
+      const res = await fetch(`${VITE_API_URL}/ai/sessions/${sessionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ persona })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, persona } : s)));
+      }
+    } catch {
+      return null;
+    }
+  };
+
   return {
     sessions,
     setSessions,
@@ -123,7 +141,8 @@ export function useChatSessions() {
     fetchSessions,
     createSession,
     deleteSession,
-    renameSession
+    renameSession,
+    updateSessionPersona
   };
 }
 

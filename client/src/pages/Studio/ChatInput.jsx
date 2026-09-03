@@ -1,7 +1,9 @@
 import { useRef, useEffect } from "react";
-import { PaperPlaneRight, Paperclip, Stop, X, Microphone } from "@phosphor-icons/react";
-import { useToast } from "@/context/ToastContext";
+import { PaperPlaneRight, Paperclip, Stop, Microphone } from "@phosphor-icons/react";
 import { useSpeechToText } from "./useSpeechToText";
+import { ImageCropModal } from "./ImageCropModal";
+import { AttachedPreview } from "./AttachedPreview";
+import { useChatAttachment } from "./useChatAttachment";
 
 export function ChatInput({
   inputPrompt,
@@ -15,8 +17,20 @@ export function ChatInput({
 }) {
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
-  const toast = useToast();
   const { isListening, toggleListening } = useSpeechToText(setInputPrompt);
+
+  const {
+    pendingImageSrc,
+    setPendingImageSrc,
+    isCropOpen,
+    setIsCropOpen,
+    attachedDoc,
+    setAttachedDoc,
+    handleAttachmentClick,
+    handleFileChange,
+    handlePaste,
+    handleCropSuccess
+  } = useChatAttachment({ setAttachedImage, selectedModel });
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -25,98 +39,80 @@ export function ChatInput({
     }
   }, [inputPrompt]);
 
+  const handleFormSubmit = (e) => {
+    if (e) e.preventDefault();
+    if (isStreaming) return;
+    if (!inputPrompt.trim() && !attachedImage && !attachedDoc) return;
+
+    if (attachedDoc) {
+      onSubmit({
+        text: inputPrompt,
+        attachmentType: "document",
+        attachmentName: attachedDoc.name,
+        attachmentData: attachedDoc.data
+      });
+      setAttachedDoc(null);
+      setInputPrompt("");
+      return;
+    }
+
+    if (attachedImage) {
+      onSubmit({
+        text: inputPrompt,
+        attachmentType: "image",
+        attachmentName: null,
+        attachmentData: attachedImage
+      });
+      setAttachedImage(null);
+      setInputPrompt("");
+      return;
+    }
+
+    onSubmit({
+      text: inputPrompt,
+      attachmentType: "none",
+      attachmentName: null,
+      attachmentData: null
+    });
+    setInputPrompt("");
+  };
+
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (!isStreaming && (inputPrompt.trim() || attachedImage)) {
-        onSubmit();
-      }
+      handleFormSubmit();
     }
   };
 
-  const handlePaste = (e) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    for (const item of items) {
-      if (item.type.startsWith("image/")) {
-        const file = item.getAsFile();
-        if (file) {
-          if (file.size > 5 * 1024 * 1024) return toast.error("Pasted image exceeds 5 MB limit");
-          const reader = new FileReader();
-          reader.onload = () => setAttachedImage(reader.result);
-          reader.readAsDataURL(file);
-          e.preventDefault();
-          break;
-        }
-      }
-    }
-  };
-
-  const handleAttachmentClick = () => {
-    if (selectedModel === "gemini-1.5-flash-8b") {
-      toast.error("This model does not support image attachments. Please select a superior model.");
-      return;
-    }
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Attachment image must be under 5 MB");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => setAttachedImage(reader.result);
-    reader.readAsDataURL(file);
-    e.target.value = "";
-  };
+  const hasAttachment = Boolean(attachedImage || attachedDoc);
 
   return (
     <div className="p-3 md:p-4 border-t border-border bg-surface-card/90 backdrop-blur shrink-0 w-full">
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!isStreaming && (inputPrompt.trim() || attachedImage)) onSubmit();
-        }}
-        className="w-full space-y-2"
-      >
-        {attachedImage && (
-          <div className="relative inline-flex items-center gap-2 p-1.5 rounded-lg bg-surface border border-accent/40 shadow-sm">
-            <img src={attachedImage} alt="Attachment" className="w-12 h-12 object-cover rounded-md" />
-            <div className="text-[11px] font-mono text-text-muted pr-2">
-              <span className="text-accent font-semibold block">Image Ready</span>
-              <span>Attached to prompt</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setAttachedImage(null)}
-              className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] shadow cursor-pointer hover:bg-rose-500 transition-colors"
-              title="Remove attachment"
-            >
-              <X size={11} weight="bold" />
-            </button>
-          </div>
-        )}
+      <form onSubmit={handleFormSubmit} className="w-full space-y-2">
+        <AttachedPreview
+          attachedImage={attachedImage}
+          onClearImage={() => setAttachedImage(null)}
+          attachedDocument={attachedDoc}
+          onClearDocument={() => setAttachedDoc(null)}
+        />
 
         <div className="relative flex items-end gap-2 p-2 rounded-[var(--radius-md)] bg-surface border border-border focus-within:border-accent shadow-sm transition-all w-full">
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/png, image/jpeg, image/webp"
+            accept=".pdf,.docx,.doc,.txt,.csv,.xlsx,.xls,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,image/*"
             onChange={handleFileChange}
             className="hidden"
           />
 
           <button
             type="button"
-            onClick={handleAttachmentClick}
+            onClick={() => handleAttachmentClick(fileInputRef)}
             className={`p-2 rounded transition-colors cursor-pointer shrink-0 ${
-              attachedImage ? "text-accent bg-accent/15" : "text-text-muted hover:text-text-primary hover:bg-surface-elevated"
+              hasAttachment ? "text-accent bg-accent/15" : "text-text-muted hover:text-text-primary hover:bg-surface-elevated"
             }`}
-            title="Attach image"
-            aria-label="Attach image"
+            title="Attach file"
+            aria-label="Attach file"
           >
             <Paperclip size={18} />
           </button>
@@ -125,9 +121,7 @@ export function ChatInput({
             type="button"
             onClick={toggleListening}
             className={`p-2 rounded transition-colors cursor-pointer shrink-0 ${
-              isListening
-                ? "animate-pulse text-red-500 bg-red-500/20 border border-red-500/40"
-                : "text-text-muted hover:text-text-primary hover:bg-surface-elevated"
+              isListening ? "animate-pulse text-red-500 bg-red-500/20 border border-red-500/40" : "text-text-muted hover:text-text-primary hover:bg-surface-elevated"
             }`}
             title={isListening ? "Stop listening" : "Speech to text"}
             aria-label="Speech to text"
@@ -142,7 +136,7 @@ export function ChatInput({
             onChange={(e) => setInputPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            placeholder={attachedImage ? "Ask anything about this image... (or press Enter)" : "Ask Gemini anything... (attach image, speak or type prompt)"}
+            placeholder={attachedDoc ? "Ask anything about this document..." : (attachedImage ? "Ask anything about this image..." : "Ask Gemini anything... (attach PDF/image, speak or type)")}
             className="flex-1 max-h-32 bg-transparent text-text-primary text-xs resize-none focus:outline-none py-1.5 px-1 leading-relaxed"
           />
 
@@ -159,7 +153,7 @@ export function ChatInput({
           ) : (
             <button
               type="submit"
-              disabled={!inputPrompt.trim() && !attachedImage}
+              disabled={!inputPrompt.trim() && !hasAttachment}
               className="p-2 rounded-[var(--radius-sm)] bg-accent hover:bg-accent-hover text-white transition-colors btn-tactile cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0 flex items-center justify-center shadow-sm"
               title="Send message"
               aria-label="Send message"
@@ -169,6 +163,12 @@ export function ChatInput({
           )}
         </div>
       </form>
+      <ImageCropModal
+        isOpen={isCropOpen}
+        imageSrc={pendingImageSrc}
+        onClose={() => { setIsCropOpen(false); setPendingImageSrc(null); }}
+        onSuccess={handleCropSuccess}
+      />
     </div>
   );
 }

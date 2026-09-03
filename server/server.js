@@ -12,6 +12,8 @@ import aiRoutes from "./src/routes/aiRoutes.js";
 import assetRoutes from "./src/routes/assetRoutes.js";
 import adminRoutes from "./src/routes/adminRoutes.js";
 import notificationRoutes from "./src/routes/notificationRoutes.js";
+import analyticsRoutes from "./src/routes/analyticsRoutes.js";
+import dashboardRoutes from "./src/routes/dashboardRoutes.js";
 import { seedAdmin } from "./src/config/seedAdmin.js";
 
 await connectDB();
@@ -30,10 +32,28 @@ const apiLimiter = rateLimit({
   }
 });
 
-app.use(helmet());
-app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
+app.use(helmet({ contentSecurityPolicy: false, frameguard: false, crossOriginResourcePolicy: { policy: "cross-origin" } }));
+const allowedOrigins = (env.CLIENT_URL || "http://localhost:5173").split(",").map((s) => s.trim());
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes("*") || origin.endsWith(".vercel.app")) {
+      return cb(null, true);
+    }
+    return cb(null, true);
+  },
+  credentials: true
+}));
 app.use(compression());
 app.use(express.json({ limit: "10mb" }));
+app.use("/uploads", (req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  if (req.path.endsWith(".pdf")) {
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "inline");
+  }
+  next();
+}, express.static("uploads"));
 
 app.use("/api", apiLimiter);
 
@@ -49,6 +69,8 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/assets", assetRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 app.use(errorHandler);
 

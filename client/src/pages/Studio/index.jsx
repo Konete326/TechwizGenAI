@@ -1,39 +1,38 @@
 import { useState, useRef, useEffect } from "react";
 import { ClockCounterClockwise } from "@phosphor-icons/react";
+import { useToast } from "@/context/ToastContext";
+import { streamCompletion, getFriendlyErrorMessage } from "@/utils/aiStream";
 import { ChatSidebar } from "./ChatSidebar";
 import { ChatCanvas } from "./ChatCanvas";
 import { ChatInput } from "./ChatInput";
 import { ModelSelector } from "./ModelSelector";
+import { PersonaSelector } from "./PersonaSelector";
+import { ArtifactPanel } from "./ArtifactPanel";
 import { useChatSessions } from "./useChatSessions";
-import { streamCompletion } from "@/utils/aiStream";
-import { useToast } from "@/context/ToastContext";
-import { VITE_API_URL } from "@/config/env";
 
 export function Studio() {
   const toast = useToast();
   const [inputPrompt, setInputPrompt] = useState("");
-  const [attachedImage, setAttachedImage] = useState(null);
-  const [selectedModel, setSelectedModel] = useState("gemini-3.7-flash");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem("selected_ai_model") || "gemini-3.7-flash");
+  const [activePersona, setActivePersona] = useState("general");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState("");
+  const [attachedImage, setAttachedImage] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [activeArtifact, setActiveArtifact] = useState(null);
   const abortControllerRef = useRef(null);
 
   const {
-    sessions,
-    setSessions,
-    activeSessionId,
-    setActiveSessionId,
-    messages,
-    setMessages,
-    isLoading,
-    fetchSessions,
-    createSession,
-    deleteSession,
-    renameSession
+    sessions, setSessions, activeSessionId, setActiveSessionId,
+    messages, setMessages, isLoading, fetchSessions,
+    createSession, deleteSession, renameSession, updateSessionPersona
   } = useChatSessions();
 
-  const token = localStorage.getItem("token");
+  const activeSession = sessions.find((s) => s.id === activeSessionId);
+
+  useEffect(() => {
+    if (activeSession?.persona) setActivePersona(activeSession.persona);
+  }, [activeSession?.persona, activeSessionId]);
 
   useEffect(() => {
     const parent = document.querySelector("main.flex-1");
@@ -43,7 +42,12 @@ export function Studio() {
     return () => { parent.style.overflow = prev; };
   }, []);
 
-  const runStream = async (targetSessionId, promptText, imageBase64, isRegenerate = false) => {
+  const handleSelectPersona = (personaId) => {
+    setActivePersona(personaId);
+    if (activeSessionId) updateSessionPersona(activeSessionId, personaId);
+  };
+
+  const runStream = async (targetSessionId, promptText, imageBase64, isRegenerate = false, docPayload = {}) => {
     setIsStreaming(true);
     setStreamingText("");
     const controller = new AbortController();
@@ -51,46 +55,59 @@ export function Studio() {
     let accumulated = "";
 
     await streamCompletion({
-      sessionId: targetSessionId,
-      prompt: promptText,
-      model: selectedModel,
-      imageBase64,
-      isRegenerate,
-      signal: controller.signal,
+      sessionId: targetSessionId, prompt: promptText, model: selectedModel, imageBase64,
+      attachmentType: docPayload.attachmentType || (imageBase64 ? "image" : "none"),
+      attachmentName: docPayload.attachmentName || null,
+      attachmentData: docPayload.attachmentData || null,
+      persona: activePersona,
+      isRegenerate, signal: controller.signal,
       onChunk: (c) => { accumulated += c; setStreamingText((p) => p + c); },
       onComplete: () => {
-        setIsStreaming(false);
-        setStreamingText("");
+        setIsStreaming(false); setStreamingText("");
         setMessages((p) => [...p, { id: "ai-" + Date.now(), role: "model", text: accumulated, createdAt: new Date().toISOString() }]);
         fetchSessions();
       },
-      onError: (err) => { setIsStreaming(false); setStreamingText(""); toast.error(err.message || "Streaming interrupted"); }
+      onError: (err) => { setIsStreaming(false); setStreamingText(""); toast.error(getFriendlyErrorMessage(err)); }
     });
   };
 
-  const handleSendMessage = async (promptToSend, imageToSend) => {
-    const textToSend = promptToSend || inputPrompt;
-    const imageToUpload = imageToSend !== undefined ? imageToSend : attachedImage;
-    if ((!textToSend.trim() && !imageToUpload) || isStreaming) return;
+  const handleSendMessage = async (payloadOrText, imageToSend) => {
+    let textToSend = inputPrompt;
+    let imageToUpload = imageToSend !== undefined ? imageToSend : attachedImage;
+    let docPayload = {};
 
+    if (payloadOrText && typeof payloadOrText === "object") {
+      textToSend = payloadOrText.text !== undefined ? payloadOrText.text : inputPrompt;
+      if (payloadOrText.attachmentType === "document") {
+        docPayload = { attachmentType: "document", attachmentName: payloadOrText.attachmentName, attachmentData: payloadOrText.attachmentData };
+        imageToUpload = null;
+      } else if (payloadOrText.attachmentType === "image") imageToUpload = payloadOrText.attachmentData;
+    } else if (typeof payloadOrText === "string") textToSend = payloadOrText;
+
+    if ((!textToSend.trim() && !imageToUpload && !docPayload.attachmentData) || isStreaming) return;
     let targetSessionId = activeSessionId;
-    if (!targetSessionId) targetSessionId = await createSession();
+    if (!targetSessionId) targetSessionId = await createSession(activePersona);
     if (!targetSessionId) return;
 
-    const promptText = textToSend.trim() || (imageToUpload ? "Analyze attached image" : "");
-    const userMsg = { id: "usr-" + Date.now(), role: "user", text: promptText, attachment: imageToUpload || null, createdAt: new Date().toISOString() };
+    const fallbackDoc = docPayload.attachmentName ? `Analyze ${docPayload.attachmentName}` : "Analyze attachment";
+    const promptText = textToSend.trim() || (docPayload.attachmentData ? fallbackDoc : (imageToUpload ? "Analyze attached image" : ""));
+    const userMsg = {
+      id: "usr-" + Date.now(), role: "user", text: promptText,
+      attachment: docPayload.attachmentData || imageToUpload || null,
+      attachmentType: docPayload.attachmentType || (imageToUpload ? "image" : "none"),
+      attachmentName: docPayload.attachmentName || null, createdAt: new Date().toISOString()
+    };
     setMessages((prev) => [...prev, userMsg]);
-    setInputPrompt("");
-    setAttachedImage(null);
+    setInputPrompt(""); setAttachedImage(null);
 
     const currSess = sessions.find((s) => s.id === targetSessionId);
     if (!currSess || currSess.title === "New Chat") {
       const words = promptText.split(/\s+/).slice(0, 4).join(" ");
-      const autoTitle = words ? words.charAt(0).toUpperCase() + words.slice(1) : "Image Chat";
+      const autoTitle = words ? words.charAt(0).toUpperCase() + words.slice(1) : "Document Chat";
       setSessions((prev) => prev.map((s) => (s.id === targetSessionId ? { ...s, title: autoTitle } : s)));
     }
 
-    await runStream(targetSessionId, promptText, imageToUpload, false);
+    await runStream(targetSessionId, promptText, imageToUpload, false, docPayload);
   };
 
   const handleRegenerate = async () => {
@@ -99,36 +116,26 @@ export function Studio() {
     await runStream(activeSessionId, "", null, true);
   };
 
-  const handleEditMessage = (text, attachment) => {
+  const handleEditMessage = (messageId, text, attachment) => {
     setInputPrompt(text || "");
     if (attachment) setAttachedImage(attachment);
-    const textarea = document.querySelector("form textarea");
-    if (textarea) {
-      textarea.focus();
-      textarea.scrollIntoView({ behavior: "smooth" });
-    }
+    setMessages((prev) => {
+      const idx = prev.findIndex((m) => m.id === messageId);
+      return idx === -1 ? prev : prev.slice(0, idx);
+    });
   };
 
-  const handleStop = () => {
-    if (abortControllerRef.current) abortControllerRef.current.abort();
-    abortControllerRef.current = null;
-    setIsStreaming(false);
+  const handleChoiceSelect = (choiceText) => {
+    if (!isStreaming) handleSendMessage(choiceText);
   };
-
-  const activeSession = sessions.find((s) => s.id === activeSessionId);
 
   return (
-    <div className="flex h-[calc(100%+3rem)] w-[calc(100%+3rem)] -m-6 overflow-hidden bg-background relative border-t border-border/60">
+    <div className="flex h-screen w-full bg-surface-base text-text-primary overflow-hidden select-none">
       <ChatSidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        sessions={sessions}
-        activeSessionId={activeSessionId}
-        onSelectSession={setActiveSessionId}
-        onNewChat={createSession}
-        onDeleteSession={deleteSession}
-        onRenameSession={renameSession}
-        isLoading={isLoading}
+        isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)}
+        sessions={sessions} activeSessionId={activeSessionId}
+        onSelectSession={setActiveSessionId} onNewChat={() => createSession(activePersona)}
+        onDeleteSession={deleteSession} onRenameSession={renameSession}
       />
 
       <main className="flex-1 flex flex-col h-full min-w-0 relative bg-surface/20 overflow-hidden">
@@ -136,11 +143,9 @@ export function Studio() {
           <div className="flex items-center gap-2.5 truncate pr-2">
             {!isSidebarOpen && (
               <button
-                type="button"
-                onClick={() => setIsSidebarOpen(true)}
+                type="button" onClick={() => setIsSidebarOpen(true)}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-sm)] border border-border bg-surface text-text-muted hover:text-text-primary hover:border-accent text-xs font-semibold transition-colors cursor-pointer shrink-0"
-                title="Show History"
-                aria-label="Open chat history"
+                title="Show History" aria-label="Open chat history"
               >
                 <ClockCounterClockwise size={14} weight="bold" />
                 <span>History</span>
@@ -150,29 +155,34 @@ export function Studio() {
               {activeSession?.title || "New Chat"}
             </span>
           </div>
-          <ModelSelector selectedModel={selectedModel} onSelectModel={setSelectedModel} />
+          <div className="flex items-center gap-2 shrink-0">
+            <PersonaSelector selectedPersona={activePersona} onSelectPersona={handleSelectPersona} disabled={isStreaming} />
+            <ModelSelector selectedModel={selectedModel} onSelectModel={(id) => { setSelectedModel(id); localStorage.setItem("selected_ai_model", id); }} />
+          </div>
         </div>
 
-        <ChatCanvas
-          messages={messages}
-          activeSession={activeSession}
-          isStreaming={isStreaming}
-          streamingText={streamingText}
-          onEdit={handleEditMessage}
-          onRegenerate={handleRegenerate}
-          onSendSuggested={(suggested) => handleSendMessage(suggested)}
-        />
+        <div className="flex-1 flex min-w-0 h-full overflow-hidden relative">
+          <div className={`flex flex-col min-w-0 h-full transition-all duration-200 ${activeArtifact ? "w-full lg:w-1/2 border-r border-border" : "flex-1"}`}>
+            <ChatCanvas
+              messages={messages} activeSession={activeSession} activePersona={activePersona}
+              isStreaming={isStreaming} streamingText={streamingText}
+              onEdit={handleEditMessage} onRegenerate={handleRegenerate}
+              onSendSuggested={(suggested) => handleSendMessage(suggested)}
+              onOpenArtifact={setActiveArtifact}
+              onSelectChoice={handleChoiceSelect}
+            />
+            <ChatInput
+              inputPrompt={inputPrompt} setInputPrompt={setInputPrompt}
+              onSubmit={(payload) => handleSendMessage(payload)} isStreaming={isStreaming}
+              onStop={() => { abortControllerRef.current?.abort(); setIsStreaming(false); }} selectedModel={selectedModel}
+              attachedImage={attachedImage} setAttachedImage={setAttachedImage}
+            />
+          </div>
 
-        <ChatInput
-          inputPrompt={inputPrompt}
-          setInputPrompt={setInputPrompt}
-          onSubmit={() => handleSendMessage()}
-          isStreaming={isStreaming}
-          onStop={handleStop}
-          selectedModel={selectedModel}
-          attachedImage={attachedImage}
-          setAttachedImage={setAttachedImage}
-        />
+          {activeArtifact && (
+            <ArtifactPanel artifact={activeArtifact} onClose={() => setActiveArtifact(null)} />
+          )}
+        </div>
       </main>
     </div>
   );

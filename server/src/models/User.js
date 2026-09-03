@@ -41,6 +41,10 @@ const userSchema = new mongoose.Schema(
     profileImage: {
       type: String,
       default: ""
+    },
+    totalTokensUsed: {
+      type: Number,
+      default: 0
     }
   },
   {
