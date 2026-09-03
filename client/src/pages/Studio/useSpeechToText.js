@@ -15,7 +15,7 @@ export function useSpeechToText(onTranscript) {
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      toast.error("Speech recognition is not supported in this browser.");
+      toast.error("Speech recognition is not supported in your browser.");
       return;
     }
 

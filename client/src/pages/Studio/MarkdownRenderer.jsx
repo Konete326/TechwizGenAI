@@ -1,5 +1,36 @@
+import { useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import mermaid from "mermaid";
+
+mermaid.initialize({ startOnLoad: false, theme: "dark" });
+
+function MermaidChart({ chart }) {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!containerRef.current || !chart) return;
+    const id = "mermaid-" + Math.random().toString(36).substring(2, 9);
+    mermaid.render(id, chart)
+      .then(({ svg }) => {
+        if (containerRef.current) {
+          containerRef.current.innerHTML = svg;
+        }
+      })
+      .catch(() => {
+        if (containerRef.current) {
+          containerRef.current.innerText = chart;
+        }
+      });
+  }, [chart]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="my-3 p-3 bg-zinc-950 rounded-lg border border-zinc-800 overflow-x-auto flex justify-center text-xs"
+    />
+  );
+}
 
 const markdownComponents = {
   p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed text-zinc-200">{children}</p>,
@@ -9,16 +40,26 @@ const markdownComponents = {
   ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
   ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
   li: ({ children }) => <li className="text-zinc-200 text-xs">{children}</li>,
-  code: ({ inline, className, children, ...props }) => (
-    <code className="bg-zinc-800 text-zinc-100 px-1.5 py-0.5 rounded-md text-xs font-mono" {...props}>
-      {children}
-    </code>
-  ),
-  pre: ({ children }) => (
-    <pre className="bg-zinc-950 p-3.5 rounded-lg overflow-x-auto text-xs font-mono my-2.5 border border-zinc-800 text-zinc-300">
-      {children}
-    </pre>
-  ),
+  code: ({ inline, className, children, ...props }) => {
+    if (className && className.includes("language-mermaid")) {
+      return <MermaidChart chart={String(children).replace(/\n$/, "")} />;
+    }
+    return (
+      <code className="bg-zinc-800 text-zinc-100 px-1.5 py-0.5 rounded-md text-xs font-mono" {...props}>
+        {children}
+      </code>
+    );
+  },
+  pre: ({ children, ...props }) => {
+    if (children?.props?.className?.includes("language-mermaid")) {
+      return children;
+    }
+    return (
+      <pre className="bg-zinc-950 p-3.5 rounded-lg overflow-x-auto text-xs font-mono my-2.5 border border-zinc-800 text-zinc-300" {...props}>
+        {children}
+      </pre>
+    );
+  },
   a: ({ href, children }) => (
     <a href={href} className="text-blue-400 hover:underline cursor-pointer" target="_blank" rel="noreferrer">
       {children}

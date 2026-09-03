@@ -126,7 +126,7 @@ export function ChatInput({
             onClick={toggleListening}
             className={`p-2 rounded transition-colors cursor-pointer shrink-0 ${
               isListening
-                ? "text-rose-500 bg-rose-500/20 border border-rose-500/40 animate-pulse"
+                ? "animate-pulse text-red-500 bg-red-500/20 border border-red-500/40"
                 : "text-text-muted hover:text-text-primary hover:bg-surface-elevated"
             }`}
             title={isListening ? "Stop listening" : "Speech to text"}

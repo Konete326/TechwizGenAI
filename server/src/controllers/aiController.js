@@ -4,6 +4,8 @@ import { ChatSession } from "../models/ChatSession.js";
 import { ChatMessage } from "../models/ChatMessage.js";
 import { sanitizeText } from "../utils/validators.js";
 
+const SYSTEM_INSTRUCTION = "You are TechwizGenAI, an elite, hyper-professional AI assistant. Tone: Maintain a strictly professional, authoritative, and direct tone. Never use jokes, sarcasm, or playful language. Do not use generic AI cliches like 'As an AI language model' or 'Here is your response'. Adaptive Length: If the user asks a short question, provide a highly concise, direct answer. If the user asks a detailed question, provide a comprehensive, deeply analytical response. Formatting: Output clean markdown only. NEVER use emojis, emoticons, or pictorial icons under any circumstances. Quality: Deliver exceptional, accurate, and highly engaging insights that reflect top-tier expertise to highly impress the user. Diagram Generation: When asked to create a diagram, flowchart, graph, or architectural layout, you must output strictly valid Mermaid.js syntax wrapped entirely inside a ```mermaid code block. Do not use any other diagramming syntax.";
+
 export const verifyApiKey = async (req, res) => {
   try {
     const apiKey = req.headers["x-custom-api-key"] || req.body.apiKey;
@@ -114,7 +116,11 @@ export const streamChat = async (req, res, next, isRegenerate = false) => {
 
     let responseStream;
     try {
-      responseStream = await client.models.generateContentStream({ model: targetModel, contents });
+      responseStream = await client.models.generateContentStream({
+        model: targetModel,
+        contents,
+        config: { systemInstruction: SYSTEM_INSTRUCTION }
+      });
     } catch (apiErr) {
       if (customApiKey) {
         return res.status(401).json({
@@ -124,7 +130,11 @@ export const streamChat = async (req, res, next, isRegenerate = false) => {
         });
       }
       try {
-        responseStream = await client.models.generateContentStream({ model: "gemini-2.5-flash", contents });
+        responseStream = await client.models.generateContentStream({
+          model: "gemini-2.5-flash",
+          contents,
+          config: { systemInstruction: SYSTEM_INSTRUCTION }
+        });
       } catch (fallbackErr) {
         return next(fallbackErr);
       }
