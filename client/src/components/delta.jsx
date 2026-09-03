@@ -1,7 +1,7 @@
 "use client";;
 import { cn } from "@/lib/utils";
 import * as React from "react";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/Badge";
 import { MinusIcon, TrendingUpIcon, ArrowUpIcon, ChevronUpIcon, TrendingDownIcon, ArrowDownIcon, ChevronDownIcon } from "lucide-react";
 
 const DeltaContext = React.createContext(null);

@@ -4,7 +4,7 @@ import {
 	CardContent,
 	CardHeader,
 	CardTitle,
-} from "@/components/ui/card";
+} from "@/components/ui/Card";
 import { Delta, DeltaIcon, DeltaValue } from "@/components/delta";
 
 const stats = [

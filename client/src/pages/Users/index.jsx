@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { MagnifyingGlass } from "@phosphor-icons/react";
 import { VITE_API_URL } from "@/config/env";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/context/ToastContext";
 import { UserProfileModal } from "./UserProfileModal";
 import { UserTableRow } from "./UserTableRow";

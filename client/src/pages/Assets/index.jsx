@@ -6,7 +6,7 @@ import { AssetUploader } from "./AssetUploader";
 import { AssetPreviewModal } from "./AssetPreviewModal";
 import { AssetPagination } from "./AssetPagination";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/context/ToastContext";
 import { useAssets } from "./useAssets";
 

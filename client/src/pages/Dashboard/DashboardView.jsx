@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowClockwise, WarningCircle } from "@phosphor-icons/react";
 import { useDashboardData } from "./useDashboardData";
 import { KpiCards } from "./KpiCards";
