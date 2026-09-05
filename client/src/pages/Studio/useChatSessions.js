@@ -9,22 +9,35 @@ export function useChatSessions() {
 
   const token = localStorage.getItem("token");
 
-  const fetchSessions = useCallback(async () => {
+  const fetchSessions = useCallback(async (isSilent = false) => {
     if (!token) return;
-    setIsLoading(true);
+    if (!isSilent) setIsLoading(true);
     try {
       const res = await fetch(`${VITE_API_URL}/ai/sessions`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
-        setSessions(data.data);
-        setActiveSessionId((curr) => curr || (data.data.length > 0 ? data.data[0].id : null));
+        const incoming = data.data;
+        setSessions((prev) => {
+          const isSame =
+            prev.length === incoming.length &&
+            prev.every((p, i) => p.id === incoming[i].id && p.title === incoming[i].title && p.persona === incoming[i].persona);
+          return isSame ? prev : incoming;
+        });
+        setActiveSessionId((curr) => {
+          if (!curr) return incoming.length > 0 ? incoming[0].id : null;
+          const exists = incoming.some((s) => s.id === curr);
+          return exists ? curr : (incoming.length > 0 ? incoming[0].id : null);
+        });
+        if (incoming.length === 0) {
+          setMessages([]);
+        }
       }
     } catch {
       return null;
     } finally {
-      setIsLoading(false);
+      if (!isSilent) setIsLoading(false);
     }
   }, [token]);
 
@@ -45,11 +58,28 @@ export function useChatSessions() {
 
   useEffect(() => {
     fetchSessions();
-  }, []);
+    const interval = setInterval(() => {
+      fetchSessions(true);
+    }, 2500);
+
+    const handleSync = () => fetchSessions(true);
+    window.addEventListener("focus", handleSync);
+    window.addEventListener("storage", handleSync);
+    document.addEventListener("visibilitychange", handleSync);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleSync);
+      window.removeEventListener("storage", handleSync);
+      document.removeEventListener("visibilitychange", handleSync);
+    };
+  }, [fetchSessions]);
 
   useEffect(() => {
     if (activeSessionId) {
       fetchMessages(activeSessionId);
+    } else {
+      setMessages([]);
     }
   }, [activeSessionId, fetchMessages]);
 

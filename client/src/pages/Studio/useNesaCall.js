@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useGeminiLive } from "./useGeminiLive";
+import { checkMicrophonePermission } from "@/utils/checkMicPermission";
 
-export function useNesaCall({ onSendMessage } = {}) {
+export function useNesaCall({ onSendMessage, onMicDenied } = {}) {
   const [callPhase, setCallPhase] = useState("ended");
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -26,7 +27,13 @@ export function useNesaCall({ onSendMessage } = {}) {
     setIsMinimized(false);
   }, [disconnect]);
 
-  const startCall = useCallback(() => {
+  const startCall = useCallback(async () => {
+    const micCheck = await checkMicrophonePermission();
+    if (!micCheck.granted) {
+      if (onMicDenied) onMicDenied(micCheck.error);
+      return false;
+    }
+
     clearRingTimer();
     disconnect();
     setIsMinimized(false);
@@ -38,7 +45,8 @@ export function useNesaCall({ onSendMessage } = {}) {
       setIsCallActive(true);
       connect();
     }, 2000);
-  }, [connect, disconnect]);
+    return true;
+  }, [connect, disconnect, onMicDenied]);
 
   const toggleMinimize = useCallback(() => {
     setIsMinimized((prev) => !prev);

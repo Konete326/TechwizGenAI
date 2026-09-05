@@ -5,7 +5,7 @@ import { useToast } from "@/context/ToastContext";
 import { ArtifactEditor } from "./ArtifactEditor";
 import { SandboxViewer } from "./SandboxViewer";
 import { ArtifactHeader } from "./ArtifactHeader";
-import { VITE_SERVER_URL } from "@/config/env";
+import { resolveDocumentUrl } from "@/utils/resolveDocumentUrl";
 
 const textEditable = ["csv", "tsv", "txt", "html", "htm", "json", "xml", "md", "svg", "js", "jsx", "css"];
 const viewportWidths = { desktop: "100%", tablet: "768px", mobile: "375px" };
@@ -79,18 +79,9 @@ export function ArtifactPanel({ artifact, onClose }) {
       document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(u);
       return;
     }
-    const resolvedTarget = resolveDocUrl(modifiedUrl || artifact?.url);
+    const resolvedTarget = resolveDocumentUrl(modifiedUrl || artifact?.url);
     const a = Object.assign(document.createElement("a"), { href: resolvedTarget, download: `document.${ext}`, target: "_blank" });
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  };
-
-  const resolveDocUrl = (rawUrl) => {
-    if (!rawUrl) return "";
-    if (rawUrl.includes("cloudinary.com") && rawUrl.includes("doc_") && rawUrl.endsWith(".pdf")) {
-      const match = rawUrl.match(/(doc_\d+\.pdf)/);
-      if (match) return `${VITE_SERVER_URL}/uploads/documents/${match[1]}`;
-    }
-    return rawUrl;
   };
 
   const fetchRawContent = async () => {
@@ -98,7 +89,7 @@ export function ArtifactPanel({ artifact, onClose }) {
     if (editableContent) return setIsEditing(true);
     setIsLoadingContent(true);
     try {
-      const res = await fetch(resolveDocUrl(modifiedUrl || artifact?.url));
+      const res = await fetch(resolveDocumentUrl(modifiedUrl || artifact?.url));
       if (!res.ok) throw new Error("Fetch failed");
       setEditableContent(await res.text());
       setIsEditing(true);
@@ -121,7 +112,7 @@ export function ArtifactPanel({ artifact, onClose }) {
     }
   };
 
-  const currentUrl = resolveDocUrl(modifiedUrl || artifact?.url);
+  const currentUrl = resolveDocumentUrl(modifiedUrl || artifact?.url);
   const isLocal = Boolean(currentUrl.includes("localhost") || currentUrl.includes("127.0.0.1"));
   const isPdf = ext === "pdf";
   const isBinaryDoc = ext === "docx" || ext === "xlsx" || ext === "xls";

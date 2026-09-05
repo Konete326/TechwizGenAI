@@ -7,9 +7,11 @@ import {
   Eye,
   ArrowSquareOut
 } from "@phosphor-icons/react";
+import { resolveDocumentUrl } from "@/utils/resolveDocumentUrl";
 
 export function ArtifactPreviewer({ extension = "pdf", url, onOpenArtifact }) {
   const ext = (extension || "pdf").toLowerCase().replace(/^\./, "");
+  const resolvedUrl = resolveDocumentUrl(url);
 
   const getIconInfo = () => {
     switch (ext) {
@@ -32,7 +34,7 @@ export function ArtifactPreviewer({ extension = "pdf", url, onOpenArtifact }) {
 
   const handleDownload = () => {
     const a = document.createElement("a");
-    a.href = url;
+    a.href = resolvedUrl;
     a.download = `document.${ext}`;
     a.target = "_blank";
     a.rel = "noopener noreferrer";
@@ -43,20 +45,20 @@ export function ArtifactPreviewer({ extension = "pdf", url, onOpenArtifact }) {
 
   const handlePreview = () => {
     if (onOpenArtifact) {
-      onOpenArtifact({ type: "document", extension: ext, url });
+      onOpenArtifact({ type: "document", extension: ext, url: resolvedUrl });
     } else {
-      window.open(url, "_blank");
+      window.open(resolvedUrl, "_blank");
     }
   };
 
   return (
-    <div className="my-3 w-full max-w-md rounded-xl border border-border bg-surface-card/95 p-3.5 shadow-sm transition-all hover:border-accent/40">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className={`p-2.5 rounded-lg border shrink-0 ${color}`}>
-            <Icon size={24} weight="fill" />
+    <div className="my-3 w-full max-w-full sm:max-w-md rounded-xl border border-border bg-surface-card/95 p-3 sm:p-3.5 shadow-sm transition-all hover:border-accent/40">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className={`p-2 sm:p-2.5 rounded-lg border shrink-0 ${color}`}>
+            <Icon size={22} weight="fill" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h4 className="text-xs font-semibold text-text-primary truncate">
               Generated Document (.{ext})
             </h4>
@@ -66,7 +68,7 @@ export function ArtifactPreviewer({ extension = "pdf", url, onOpenArtifact }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0 flex-wrap sm:flex-nowrap pt-1 sm:pt-0">
           <button
             type="button"
             onClick={handlePreview}
@@ -87,7 +89,7 @@ export function ArtifactPreviewer({ extension = "pdf", url, onOpenArtifact }) {
           </button>
           <button
             type="button"
-            onClick={() => window.open(url, "_blank")}
+            onClick={() => window.open(resolvedUrl, "_blank")}
             className="p-1.5 rounded-md bg-surface hover:bg-surface-elevated border border-border text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer"
             title="Open in new window"
             aria-label="Open document in new window"

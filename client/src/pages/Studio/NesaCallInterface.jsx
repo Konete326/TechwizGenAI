@@ -5,36 +5,22 @@ import { NesaCallMinimized } from "./NesaCallMinimized";
 import { NesaCallVideos } from "./NesaCallVideos";
 
 export function NesaCallInterface({
-  isActive = false,
-  callPhase = "ended",
-  isMinimized = false,
-  onToggleMinimize,
-  onEndCall,
-  nesaState = "idle",
-  isListening = false,
-  transcript = "",
-  connectionError = null,
-  onRetry
+  isActive = false, callPhase = "ended", isMinimized = false,
+  onToggleMinimize, onEndCall, nesaState = "idle",
+  isListening = false, transcript = "", connectionError = null, onRetry
 }) {
   const [duration, setDuration] = useState(0);
   const nodeRef = useRef(null);
 
   useEffect(() => {
-    if (callPhase !== "connected") {
-      setDuration(0);
-      return;
-    }
+    if (callPhase !== "connected") { setDuration(0); return; }
     const timer = setInterval(() => setDuration((p) => p + 1), 1000);
     return () => clearInterval(timer);
   }, [callPhase]);
 
   if (!isActive && callPhase === "ended") return null;
 
-  const formatDuration = (sec) => {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  };
+  const formatDuration = (sec) => `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
 
   const isSpeaking = nesaState === "speaking";
   const isRinging = callPhase === "ringing";
@@ -51,7 +37,16 @@ export function NesaCallInterface({
         </div>
       </div>
       <h2 className="text-base font-semibold text-zinc-100 mb-1">Calling Nesa...</h2>
-      <p className="text-xs font-mono text-zinc-400">Connecting secure audio stream</p>
+      <p className="text-xs font-mono text-zinc-400 mb-6">Connecting secure audio stream</p>
+      <button
+        type="button"
+        onClick={onEndCall}
+        className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-lg shadow-rose-600/30 transition-all cursor-pointer active:scale-95"
+        title="Cancel Call"
+      >
+        <PhoneDisconnect size={16} weight="fill" />
+        <span>Cancel</span>
+      </button>
     </div>
   );
 
@@ -62,13 +57,14 @@ export function NesaCallInterface({
         <div className="absolute inset-x-4 top-14 z-30 p-3 rounded-lg bg-rose-950/90 border border-rose-500/50 text-rose-200 backdrop-blur-md shadow-xl flex flex-col items-center gap-1.5 text-center">
           <span className="text-xs font-semibold text-rose-300">Connection Error</span>
           <span className="text-[11px] text-rose-200 leading-snug break-words max-h-16 overflow-y-auto w-full">{connectionError}</span>
-          <button
-            type="button"
-            onClick={onRetry}
-            className="mt-0.5 px-3 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium transition-colors cursor-pointer shadow"
-          >
-            Retry
-          </button>
+          <div className="flex items-center gap-2 mt-0.5">
+            <button type="button" onClick={onRetry} className="px-3 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium transition-colors cursor-pointer shadow">
+              Retry
+            </button>
+            <button type="button" onClick={onEndCall} className="px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium transition-colors cursor-pointer border border-zinc-700">
+              Close
+            </button>
+          </div>
         </div>
       )}
 
@@ -131,6 +127,15 @@ export function NesaCallInterface({
       <div className="max-md:fixed max-md:inset-0 z-50 md:hidden bg-zinc-950 flex flex-col justify-between overflow-hidden pb-8">
         <header className="relative z-10 w-full px-4 py-3 flex items-center justify-between border-b border-border/40 bg-zinc-950/80 backdrop-blur">
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onEndCall}
+              className="p-1 rounded-md text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer mr-1"
+              title="Close Call"
+              aria-label="Close call"
+            >
+              <X size={18} weight="bold" />
+            </button>
             <Sparkle size={16} weight="fill" className="text-accent" />
             <span className="text-xs font-semibold text-zinc-100">Nesa</span>
           </div>
@@ -158,22 +163,10 @@ export function NesaCallInterface({
                   <span className="text-[10px] font-mono text-zinc-400">{durationText}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={onToggleMinimize}
-                    className="p-1 rounded hover:bg-zinc-800/80 text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer"
-                    title="Minimize"
-                    aria-label="Minimize"
-                  >
+                  <button type="button" onClick={onToggleMinimize} className="p-1 rounded hover:bg-zinc-800/80 text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer" title="Minimize" aria-label="Minimize">
                     <Minus size={13} weight="bold" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={onEndCall}
-                    className="p-1 rounded hover:bg-rose-900/50 text-zinc-400 hover:text-rose-400 transition-colors cursor-pointer"
-                    title="End Call"
-                    aria-label="End call"
-                  >
+                  <button type="button" onClick={onEndCall} className="p-1 rounded hover:bg-rose-900/50 text-zinc-400 hover:text-rose-400 transition-colors cursor-pointer" title="End Call" aria-label="End call">
                     <X size={13} weight="bold" />
                   </button>
                 </div>

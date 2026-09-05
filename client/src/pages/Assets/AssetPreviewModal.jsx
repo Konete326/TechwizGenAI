@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, ArrowSquareOut, Copy, Check, DownloadSimple, FilePdf, FileDoc, FileXls, FileCsv, FileText, Image } from "@phosphor-icons/react";
-import { VITE_SERVER_URL } from "@/config/env";
+import { resolveDocumentUrl } from "@/utils/resolveDocumentUrl";
 
 export function AssetPreviewModal({ asset, onClose }) {
   const [copied, setCopied] = useState(false);
@@ -12,16 +12,8 @@ export function AssetPreviewModal({ asset, onClose }) {
   const imageFormats = ["png", "jpg", "jpeg", "webp", "gif", "svg"];
   const isImage = imageFormats.includes(ext) || asset.resourceType === "image";
   const isPdf = ext === "pdf";
-  const resolveDocUrl = (rawUrl) => {
-    if (!rawUrl) return "";
-    if (rawUrl.includes("cloudinary.com") && rawUrl.includes("doc_") && rawUrl.endsWith(".pdf")) {
-      const match = rawUrl.match(/(doc_\d+\.pdf)/);
-      if (match) return `${VITE_SERVER_URL}/uploads/documents/${match[1]}`;
-    }
-    return rawUrl;
-  };
 
-  const currentUrl = resolveDocUrl(asset.url);
+  const currentUrl = resolveDocumentUrl(asset.url);
   const isLocal = Boolean(currentUrl?.includes("localhost") || currentUrl?.includes("127.0.0.1"));
 
   const previewUrl = isPdf

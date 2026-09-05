@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { base64EncodeAudio, base64DecodeAudio } from "./audioUtils";
 
-const WS_BASE_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent";
+const WS_BASE_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
 
 export function useGeminiLive() {
   const [isConnected, setIsConnected] = useState(false);
@@ -125,7 +125,7 @@ export function useGeminiLive() {
         setIsConnected(true);
         ws.send(JSON.stringify({
           setup: {
-            model: "models/gemini-2.0-flash-exp",
+            model: "models/gemini-3.1-flash-live-preview",
             systemInstruction: {
               parts: [{ text: "Your name is Nesa. You are a helpful, conversational AI assistant." }]
             }

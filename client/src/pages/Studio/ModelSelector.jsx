@@ -71,16 +71,17 @@ export function ModelSelector({ selectedModel, onSelectModel }) {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-1.5 sm:gap-2 px-2 py-1.5 sm:px-3 rounded-lg bg-surface hover:bg-surface-elevated border border-border hover:border-accent/40 text-text-primary text-xs font-medium transition-all shadow-xs cursor-pointer"
+        className="flex items-center justify-center h-8 w-8 sm:w-auto sm:h-auto gap-1.5 sm:gap-2 px-2 py-1.5 sm:px-3 rounded-lg bg-surface hover:bg-surface-elevated border border-border hover:border-accent/40 text-text-primary text-xs font-medium transition-all shadow-xs cursor-pointer shrink-0"
         aria-expanded={isOpen}
-        aria-label="Select AI Model"
+        aria-label={`Model: ${currentTier.name}`}
+        title={`Model: ${currentTier.name}`}
       >
-        <div className="hidden sm:block w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-        <Sparkle size={13} weight="fill" className="text-purple-400 shrink-0" />
-        <span className="hidden sm:inline truncate max-w-[140px] font-semibold">
+        <div className="hidden md:block w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+        <Sparkle size={15} weight="fill" className="text-purple-400 shrink-0" />
+        <span className="hidden md:inline truncate max-w-[140px] font-semibold">
           {currentTier.name}
         </span>
-        <span className="hidden md:inline-block text-[10px] px-1.5 py-0.2 rounded bg-surface-card border border-border text-text-muted font-mono">
+        <span className="hidden lg:inline-block text-[10px] px-1.5 py-0.2 rounded bg-surface-card border border-border text-text-muted font-mono">
           {currentTier.tag}
         </span>
       </button>

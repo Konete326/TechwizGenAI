@@ -19,6 +19,7 @@ for (const key of requiredKeys) {
 
 export const env = {
   PORT: process.env.PORT,
+  SERVER_URL: process.env.SERVER_URL,
   CLIENT_URL: process.env.CLIENT_URL,
   MONGO_URI: process.env.MONGO_URI,
   JWT_SECRET: process.env.JWT_SECRET,

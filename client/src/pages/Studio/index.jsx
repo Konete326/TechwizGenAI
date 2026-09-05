@@ -103,7 +103,7 @@ export function Studio() {
     await runStream(targetSessionId, promptText, imageToUpload, false, docPayload);
   };
 
-  const { isCallActive, callPhase, isMinimized, toggleMinimize, nesaState, isListening: isNesaListening, transcript: nesaTranscript, startCall, endCall, onStreamComplete, connectionError } = useNesaCall({ onSendMessage: handleSendMessage, isStreaming });
+  const { isCallActive, callPhase, isMinimized, toggleMinimize, nesaState, isListening: isNesaListening, transcript: nesaTranscript, startCall, endCall, onStreamComplete, connectionError } = useNesaCall({ onSendMessage: handleSendMessage, isStreaming, onMicDenied: (m) => toast.error(m || "Microphone access is required") });
   onStreamCompleteRef.current = onStreamComplete;
 
   const handleRegenerate = async () => {
@@ -133,11 +133,11 @@ export function Studio() {
             {!isSidebarOpen && (
               <button
                 type="button" onClick={() => setIsSidebarOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-sm)] border border-border bg-surface text-text-muted hover:text-text-primary hover:border-accent text-xs font-semibold transition-colors cursor-pointer shrink-0"
+                className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-[var(--radius-sm)] border border-border bg-surface text-text-muted hover:text-text-primary hover:border-accent text-xs font-semibold transition-colors cursor-pointer shrink-0"
                 title="Show History" aria-label="Open chat history"
               >
                 <ClockCounterClockwise size={14} weight="bold" />
-                <span>History</span>
+                <span className="hidden sm:inline">History</span>
               </button>
             )}
             <span className={`font-semibold text-xs text-text-primary truncate ${!isSidebarOpen ? "border-l border-border pl-2.5" : ""}`}>
@@ -147,11 +147,11 @@ export function Studio() {
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               type="button" onClick={startCall} disabled={isStreaming || isCallActive}
-              className="flex items-center gap-1.5 px-2 py-1.5 sm:px-2.5 rounded-lg border border-accent/40 bg-accent/10 hover:bg-accent/20 text-accent text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
-              title="Call Nesa"
+              className="flex items-center justify-center h-8 w-8 sm:w-auto sm:h-auto gap-1.5 px-2 py-1.5 sm:px-2.5 rounded-lg border border-accent/40 bg-accent/10 hover:bg-accent/20 text-accent text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+              title="Call Nesa" aria-label="Call Nesa"
             >
               <PhoneCall size={14} weight="fill" />
-              <span className="hidden sm:inline">Call Nesa</span>
+              <span className="hidden md:inline">Call Nesa</span>
             </button>
             <PersonaSelector selectedPersona={activePersona} onSelectPersona={handleSelectPersona} disabled={isStreaming} />
             <ModelSelector selectedModel={selectedModel} onSelectModel={(id) => { setSelectedModel(id); localStorage.setItem("selected_ai_model", id); }} />
@@ -159,7 +159,7 @@ export function Studio() {
         </div>
 
         <div className="flex-1 flex min-w-0 h-full overflow-hidden relative">
-          <div className={`flex flex-col min-w-0 h-full transition-all duration-200 ${activeArtifact ? "w-full lg:w-1/2 border-r border-border" : "flex-1"}`}>
+          <div className={`flex flex-col min-w-0 h-full transition-all duration-200 ${activeArtifact ? "hidden lg:flex lg:w-1/2 border-r border-border" : "flex-1"}`}>
             <ChatCanvas
               messages={messages} activeSession={activeSession} activePersona={activePersona}
               isStreaming={isStreaming} streamingText={streamingText}

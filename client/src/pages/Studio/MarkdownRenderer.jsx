@@ -53,8 +53,21 @@ const getMarkdownComponents = (onOpenArtifact) => ({
   pre: ({ children, ...props }) => {
     if (children?.props?.className?.includes("language-mermaid") || children?.props?.className?.includes("language-chart")) return children;
     if (/language-(html|javascript|js|jsx|svg)/i.test(children?.props?.className || "")) return children;
-    return <pre className="bg-zinc-950 p-3.5 rounded-lg overflow-x-auto text-xs font-mono my-2.5 border border-zinc-800 text-zinc-300 min-w-0 max-w-full" {...props}>{children}</pre>;
+    return <pre className="bg-zinc-950 p-2.5 sm:p-3.5 rounded-lg overflow-x-auto text-xs font-mono my-2.5 border border-zinc-800 text-zinc-300 min-w-0 max-w-full" {...props}>{children}</pre>;
   },
+  img: ({ src, alt }) => (
+    <img
+      src={src}
+      alt={alt || "Image"}
+      className="w-full max-w-full sm:max-w-md max-h-80 object-contain rounded-lg border border-border my-2 shadow-xs cursor-pointer"
+      onClick={() => window.open(src, "_blank")}
+    />
+  ),
+  table: ({ children }) => (
+    <div className="w-full overflow-x-auto my-2 border border-border rounded-lg">
+      <table className="w-full text-left text-xs border-collapse">{children}</table>
+    </div>
+  ),
   a: ({ href, children }) => <a href={href} className="text-accent hover:underline cursor-pointer" target="_blank" rel="noreferrer">{children}</a>
 });
 

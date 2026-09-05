@@ -17,24 +17,25 @@ export async function generateDocument(extension, rawContent, userId) {
   const localFilePath = path.join(uploadDir, filename);
   fs.writeFileSync(localFilePath, buffer);
 
-  const localUrl = `http://localhost:${env.PORT || 5000}/uploads/documents/${filename}`;
+  const serverBase = env.SERVER_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : `http://localhost:${env.PORT || 5000}`);
+  const localUrl = `${serverBase}/uploads/documents/${filename}`;
   let finalUrl = localUrl;
 
   try {
-    const isPdf = ext === "pdf";
+    const isRaw = ext === "pdf" || ext === "docx" || ext === "xlsx" || ext === "xls";
     const uploadResult = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
           folder: "techwiz_docs",
-          resource_type: isPdf ? "raw" : "auto",
-          public_id: filename.replace(/\.[^/.]+$/, "")
+          resource_type: isRaw ? "raw" : "auto",
+          public_id: filename
         },
         (error, result) => (error ? reject(error) : resolve(result))
       );
       stream.end(buffer);
     }).catch(() => null);
 
-    if (uploadResult?.secure_url && !isPdf) {
+    if (uploadResult?.secure_url) {
       finalUrl = uploadResult.secure_url;
     }
 

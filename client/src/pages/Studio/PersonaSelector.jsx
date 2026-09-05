@@ -32,12 +32,12 @@ export function PersonaSelector({ selectedPersona = "general", onSelectPersona, 
         type="button"
         disabled={disabled}
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 px-2 py-1.5 sm:px-2.5 rounded-lg border border-border bg-surface hover:bg-surface-elevated text-text-primary text-xs font-medium transition-all disabled:opacity-50 cursor-pointer shadow-xs"
-        title="Select AI Persona"
-        aria-label="Select AI Persona"
+        className="flex items-center justify-center h-8 w-8 sm:w-auto sm:h-auto gap-1.5 px-2 py-1.5 sm:px-2.5 rounded-lg border border-border bg-surface hover:bg-surface-elevated text-text-primary text-xs font-medium transition-all disabled:opacity-50 cursor-pointer shadow-xs shrink-0"
+        title={`Persona: ${active.label}`}
+        aria-label={`Persona: ${active.label}`}
       >
-        <ActiveIcon size={14} className="text-accent shrink-0" />
-        <span className="hidden sm:inline max-w-[100px] truncate">{active.label}</span>
+        <ActiveIcon size={15} className="text-accent shrink-0" />
+        <span className="hidden md:inline max-w-[100px] truncate">{active.label}</span>
       </button>
 
       {open && typeof document !== "undefined" && createPortal(
