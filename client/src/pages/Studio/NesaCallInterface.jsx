@@ -75,11 +75,14 @@ export function NesaCallInterface({
         {!isRinging && (
           <div className="flex items-center gap-2">
             <div
-              className={`w-7 h-7 rounded-full border flex items-center justify-center backdrop-blur-md shadow-md shrink-0 ${
+              className={`w-7 h-7 rounded-full border flex items-center justify-center backdrop-blur-md shadow-md shrink-0 relative transition-all ${
                 isSpeaking ? "bg-accent/25 border-accent text-accent shadow-accent/20" : isListening ? "bg-emerald-950/50 border-emerald-500/60 text-emerald-400 shadow-emerald-500/20" : "bg-zinc-900/60 border-zinc-700 text-zinc-400"
               }`}
             >
-              <Waveform size={14} weight="duotone" className={isSpeaking || isListening ? "animate-pulse" : ""} />
+              {isSpeaking && (
+                <span className="absolute inset-0 rounded-full bg-accent/30 animate-ping pointer-events-none" />
+              )}
+              <Waveform size={14} weight="duotone" className={isSpeaking ? "animate-pulse scale-110" : ""} />
             </div>
 
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-900/90 border border-zinc-800 backdrop-blur shadow-sm">
