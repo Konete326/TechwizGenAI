@@ -19,7 +19,10 @@ const getMarkdownComponents = (onOpenArtifact) => ({
     const raw = String(children).replace(/\n$/, "");
     const parsed = parseChartFromText(raw);
     if (parsed) return <DashboardChart type={parsed.type} title={parsed.title} data={parsed.data} />;
-    if (className && className.includes("language-mermaid")) return <MermaidChart chart={raw} onOpenArtifact={onOpenArtifact} />;
+
+    const isDiagram = /(mermaid|diagram|flowchart|graph)/i.test(className || "") ||
+      (!inline && /^\s*(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|pie|gantt|gitGraph|journey|mindmap|xychart)\b/i.test(raw));
+    if (isDiagram) return <MermaidChart chart={raw} onOpenArtifact={onOpenArtifact} />;
 
     const langMatch = /language-(html|javascript|js|jsx|svg)/i.exec(className || "");
     const isSandboxable = Boolean(langMatch) && raw.split("\n").length > 3 && Boolean(onOpenArtifact);
@@ -51,8 +54,11 @@ const getMarkdownComponents = (onOpenArtifact) => ({
     return <code className="bg-surface border border-border text-text-primary px-1.5 py-0.5 rounded-md text-xs font-mono" {...props}>{children}</code>;
   },
   pre: ({ children, ...props }) => {
-    if (children?.props?.className?.includes("language-mermaid") || children?.props?.className?.includes("language-chart")) return children;
-    if (/language-(html|javascript|js|jsx|svg)/i.test(children?.props?.className || "")) return children;
+    const childClass = children?.props?.className || "";
+    if (/(mermaid|chart|diagram|flowchart|graph)/i.test(childClass)) return children;
+    const rawText = typeof children?.props?.children === "string" ? children.props.children : "";
+    if (/^\s*(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|pie|gantt|gitGraph|journey|mindmap|xychart|\{)/i.test(rawText)) return children;
+    if (/language-(html|javascript|js|jsx|svg)/i.test(childClass)) return children;
     return <pre className="bg-zinc-950 p-2.5 sm:p-3.5 rounded-lg overflow-x-auto text-xs font-mono my-2.5 border border-zinc-800 text-zinc-300 min-w-0 max-w-full" {...props}>{children}</pre>;
   },
   img: ({ src, alt }) => (
