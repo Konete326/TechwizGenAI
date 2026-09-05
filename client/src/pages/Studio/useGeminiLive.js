@@ -1,13 +1,13 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { base64EncodeAudio, base64DecodeAudio } from "./audioUtils";
 
-const LIVE_MODEL = "models/gemini-2.0-flash-exp";
 const WS_BASE_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent";
 
 export function useGeminiLive() {
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [connectionError, setConnectionError] = useState("");
 
   const wsRef = useRef(null);
   const inputAudioCtxRef = useRef(null);
@@ -57,7 +57,7 @@ export function useGeminiLive() {
 
     source.onended = () => {
       activeSourcesRef.current = activeSourcesRef.current.filter((s) => s !== source);
-      if (activeSourcesRef.current.length === 0 && ctx.currentTime >= nextPlayTimeRef.current - 0.05) {
+      if (activeSourcesRef.current.length === 0) {
         setIsSpeaking(false);
       }
     };
@@ -85,21 +85,33 @@ export function useGeminiLive() {
 
   const connect = useCallback(async () => {
     disconnect();
+    setConnectionError("");
     const apiKey = localStorage.getItem("custom_api_key") || import.meta.env.VITE_GEMINI_API_KEY || "";
-    if (!apiKey) return;
+    if (!apiKey) {
+      setConnectionError("Gemini API key is required");
+      return;
+    }
 
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      const inputCtx = new AudioCtx({ sampleRate: 16000 });
-      const outputCtx = new AudioCtx({ sampleRate: 24000 });
-      inputAudioCtxRef.current = inputCtx;
-      outputAudioCtxRef.current = outputCtx;
-      nextPlayTimeRef.current = outputCtx.currentTime;
+      const audioContext = new AudioCtx({ sampleRate: 24000 });
+      outputAudioCtxRef.current = audioContext;
+      nextPlayTimeRef.current = audioContext.currentTime;
+
+      if (audioContext.state === "suspended") {
+        await audioContext.resume();
+      }
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { channelCount: 1, sampleRate: 16000, echoCancellation: true, noiseSuppression: true }
       });
       micStreamRef.current = stream;
+
+      const inputCtx = new AudioCtx({ sampleRate: 16000 });
+      if (inputCtx.state === "suspended") {
+        await inputCtx.resume();
+      }
+      inputAudioCtxRef.current = inputCtx;
 
       const ws = new WebSocket(`${WS_BASE_URL}?key=${apiKey}`);
       wsRef.current = ws;
@@ -108,13 +120,9 @@ export function useGeminiLive() {
         setIsConnected(true);
         ws.send(JSON.stringify({
           setup: {
-            model: LIVE_MODEL,
-            generationConfig: {
-              responseModalities: ["AUDIO"],
-              speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } }
-            },
+            model: "models/gemini-2.0-flash-exp",
             systemInstruction: {
-              parts: [{ text: "You are Nesa, a helpful conversational voice assistant. Keep responses natural and concise." }]
+              parts: [{ text: "Your name is Nesa. You are a helpful, conversational AI assistant." }]
             }
           }
         }));
@@ -126,9 +134,9 @@ export function useGeminiLive() {
         processor.onaudioprocess = (e) => {
           if (ws.readyState !== WebSocket.OPEN) return;
           const float32 = e.inputBuffer.getChannelData(0);
-          const base64Audio = base64EncodeAudio(float32);
+          const base64Data = base64EncodeAudio(float32);
           ws.send(JSON.stringify({
-            realtimeInput: { mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Audio }] }
+            realtimeInput: { mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Data }] }
           }));
         };
 
@@ -137,15 +145,24 @@ export function useGeminiLive() {
       };
 
       ws.onmessage = handleServerMessage;
-      ws.onerror = () => disconnect();
-      ws.onclose = () => disconnect();
+      ws.onerror = (err) => {
+        setConnectionError(err?.message || "WebSocket connection failed");
+        disconnect();
+      };
+      ws.onclose = (event) => {
+        if (event && event.code !== 1000 && event.code !== 1005) {
+          setConnectionError(event.reason || `Connection closed with code ${event.code}`);
+        }
+        disconnect();
+      };
 
       timerRef.current = setInterval(() => {
-        if (outputCtx && activeSourcesRef.current.length === 0 && outputCtx.currentTime >= nextPlayTimeRef.current - 0.05) {
+        if (audioContext && activeSourcesRef.current.length === 0 && audioContext.currentTime >= nextPlayTimeRef.current - 0.05) {
           setIsSpeaking(false);
         }
       }, 200);
-    } catch {
+    } catch (err) {
+      setConnectionError(err?.message || "Failed to initialize audio or microphone");
       disconnect();
     }
   }, [disconnect, handleServerMessage]);
@@ -154,7 +171,7 @@ export function useGeminiLive() {
     return () => disconnect();
   }, [disconnect]);
 
-  return { isConnected, isSpeaking, transcript, connect, disconnect };
+  return { isConnected, isSpeaking, transcript, connectionError, connect, disconnect };
 }
 
 export default useGeminiLive;

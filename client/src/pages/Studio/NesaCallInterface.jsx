@@ -12,7 +12,9 @@ export function NesaCallInterface({
   onEndCall,
   nesaState = "idle",
   isListening = false,
-  transcript = ""
+  transcript = "",
+  connectionError = null,
+  onRetry
 }) {
   const [duration, setDuration] = useState(0);
   const nodeRef = useRef(null);
@@ -56,6 +58,19 @@ export function NesaCallInterface({
   const renderCallBody = () => (
     <div className="relative flex-1 flex flex-col justify-between overflow-hidden select-none pt-12">
       {isRinging ? renderRinging() : <NesaCallVideos isSpeaking={isSpeaking} />}
+      {connectionError && (
+        <div className="absolute inset-x-4 top-14 z-30 p-3 rounded-lg bg-rose-950/90 border border-rose-500/50 text-rose-200 backdrop-blur-md shadow-xl flex flex-col items-center gap-1.5 text-center">
+          <span className="text-xs font-semibold text-rose-300">Connection Error</span>
+          <span className="text-[11px] text-rose-200 leading-snug break-words max-h-16 overflow-y-auto w-full">{connectionError}</span>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="mt-0.5 px-3 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium transition-colors cursor-pointer shadow"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4">
         {!isRinging && (
@@ -63,20 +78,12 @@ export function NesaCallInterface({
             <div className="relative flex items-center justify-center mb-4">
               <div
                 className={`absolute w-24 h-24 rounded-full transition-all duration-700 ${
-                  isSpeaking
-                    ? "bg-accent/20 scale-150 animate-ping opacity-60"
-                    : isListening
-                    ? "bg-emerald-500/20 scale-125 animate-pulse opacity-50"
-                    : "bg-zinc-800/30 scale-100 opacity-20"
+                  isSpeaking ? "bg-accent/20 scale-150 animate-ping opacity-60" : isListening ? "bg-emerald-500/20 scale-125 animate-pulse opacity-50" : "bg-zinc-800/30 scale-100 opacity-20"
                 }`}
               />
               <div
                 className={`relative w-14 h-14 rounded-full border flex items-center justify-center backdrop-blur-md shadow-xl ${
-                  isSpeaking
-                    ? "bg-accent/25 border-accent text-accent shadow-accent/20"
-                    : isListening
-                    ? "bg-emerald-950/50 border-emerald-500/60 text-emerald-400 shadow-emerald-500/20"
-                    : "bg-zinc-900/60 border-zinc-700 text-zinc-400"
+                  isSpeaking ? "bg-accent/25 border-accent text-accent shadow-accent/20" : isListening ? "bg-emerald-950/50 border-emerald-500/60 text-emerald-400 shadow-emerald-500/20" : "bg-zinc-900/60 border-zinc-700 text-zinc-400"
                 }`}
               >
                 <Waveform size={26} weight="duotone" className={isSpeaking || isListening ? "animate-pulse" : ""} />
@@ -84,11 +91,7 @@ export function NesaCallInterface({
             </div>
 
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900/90 border border-zinc-800 backdrop-blur shadow-md">
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  isSpeaking ? "bg-accent animate-ping" : isListening ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
-                }`}
-              />
+              <span className={`w-1.5 h-1.5 rounded-full ${isSpeaking ? "bg-accent animate-ping" : isListening ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
               <span className="text-[11px] font-medium text-zinc-200">
                 {isSpeaking ? "Nesa is speaking..." : isListening ? "Nesa is listening..." : "Nesa is thinking..."}
               </span>

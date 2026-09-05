@@ -103,7 +103,7 @@ export function Studio() {
     await runStream(targetSessionId, promptText, imageToUpload, false, docPayload);
   };
 
-  const { isCallActive, callPhase, isMinimized, toggleMinimize, nesaState, isListening: isNesaListening, transcript: nesaTranscript, startCall, endCall, onStreamComplete } = useNesaCall({ onSendMessage: handleSendMessage, isStreaming });
+  const { isCallActive, callPhase, isMinimized, toggleMinimize, nesaState, isListening: isNesaListening, transcript: nesaTranscript, startCall, endCall, onStreamComplete, connectionError } = useNesaCall({ onSendMessage: handleSendMessage, isStreaming });
   onStreamCompleteRef.current = onStreamComplete;
 
   const handleRegenerate = async () => {
@@ -147,7 +147,7 @@ export function Studio() {
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               type="button" onClick={startCall} disabled={isStreaming || isCallActive}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-accent/40 bg-accent/10 hover:bg-accent/20 text-accent text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-1.5 px-2 py-1.5 sm:px-2.5 rounded-lg border border-accent/40 bg-accent/10 hover:bg-accent/20 text-accent text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
               title="Call Nesa"
             >
               <PhoneCall size={14} weight="fill" />
@@ -184,6 +184,7 @@ export function Studio() {
         isActive={isCallActive} callPhase={callPhase} isMinimized={isMinimized}
         onToggleMinimize={toggleMinimize} onEndCall={endCall} nesaState={nesaState}
         isListening={isNesaListening} transcript={nesaTranscript}
+        connectionError={connectionError} onRetry={startCall}
       />
     </div>
   );

@@ -8,7 +8,7 @@ export function useNesaCall({ onSendMessage } = {}) {
   const isCallActiveRef = useRef(false);
   const ringTimerRef = useRef(null);
 
-  const { isConnected, isSpeaking, transcript, connect, disconnect } = useGeminiLive();
+  const { isConnected, isSpeaking, transcript, connectionError, connect, disconnect } = useGeminiLive();
 
   const clearRingTimer = () => {
     if (ringTimerRef.current) {
@@ -62,6 +62,7 @@ export function useNesaCall({ onSendMessage } = {}) {
     nesaState,
     isListening: isConnected,
     transcript,
+    connectionError,
     startCall,
     endCall,
     onStreamComplete: () => {}
