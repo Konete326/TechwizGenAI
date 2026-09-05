@@ -16,6 +16,7 @@ export function ChatCanvas({
   onOpenArtifact,
   onSelectChoice
 }) {
+  const containerRef = useRef(null);
   const scrollBottomRef = useRef(null);
   const { speakingMessageId, speak, stop } = useTextToSpeech();
 
@@ -31,13 +32,15 @@ export function ChatCanvas({
 
   useEffect(() => {
     const frameId = requestAnimationFrame(() => {
-      scrollBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      if (containerRef.current) {
+        containerRef.current.scrollTop = containerRef.current.scrollHeight;
+      }
     });
     return () => cancelAnimationFrame(frameId);
   }, [messages, streamingText]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+    <div ref={containerRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
       <div className="w-full space-y-6">
         {messages.length === 0 && !isStreaming ? (
           <PersonaStarters persona={activePersona} onSelectStarter={onSendSuggested} />

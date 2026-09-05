@@ -43,14 +43,14 @@ export function PersonaStarters({ persona = "general", onSelectStarter }) {
 
   return (
     <div className="w-full max-w-2xl mx-auto px-4 py-8 flex flex-col items-center text-center animate-in fade-in duration-300">
-      <div className="p-3.5 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-xl mb-3 text-accent">
+      <div className="p-3.5 rounded-2xl bg-surface-card border border-border shadow-xl mb-3 text-accent">
         <MetaIcon size={32} weight="duotone" />
       </div>
       <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-[11px] font-mono font-medium mb-2">
         <span>{meta.badge}</span>
       </div>
-      <h2 className="text-lg font-semibold text-zinc-100 mb-1">What would you like to build?</h2>
-      <p className="text-xs text-zinc-400 max-w-md mb-6">{meta.subtitle}</p>
+      <h2 className="text-lg font-semibold text-text-primary mb-1">What would you like to build?</h2>
+      <p className="text-xs text-text-muted max-w-md mb-6">{meta.subtitle}</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full text-left">
         {starters.map((item, idx) => (
@@ -58,17 +58,17 @@ export function PersonaStarters({ persona = "general", onSelectStarter }) {
             key={idx}
             type="button"
             onClick={() => onSelectStarter(item.prompt)}
-            className="group p-3.5 rounded-xl bg-zinc-900/70 hover:bg-zinc-800/80 border border-zinc-800 hover:border-accent/40 shadow-sm transition-all duration-150 flex flex-col justify-between cursor-pointer"
+            className="group p-3.5 rounded-xl bg-surface-card hover:bg-surface border border-border hover:border-accent/40 shadow-sm transition-all duration-150 flex flex-col justify-between cursor-pointer"
           >
             <div className="space-y-1.5 mb-3">
-              <h3 className="text-xs font-semibold text-zinc-200 group-hover:text-accent transition-colors">
+              <h3 className="text-xs font-semibold text-text-primary group-hover:text-accent transition-colors">
                 {item.title}
               </h3>
-              <p className="text-[11px] text-zinc-400 line-clamp-3 leading-relaxed">
+              <p className="text-[11px] text-text-muted line-clamp-3 leading-relaxed">
                 {item.prompt}
               </p>
             </div>
-            <div className="flex items-center gap-1 text-[10px] font-mono text-zinc-500 group-hover:text-accent transition-colors">
+            <div className="flex items-center gap-1 text-[10px] font-mono text-text-muted group-hover:text-accent transition-colors">
               <span>Start</span>
               <ArrowRight size={11} className="transition-transform group-hover:translate-x-0.5" />
             </div>

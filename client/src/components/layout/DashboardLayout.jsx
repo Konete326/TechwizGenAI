@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { VITE_API_URL } from "@/config/env";
 import { DashboardHeader } from "./DashboardHeader";
 import { DashboardSidebar } from "./DashboardSidebar";
@@ -7,6 +7,8 @@ import { InstallPrompt } from "@/components/ui/InstallPrompt";
 import { ApiFallbackModal } from "@/components/ui/ApiFallbackModal";
 
 export const DashboardLayout = () => {
+  const location = useLocation();
+  const isStudio = location.pathname.startsWith("/studio");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -91,7 +93,7 @@ export const DashboardLayout = () => {
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         <DashboardHeader onOpenDrawer={() => setIsDrawerOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-6 w-full relative">
+        <main className={`flex-1 w-full relative ${isStudio ? "overflow-hidden p-0" : "overflow-y-auto overflow-x-hidden p-6"}`}>
           <Outlet />
         </main>
       </div>

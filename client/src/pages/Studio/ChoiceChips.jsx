@@ -15,7 +15,7 @@ export function ChoiceChips({ choices = [], onSelectChoice, disabled = false }) 
             type="button"
             disabled={disabled}
             onClick={() => onSelectChoice && onSelectChoice(text)}
-            className={`bg-surface-elevated hover:bg-surface-elevated/80 border border-border hover:border-zinc-500 text-zinc-200 text-xs px-3 py-1.5 rounded-full transition-all duration-150 flex items-center gap-1.5 active:scale-95 ${
+            className={`bg-surface-elevated hover:bg-surface-elevated/80 border border-border hover:border-zinc-500 text-text-primary text-xs px-3 py-1.5 rounded-full transition-all duration-150 flex items-center gap-1.5 active:scale-95 ${
               disabled ? "opacity-50 pointer-events-none cursor-not-allowed" : "cursor-pointer"
             }`}
           >

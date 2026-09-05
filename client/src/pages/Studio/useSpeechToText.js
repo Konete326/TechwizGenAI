@@ -6,13 +6,15 @@ export function useSpeechToText(onTranscript) {
   const recognitionRef = useRef(null);
   const toast = useToast();
 
-  const toggleListening = () => {
-    if (isListening) {
+  const stopListening = () => {
+    try {
       recognitionRef.current?.stop();
-      setIsListening(false);
-      return;
-    }
+    } catch {}
+    setIsListening(false);
+  };
 
+  const startListening = () => {
+    if (isListening) return;
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       toast.error("Speech recognition is not supported in your browser.");
@@ -48,7 +50,12 @@ export function useSpeechToText(onTranscript) {
     }
   };
 
-  return { isListening, toggleListening };
+  const toggleListening = () => {
+    if (isListening) stopListening();
+    else startListening();
+  };
+
+  return { isListening, toggleListening, startListening, stopListening };
 }
 
 export default useSpeechToText;

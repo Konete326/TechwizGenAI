@@ -56,7 +56,7 @@ export function MessageBubble({ message, onEdit, onRegenerate, isStreaming, onOp
   return (
     <div className="flex w-full justify-start">
       <div className="max-w-[85%] md:max-w-[80%] min-w-0 flex flex-col items-start group">
-        <div className="w-full min-w-0 flex flex-col gap-2 p-4 bg-surface-card border border-border text-zinc-100 rounded-2xl rounded-tl-sm shadow-sm">
+        <div className="w-full min-w-0 flex flex-col gap-2 p-4 bg-surface-card border border-border text-text-primary rounded-2xl rounded-tl-sm shadow-sm">
           <div className="flex items-center gap-1.5 text-[10px] font-mono text-text-muted">
             <img src={logoImg} alt="Techwiz GenAI" className="w-3.5 h-3.5 object-contain" />
             <span>Techwiz AI</span>

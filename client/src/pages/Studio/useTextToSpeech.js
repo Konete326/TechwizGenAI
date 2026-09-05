@@ -25,11 +25,27 @@ export function detectLanguage(text) {
 
 function findVoice(voices, { lang, bcp47 }) {
   if (!voices?.length) return null;
-  return voices.find((v) => v.lang?.toLowerCase() === bcp47.toLowerCase()) ||
-    voices.find((v) => v.lang?.toLowerCase().startsWith(lang)) ||
-    voices.find((v) => v.lang?.toLowerCase().startsWith(bcp47.split("-")[0])) ||
-    (lang === "ur" ? voices.find((v) => v.lang?.toLowerCase().startsWith("ar") || v.lang?.toLowerCase().startsWith("hi")) : null) ||
-    voices.find((v) => v.lang?.toLowerCase().startsWith("en")) || voices[0] || null;
+  const isNatural = (v) => {
+    const n = (v.name || "").toLowerCase();
+    return n.includes("natural") || n.includes("google") || n.includes("neural") || n.includes("online");
+  };
+
+  const matchesExact = voices.filter((v) => v.lang?.toLowerCase() === bcp47.toLowerCase());
+  const bestExact = matchesExact.find(isNatural) || matchesExact[0];
+  if (bestExact) return bestExact;
+
+  const matchesLang = voices.filter((v) => v.lang?.toLowerCase().startsWith(lang));
+  const bestLang = matchesLang.find(isNatural) || matchesLang[0];
+  if (bestLang) return bestLang;
+
+  if (lang === "ur") {
+    const fallbackUrdu = voices.filter((v) => v.lang?.toLowerCase().startsWith("hi") || v.lang?.toLowerCase().startsWith("ar"));
+    const bestUrdu = fallbackUrdu.find(isNatural) || fallbackUrdu[0];
+    if (bestUrdu) return bestUrdu;
+  }
+
+  const matchesEn = voices.filter((v) => v.lang?.toLowerCase().startsWith("en"));
+  return matchesEn.find(isNatural) || matchesEn[0] || voices[0] || null;
 }
 
 export function useTextToSpeech() {
@@ -51,13 +67,16 @@ export function useTextToSpeech() {
     utteranceRef.current = null;
   }, []);
 
-  const speak = useCallback((messageId, rawText) => {
+  const speak = useCallback((messageId, rawText, onEnd) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     if (speakingMessageId === messageId) return stop();
     stop();
 
     const cleanText = sanitizeForSpeech(rawText);
-    if (!cleanText) return;
+    if (!cleanText) {
+      if (onEnd) onEnd();
+      return;
+    }
 
     const detected = detectLanguage(cleanText);
     const utterance = new SpeechSynthesisUtterance(cleanText);
@@ -72,7 +91,11 @@ export function useTextToSpeech() {
       utterance.lang = matchedVoice.lang || detected.bcp47;
     }
 
-    const handleReset = () => { setSpeakingMessageId(null); utteranceRef.current = null; };
+    const handleReset = () => {
+      setSpeakingMessageId(null);
+      utteranceRef.current = null;
+      if (onEnd) onEnd();
+    };
     utterance.onend = handleReset;
     utterance.onerror = handleReset;
     utteranceRef.current = utterance;

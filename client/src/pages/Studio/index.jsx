@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { ClockCounterClockwise } from "@phosphor-icons/react";
+import { ClockCounterClockwise, PhoneCall } from "@phosphor-icons/react";
 import { useToast } from "@/context/ToastContext";
 import { streamCompletion, getFriendlyErrorMessage } from "@/utils/aiStream";
 import { ChatSidebar } from "./ChatSidebar";
@@ -8,7 +8,9 @@ import { ChatInput } from "./ChatInput";
 import { ModelSelector } from "./ModelSelector";
 import { PersonaSelector } from "./PersonaSelector";
 import { ArtifactPanel } from "./ArtifactPanel";
+import { NesaCallInterface } from "./NesaCallInterface";
 import { useChatSessions } from "./useChatSessions";
+import { useNesaCall } from "./useNesaCall";
 
 export function Studio() {
   const toast = useToast();
@@ -21,6 +23,7 @@ export function Studio() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeArtifact, setActiveArtifact] = useState(null);
   const abortControllerRef = useRef(null);
+  const onStreamCompleteRef = useRef(null);
 
   const {
     sessions, setSessions, activeSessionId, setActiveSessionId,
@@ -34,24 +37,15 @@ export function Studio() {
     if (activeSession?.persona) setActivePersona(activeSession.persona);
   }, [activeSession?.persona, activeSessionId]);
 
-  useEffect(() => {
-    const parent = document.querySelector("main.flex-1");
-    if (!parent) return;
-    const prev = parent.style.overflow;
-    parent.style.overflow = "hidden";
-    return () => { parent.style.overflow = prev; };
-  }, []);
 
-  const handleSelectPersona = (personaId) => {
-    setActivePersona(personaId);
-    if (activeSessionId) updateSessionPersona(activeSessionId, personaId);
+  const handleSelectPersona = (id) => {
+    setActivePersona(id);
+    if (activeSessionId) updateSessionPersona(activeSessionId, id);
   };
 
   const runStream = async (targetSessionId, promptText, imageBase64, isRegenerate = false, docPayload = {}) => {
-    setIsStreaming(true);
-    setStreamingText("");
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
+    setIsStreaming(true); setStreamingText("");
+    const controller = new AbortController(); abortControllerRef.current = controller;
     let accumulated = "";
 
     await streamCompletion({
@@ -59,13 +53,13 @@ export function Studio() {
       attachmentType: docPayload.attachmentType || (imageBase64 ? "image" : "none"),
       attachmentName: docPayload.attachmentName || null,
       attachmentData: docPayload.attachmentData || null,
-      persona: activePersona,
-      isRegenerate, signal: controller.signal,
+      persona: activePersona, isRegenerate, signal: controller.signal,
       onChunk: (c) => { accumulated += c; setStreamingText((p) => p + c); },
       onComplete: () => {
         setIsStreaming(false); setStreamingText("");
         setMessages((p) => [...p, { id: "ai-" + Date.now(), role: "model", text: accumulated, createdAt: new Date().toISOString() }]);
         fetchSessions();
+        if (onStreamCompleteRef.current) onStreamCompleteRef.current(accumulated);
       },
       onError: (err) => { setIsStreaming(false); setStreamingText(""); toast.error(getFriendlyErrorMessage(err)); }
     });
@@ -104,11 +98,13 @@ export function Studio() {
     if (!currSess || currSess.title === "New Chat") {
       const words = promptText.split(/\s+/).slice(0, 4).join(" ");
       const autoTitle = words ? words.charAt(0).toUpperCase() + words.slice(1) : "Document Chat";
-      setSessions((prev) => prev.map((s) => (s.id === targetSessionId ? { ...s, title: autoTitle } : s)));
+      setSessions((p) => p.map((s) => (s.id === targetSessionId ? { ...s, title: autoTitle } : s)));
     }
-
     await runStream(targetSessionId, promptText, imageToUpload, false, docPayload);
   };
+
+  const { isCallActive, nesaState, isListening: isNesaListening, transcript: nesaTranscript, startCall, endCall, onStreamComplete } = useNesaCall({ onSendMessage: handleSendMessage, isStreaming });
+  onStreamCompleteRef.current = onStreamComplete;
 
   const handleRegenerate = async () => {
     if (isStreaming || !activeSessionId) return;
@@ -116,21 +112,14 @@ export function Studio() {
     await runStream(activeSessionId, "", null, true);
   };
 
-  const handleEditMessage = (messageId, text, attachment) => {
+  const handleEditMessage = (id, text, att) => {
     setInputPrompt(text || "");
-    if (attachment) setAttachedImage(attachment);
-    setMessages((prev) => {
-      const idx = prev.findIndex((m) => m.id === messageId);
-      return idx === -1 ? prev : prev.slice(0, idx);
-    });
-  };
-
-  const handleChoiceSelect = (choiceText) => {
-    if (!isStreaming) handleSendMessage(choiceText);
+    if (att) setAttachedImage(att);
+    setMessages((p) => { const idx = p.findIndex((m) => m.id === id); return idx === -1 ? p : p.slice(0, idx); });
   };
 
   return (
-    <div className="flex h-screen w-full bg-surface-base text-text-primary overflow-hidden select-none">
+    <div className="flex h-full w-full bg-surface-base text-text-primary overflow-hidden select-none pt-2 sm:pt-3">
       <ChatSidebar
         isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)}
         sessions={sessions} activeSessionId={activeSessionId}
@@ -156,6 +145,14 @@ export function Studio() {
             </span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button" onClick={startCall} disabled={isStreaming || isCallActive}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-accent/40 bg-accent/10 hover:bg-accent/20 text-accent text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+              title="Call Nesa"
+            >
+              <PhoneCall size={14} weight="fill" />
+              <span className="hidden sm:inline">Call Nesa</span>
+            </button>
             <PersonaSelector selectedPersona={activePersona} onSelectPersona={handleSelectPersona} disabled={isStreaming} />
             <ModelSelector selectedModel={selectedModel} onSelectModel={(id) => { setSelectedModel(id); localStorage.setItem("selected_ai_model", id); }} />
           </div>
@@ -167,23 +164,25 @@ export function Studio() {
               messages={messages} activeSession={activeSession} activePersona={activePersona}
               isStreaming={isStreaming} streamingText={streamingText}
               onEdit={handleEditMessage} onRegenerate={handleRegenerate}
-              onSendSuggested={(suggested) => handleSendMessage(suggested)}
-              onOpenArtifact={setActiveArtifact}
-              onSelectChoice={handleChoiceSelect}
+              onSendSuggested={(s) => handleSendMessage(s)} onOpenArtifact={setActiveArtifact}
+              onSelectChoice={(c) => !isStreaming && handleSendMessage(c)}
             />
             <ChatInput
               inputPrompt={inputPrompt} setInputPrompt={setInputPrompt}
-              onSubmit={(payload) => handleSendMessage(payload)} isStreaming={isStreaming}
-              onStop={() => { abortControllerRef.current?.abort(); setIsStreaming(false); }} selectedModel={selectedModel}
-              attachedImage={attachedImage} setAttachedImage={setAttachedImage}
+              onSubmit={(p) => handleSendMessage(p)} isStreaming={isStreaming}
+              onStop={() => { abortControllerRef.current?.abort(); setIsStreaming(false); }}
+              selectedModel={selectedModel} attachedImage={attachedImage} setAttachedImage={setAttachedImage}
             />
           </div>
 
-          {activeArtifact && (
-            <ArtifactPanel artifact={activeArtifact} onClose={() => setActiveArtifact(null)} />
-          )}
+          {activeArtifact && <ArtifactPanel artifact={activeArtifact} onClose={() => setActiveArtifact(null)} />}
         </div>
       </main>
+
+      <NesaCallInterface
+        isActive={isCallActive} onEndCall={endCall} nesaState={nesaState}
+        isListening={isNesaListening} transcript={nesaTranscript}
+      />
     </div>
   );
 }
