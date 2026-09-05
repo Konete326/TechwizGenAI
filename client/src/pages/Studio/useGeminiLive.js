@@ -145,7 +145,9 @@ export function useGeminiLive() {
           const float32 = e.inputBuffer.getChannelData(0);
           const base64Data = base64EncodeAudio(float32);
           ws.send(JSON.stringify({
-            realtimeInput: { audio: { mimeType: "audio/pcm;rate=16000", data: base64Data } }
+            realtimeInput: {
+              mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Data }]
+            }
           }));
         };
 
@@ -177,9 +179,7 @@ export function useGeminiLive() {
     }
   }, [disconnect, handleServerMessage]);
 
-  useEffect(() => {
-    return () => disconnect();
-  }, [disconnect]);
+  useEffect(() => () => disconnect(), [disconnect]);
 
   return { isConnected, isSpeaking, transcript, connectionError, connect, disconnect };
 }
