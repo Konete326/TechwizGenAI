@@ -136,7 +136,7 @@ export function ChatInput({
             onChange={(e) => setInputPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            placeholder={attachedDoc ? "Ask anything about this document..." : (attachedImage ? "Ask anything about this image..." : "Ask Gemini anything... (attach PDF/image, speak or type)")}
+            placeholder={attachedDoc ? "Ask about document..." : (attachedImage ? "Ask about image..." : "Ask anything...")}
             className="flex-1 max-h-32 bg-transparent text-text-primary text-xs resize-none focus:outline-none py-1.5 px-1 leading-relaxed"
           />
 
