@@ -1,116 +1,55 @@
-import { useState, useEffect } from "react";
-import { Sun, Moon, Bell } from "@phosphor-icons/react";
-import { useTheme } from "@/context/ThemeContext";
-import { useToast } from "@/context/ToastContext";
-import { ApiSettingsCard } from "./ApiSettingsCard";
-
-function CornerBracket() {
-  return (
-    <>
-      <span className="absolute top-1 left-1 w-1.5 h-1.5 border-t border-l border-border-corner pointer-events-none" />
-      <span className="absolute top-1 right-1 w-1.5 h-1.5 border-t border-r border-border-corner pointer-events-none" />
-      <span className="absolute bottom-1 left-1 w-1.5 h-1.5 border-b border-l border-border-corner pointer-events-none" />
-      <span className="absolute bottom-1 right-1 w-1.5 h-1.5 border-b border-r border-border-corner pointer-events-none" />
-    </>
-  );
-}
+import { useState } from "react";
+import { User, Coins, Key } from "@phosphor-icons/react";
+import { ProfileSettings } from "./ProfileSettings";
+import { BillingSettings } from "./BillingSettings";
+import { ApiSettings } from "./ApiSettings";
 
 export function Settings() {
-  const { theme, toggleTheme } = useTheme();
-  const toast = useToast();
-  const [emailAlerts, setEmailAlerts] = useState(true);
-  const [storageWarnings, setStorageWarnings] = useState(true);
-  const [aiProvider, setAiProvider] = useState(() => localStorage.getItem("custom_ai_provider") || "Google Gemini");
-  const [customApiKey, setCustomApiKey] = useState(() => localStorage.getItem("custom_api_key") || "");
+  const [activeTab, setActiveTab] = useState("profile");
 
-  useEffect(() => {
-    const handleReverted = () => {
-      setCustomApiKey("");
-      setAiProvider("Google Gemini");
-    };
-    window.addEventListener("api_key_reverted", handleReverted);
-    return () => window.removeEventListener("api_key_reverted", handleReverted);
-  }, []);
-
-  const handleSave = () => {
-    localStorage.setItem("custom_ai_provider", aiProvider);
-    if (customApiKey.trim()) {
-      localStorage.setItem("custom_api_key", customApiKey.trim());
-    } else {
-      localStorage.removeItem("custom_api_key");
-    }
-    toast.success("Platform settings updated successfully");
-  };
+  const tabs = [
+    { id: "profile", label: "Profile", icon: User },
+    { id: "billing", label: "Billing & Storage", icon: Coins },
+    { id: "api", label: "API & Integrations", icon: Key }
+  ];
 
   return (
-    <div className="w-full space-y-6 pb-12">
-      <div className="pb-3 border-b border-border/60">
-        <h2 className="text-xl font-bold tracking-tight text-text-primary">Platform Settings</h2>
-        <p className="text-xs text-text-muted mt-0.5">Configure system themes, notification triggers, and API integration endpoints.</p>
+    <div className="w-full max-w-6xl mx-auto space-y-6 pb-12">
+      <div className="pb-3 border-b border-border/40">
+        <h2 className="text-xl font-bold tracking-tight text-text-primary">Global Settings</h2>
+        <p className="text-xs text-text-muted mt-0.5">
+          Manage identity, monitor storage & token quotas, and configure Bring-Your-Own-Key parameters.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
-        <div className="space-y-6">
-          <div className="relative p-5 rounded-[var(--radius-md)] bg-surface-card border border-border space-y-4">
-            <CornerBracket />
-            <div className="flex items-center gap-2 pb-2 border-b border-border">
-              <Sun size={16} className="text-accent" />
-              <h3 className="text-sm font-semibold text-text-primary">Appearance & Display</h3>
-            </div>
-            <div className="space-y-3">
-              <p className="text-xs text-text-muted leading-relaxed">
-                Switch between High-Contrast Dark and Technical Light palettes optimized for long data inspection sessions.
-              </p>
-              <div className="flex items-center justify-between p-3 rounded bg-surface border border-border">
-                <span className="text-xs font-medium text-text-primary">Current Theme</span>
-                <button
-                  type="button"
-                  onClick={toggleTheme}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-sm)] bg-surface-elevated border border-border text-xs font-semibold text-text-primary hover:border-accent transition-colors cursor-pointer"
-                >
-                  {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-                  <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative p-5 rounded-[var(--radius-md)] bg-surface-card border border-border space-y-4">
-            <CornerBracket />
-            <div className="flex items-center gap-2 pb-2 border-b border-border">
-              <Bell size={16} className="text-accent" />
-              <h3 className="text-sm font-semibold text-text-primary">Notification Triggers</h3>
-            </div>
-            <div className="space-y-2.5">
-              <label className="flex items-center justify-between p-2.5 rounded bg-surface border border-border cursor-pointer">
-                <span className="text-xs text-text-primary font-medium">Generation Status Alerts</span>
-                <input
-                  type="checkbox"
-                  checked={emailAlerts}
-                  onChange={(e) => setEmailAlerts(e.target.checked)}
-                  className="accent-blue-600 rounded cursor-pointer"
-                />
-              </label>
-              <label className="flex items-center justify-between p-2.5 rounded bg-surface border border-border cursor-pointer">
-                <span className="text-xs text-text-primary font-medium">Storage Quota Thresholds</span>
-                <input
-                  type="checkbox"
-                  checked={storageWarnings}
-                  onChange={(e) => setStorageWarnings(e.target.checked)}
-                  className="accent-blue-600 rounded cursor-pointer"
-                />
-              </label>
-            </div>
-          </div>
+      <div className="flex flex-col md:flex-row gap-6 items-start">
+        <div className="w-full md:w-56 shrink-0 flex md:flex-col gap-1 overflow-x-auto pb-2 md:pb-0 border-b md:border-b-0 md:border-r border-border/40 md:pr-4">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap text-left ${
+                  isActive
+                    ? "bg-zinc-900 border border-border/40 text-text-primary shadow-xs"
+                    : "text-text-muted hover:text-text-primary hover:bg-zinc-900/40"
+                }`}
+              >
+                <Icon size={16} className={isActive ? "text-accent" : "text-text-muted"} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
 
-        <ApiSettingsCard
-          aiProvider={aiProvider}
-          setAiProvider={setAiProvider}
-          customApiKey={customApiKey}
-          setCustomApiKey={setCustomApiKey}
-          onSave={handleSave}
-        />
+        <div className="flex-1 w-full min-w-0 bg-zinc-950 p-6 rounded-xl border border-border/40 shadow-xl">
+          {activeTab === "profile" && <ProfileSettings />}
+          {activeTab === "billing" && <BillingSettings />}
+          {activeTab === "api" && <ApiSettings />}
+        </div>
       </div>
     </div>
   );

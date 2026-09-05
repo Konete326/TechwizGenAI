@@ -40,7 +40,7 @@ export async function streamCompletion({
       throw new Error("Authentication token is missing. Please sign in.");
     }
 
-    const customApiKey = localStorage.getItem("custom_api_key") || "";
+    const customApiKey = localStorage.getItem("techwiz_custom_api_key") || localStorage.getItem("custom_api_key") || "";
     const customProvider = localStorage.getItem("custom_ai_provider") || "";
 
     const headers = {

@@ -86,7 +86,7 @@ export function useGeminiLive() {
   const connect = useCallback(async () => {
     disconnect();
     setConnectionError("");
-    const apiKey = localStorage.getItem("custom_api_key") || import.meta.env.VITE_GEMINI_API_KEY || "";
+    const apiKey = localStorage.getItem("techwiz_custom_api_key") || localStorage.getItem("custom_api_key") || import.meta.env.VITE_GEMINI_API_KEY || "";
     if (!apiKey) {
       setConnectionError("Gemini API key is required");
       return;

@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import ReactCrop from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import { X, Crop, Check } from "@phosphor-icons/react";
@@ -66,8 +67,13 @@ export function ImageCropModal({ isOpen, imageSrc, onClose, onSuccess }) {
     }, "image/jpeg", 0.95);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-in fade-in-50 duration-150">
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-in fade-in-50 duration-150 select-none"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isUploading) onClose();
+      }}
+    >
       <div className="w-full max-w-lg rounded-xl border border-border bg-surface-card p-5 shadow-2xl relative flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between pb-3 border-b border-border">
           <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
@@ -128,6 +134,8 @@ export function ImageCropModal({ isOpen, imageSrc, onClose, onSuccess }) {
       </div>
     </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(modalContent, document.body) : modalContent;
 }
 
 export default ImageCropModal;

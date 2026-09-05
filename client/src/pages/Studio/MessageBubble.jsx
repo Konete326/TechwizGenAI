@@ -1,5 +1,16 @@
 import { useState } from "react";
-import { PencilSimple, ArrowClockwise, Copy, Check, SpeakerHigh, Stop, FilePdf, FileText, ArrowSquareOut } from "@phosphor-icons/react";
+import {
+  PencilSimple,
+  ArrowClockwise,
+  Copy,
+  Check,
+  SpeakerHigh,
+  Stop,
+  FilePdf,
+  FileText,
+  ArrowSquareOut,
+  DownloadSimple
+} from "@phosphor-icons/react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import logoImg from "@/assets/logo.png";
 
@@ -24,10 +35,60 @@ export function MessageBubble({ message, onEdit, onRegenerate, isStreaming, onOp
   const isUser = message.role === "user";
   const isDoc = message.attachmentType === "document" || Boolean(message.attachmentName && !String(message.attachment || "").startsWith("data:image/"));
 
+  const artifactMatch = /\[ARTIFACT:\s*([a-zA-Z0-9]+)\s*\|\s*([^\]]+)\]/i.exec(message.text || "");
+  const markdownImgMatch = /!\[.*?\]\((https?:\/\/[^\s)]+)\)/i.exec(message.text || "");
+
+  const isArtifact = Boolean(artifactMatch);
+  const isMarkdownImg = Boolean(markdownImgMatch);
+  const isPdf = isArtifact || (isDoc && (message.attachmentName || "").toLowerCase().endsWith(".pdf"));
+  const isImage = isMarkdownImg || (Boolean(message.attachment) && !isDoc);
+  const isMedia = isPdf || isImage || isDoc;
+
+  const downloadUrl = markdownImgMatch?.[1] || artifactMatch?.[2] || message.attachment || "";
+  const downloadName = isArtifact
+    ? `document.${artifactMatch[1].toLowerCase()}`
+    : isMarkdownImg
+    ? "generated-image.jpg"
+    : message.attachmentName || (isDoc ? "document.pdf" : "image.png");
+
   const handleCopy = () => {
     navigator.clipboard.writeText(message.text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownload = async (e) => {
+    if (e) e.stopPropagation();
+    if (!downloadUrl) return;
+    try {
+      if (downloadUrl.startsWith("data:") || downloadUrl.startsWith("blob:")) {
+        const a = document.createElement("a");
+        a.href = downloadUrl;
+        a.download = downloadName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return;
+      }
+      const res = await fetch(downloadUrl);
+      const blob = await res.blob();
+      const bUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = bUrl;
+      a.download = downloadName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(bUrl);
+    } catch {
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = downloadName;
+      a.target = "_blank";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   };
 
   if (isUser) {
@@ -44,9 +105,15 @@ export function MessageBubble({ message, onEdit, onRegenerate, isStreaming, onOp
             <button type="button" onClick={() => onEdit && onEdit(message.id, message.text, message.attachment)} className="p-1 rounded hover:text-text-primary hover:bg-surface-card transition-colors cursor-pointer" title="Edit in input field" aria-label="Edit message">
               <PencilSimple size={13} />
             </button>
-            <button type="button" onClick={handleCopy} className="p-1 rounded hover:text-text-primary hover:bg-surface-card transition-colors cursor-pointer" title={copied ? "Copied" : "Copy text"} aria-label="Copy text">
-              {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
-            </button>
+            {isMedia && downloadUrl ? (
+              <button type="button" onClick={handleDownload} className="p-1 rounded hover:text-text-primary hover:bg-surface-card transition-colors cursor-pointer" title="Download attachment" aria-label="Download attachment">
+                <DownloadSimple size={13} />
+              </button>
+            ) : (
+              <button type="button" onClick={handleCopy} className="p-1 rounded hover:text-text-primary hover:bg-surface-card transition-colors cursor-pointer" title={copied ? "Copied" : "Copy text"} aria-label="Copy text">
+                {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -73,14 +140,20 @@ export function MessageBubble({ message, onEdit, onRegenerate, isStreaming, onOp
           <button type="button" onClick={() => onRegenerate && onRegenerate()} disabled={isStreaming} className="p-1 rounded hover:text-text-primary hover:bg-surface-card transition-colors cursor-pointer disabled:opacity-40" title="Regenerate response" aria-label="Regenerate response">
             <ArrowClockwise size={13} />
           </button>
-          {onSpeak && (
+          {!isMedia && onSpeak && (
             <button type="button" onClick={() => onSpeak(message.id || message._id, message.text)} disabled={isStreaming} className={`p-1 rounded hover:text-text-primary hover:bg-surface-card transition-colors cursor-pointer disabled:opacity-40 ${isSpeakingThisMessage ? "text-accent animate-pulse" : ""}`} title={isSpeakingThisMessage ? "Stop reading" : "Read aloud"} aria-label={isSpeakingThisMessage ? "Stop reading" : "Read aloud"}>
               {isSpeakingThisMessage ? <Stop size={13} weight="fill" /> : <SpeakerHigh size={13} />}
             </button>
           )}
-          <button type="button" onClick={handleCopy} className="p-1 rounded hover:text-text-primary hover:bg-surface-card transition-colors cursor-pointer" title={copied ? "Copied" : "Copy text"} aria-label="Copy text">
-            {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
-          </button>
+          {isMedia && downloadUrl ? (
+            <button type="button" onClick={handleDownload} className="p-1 rounded hover:text-text-primary hover:bg-surface-card transition-colors cursor-pointer" title="Download media" aria-label="Download media">
+              <DownloadSimple size={13} />
+            </button>
+          ) : (
+            <button type="button" onClick={handleCopy} className="p-1 rounded hover:text-text-primary hover:bg-surface-card transition-colors cursor-pointer" title={copied ? "Copied" : "Copy text"} aria-label="Copy text">
+              {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+            </button>
+          )}
         </div>
       </div>
     </div>
