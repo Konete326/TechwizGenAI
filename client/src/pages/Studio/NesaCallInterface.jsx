@@ -91,17 +91,13 @@ export function NesaCallInterface({
           </div>
         )}
 
-        <div className="w-full min-h-[26px] max-h-14 flex items-center justify-center">
-          {transcript ? (
+        {transcript && (
+          <div className="w-full max-h-14 flex items-center justify-center">
             <div className="px-2.5 py-1 rounded-lg bg-zinc-900/90 border border-zinc-800/80 backdrop-blur-md text-[11px] text-zinc-200 shadow text-center max-h-12 overflow-y-auto leading-tight">
               <span>{transcript}</span>
             </div>
-          ) : (
-            <p className="text-[10px] text-zinc-400 text-center font-mono">
-              {isRinging ? "Connecting..." : isSpeaking ? "Listen to Nesa's reply..." : "Speak naturally..."}
-            </p>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className="w-full flex items-center justify-between px-1">
           <div className="w-16 flex justify-start">
