@@ -9,21 +9,19 @@ import { playRingingTone } from "./audioUtils";
 export function NesaCallInterface({
   isActive = false, callPhase = "ended", isMinimized = false,
   onToggleMinimize, onEndCall, nesaState = "idle",
-  isListening = false, transcript = "", connectionError = null, onRetry
+  isListening = false, transcript = "", connectionError = null, onRetry,
+  forceReply
 }) {
   const [duration, setDuration] = useState(0);
   const nodeRef = useRef(null);
 
   useEffect(() => {
-    if (callPhase !== "connected") { setDuration(0); return; }
-    const timer = setInterval(() => setDuration((p) => p + 1), 1000);
-    return () => clearInterval(timer);
-  }, [callPhase]);
-
-  useEffect(() => {
-    if (callPhase !== "ringing") return;
-    const stopTone = playRingingTone();
-    return () => stopTone();
+    if (callPhase === "ringing") return playRingingTone();
+    if (callPhase === "connected") {
+      const timer = setInterval(() => setDuration((p) => p + 1), 1000);
+      return () => clearInterval(timer);
+    }
+    setDuration(0);
   }, [callPhase]);
 
   if (!isActive && callPhase === "ended") return null;
@@ -52,8 +50,7 @@ export function NesaCallInterface({
         className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-lg shadow-rose-600/30 transition-all cursor-pointer active:scale-95"
         title="Cancel Call"
       >
-        <Phone size={16} weight="fill" className="rotate-[135deg]" />
-        <span>Cancel</span>
+        <Phone size={16} weight="fill" className="rotate-[135deg]" /><span>Cancel</span>
       </button>
     </div>
   );
@@ -66,12 +63,8 @@ export function NesaCallInterface({
           <span className="text-xs font-semibold text-rose-300">Connection Error</span>
           <span className="text-[11px] text-rose-200 leading-snug break-words max-h-16 overflow-y-auto w-full">{connectionError}</span>
           <div className="flex items-center gap-2 mt-0.5">
-            <button type="button" onClick={onRetry} className="px-3 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium transition-colors cursor-pointer shadow">
-              Retry
-            </button>
-            <button type="button" onClick={onEndCall} className="px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium transition-colors cursor-pointer border border-zinc-700">
-              Close
-            </button>
+            <button type="button" onClick={onRetry} className="px-3 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium transition-colors cursor-pointer shadow">Retry</button>
+            <button type="button" onClick={onEndCall} className="px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium transition-colors cursor-pointer border border-zinc-700">Close</button>
           </div>
         </div>
       )}
@@ -113,15 +106,30 @@ export function NesaCallInterface({
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={onEndCall}
-          className="w-11 h-11 rounded-full bg-rose-600 hover:bg-rose-500 active:scale-95 text-white flex items-center justify-center shadow-lg shadow-rose-600/40 border-2 border-rose-400/30 transition-all cursor-pointer"
-          title="End Call"
-          aria-label="End call"
-        >
-          <Phone size={20} weight="fill" className="rotate-[135deg]" />
-        </button>
+        <div className="w-full flex items-center justify-between px-1">
+          <div className="w-16 flex justify-start">
+            {callPhase === "connected" && forceReply && (
+              <button
+                type="button"
+                onClick={() => forceReply("Hello Nesa")}
+                className="text-[10px] font-mono text-zinc-400 hover:text-accent transition-colors cursor-pointer px-1.5 py-0.5 rounded border border-zinc-800 hover:border-accent/40 bg-zinc-900/60 whitespace-nowrap"
+                title="Force model reply"
+              >
+                Say Hello
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onEndCall}
+            className="w-11 h-11 rounded-full bg-rose-600 hover:bg-rose-500 active:scale-95 text-white flex items-center justify-center shadow-lg shadow-rose-600/40 border-2 border-rose-400/30 transition-all cursor-pointer shrink-0"
+            title="End Call"
+            aria-label="End call"
+          >
+            <Phone size={20} weight="fill" className="rotate-[135deg]" />
+          </button>
+          <div className="w-16" />
+        </div>
       </div>
     </div>
   );
@@ -131,15 +139,7 @@ export function NesaCallInterface({
       <div className="max-md:fixed max-md:inset-0 z-50 md:hidden bg-zinc-950 flex flex-col justify-between overflow-hidden pb-8">
         <header className="relative z-10 w-full px-4 py-3 flex items-center justify-between border-b border-border/40 bg-zinc-950/80 backdrop-blur">
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onEndCall}
-              className="p-1 rounded-md text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer mr-1"
-              title="Close Call"
-              aria-label="Close call"
-            >
-              <X size={18} weight="bold" />
-            </button>
+            <button type="button" onClick={onEndCall} className="p-1 rounded-md text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer mr-1" title="Close Call" aria-label="Close call"><X size={18} weight="bold" /></button>
             <img src={logoImg} alt="Techwiz GenAI" className="w-4 h-4 object-contain shrink-0" />
             <span className="text-xs font-semibold text-zinc-100">Nesa</span>
           </div>
@@ -151,13 +151,7 @@ export function NesaCallInterface({
       <Draggable nodeRef={nodeRef} handle=".call-drag-handle" bounds="body">
         <div ref={nodeRef} className="fixed bottom-6 right-6 z-50 hidden md:block">
           {isMinimized ? (
-            <NesaCallMinimized
-              durationText={durationText}
-              isSpeaking={isSpeaking}
-              isListening={isListening}
-              onMaximize={onToggleMinimize}
-              onEndCall={onEndCall}
-            />
+            <NesaCallMinimized durationText={durationText} isSpeaking={isSpeaking} isListening={isListening} onMaximize={onToggleMinimize} onEndCall={onEndCall} />
           ) : (
             <div className="md:w-[340px] md:h-[520px] rounded-xl border border-white/10 bg-zinc-950/90 backdrop-blur-md shadow-2xl flex flex-col overflow-hidden relative">
               <div className="call-drag-handle cursor-grab active:cursor-grabbing bg-gradient-to-b from-zinc-950/80 to-transparent p-3 flex justify-between items-center z-20 absolute top-0 w-full select-none">
@@ -167,12 +161,8 @@ export function NesaCallInterface({
                   <span className="text-[10px] font-mono text-zinc-400">{durationText}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button type="button" onClick={onToggleMinimize} className="p-1 rounded hover:bg-zinc-800/80 text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer" title="Minimize" aria-label="Minimize">
-                    <Minus size={13} weight="bold" />
-                  </button>
-                  <button type="button" onClick={onEndCall} className="p-1 rounded hover:bg-rose-900/50 text-zinc-400 hover:text-rose-400 transition-colors cursor-pointer" title="End Call" aria-label="End call">
-                    <X size={13} weight="bold" />
-                  </button>
+                  <button type="button" onClick={onToggleMinimize} className="p-1 rounded hover:bg-zinc-800/80 text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer" title="Minimize" aria-label="Minimize"><Minus size={13} weight="bold" /></button>
+                  <button type="button" onClick={onEndCall} className="p-1 rounded hover:bg-rose-900/50 text-zinc-400 hover:text-rose-400 transition-colors cursor-pointer" title="End Call" aria-label="End call"><X size={13} weight="bold" /></button>
                 </div>
               </div>
 

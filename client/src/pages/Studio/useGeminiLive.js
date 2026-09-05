@@ -9,15 +9,9 @@ export function useGeminiLive() {
   const [transcript, setTranscript] = useState("");
   const [connectionError, setConnectionError] = useState("");
 
-  const wsRef = useRef(null);
-  const inputAudioCtxRef = useRef(null);
-  const outputAudioCtxRef = useRef(null);
-  const micStreamRef = useRef(null);
-  const processorRef = useRef(null);
-  const nextPlayTimeRef = useRef(0);
-  const activeSourcesRef = useRef([]);
-  const timerRef = useRef(null);
-  const isReadyRef = useRef(false);
+  const wsRef = useRef(null), inputAudioCtxRef = useRef(null), outputAudioCtxRef = useRef(null);
+  const micStreamRef = useRef(null), processorRef = useRef(null), nextPlayTimeRef = useRef(0);
+  const activeSourcesRef = useRef([]), timerRef = useRef(null), isReadyRef = useRef(false);
 
   const stopActiveAudio = useCallback(() => {
     activeSourcesRef.current.forEach((src) => { try { src.stop(); } catch {} });
@@ -117,7 +111,6 @@ export function useGeminiLive() {
       const inputCtx = new AudioCtx({ sampleRate: 16000 });
       if (inputCtx.state === "suspended") await inputCtx.resume();
       inputAudioCtxRef.current = inputCtx;
-
       const ws = new WebSocket(`${WS_BASE_URL}?key=${apiKey}`);
       wsRef.current = ws;
 
@@ -125,14 +118,9 @@ export function useGeminiLive() {
         setIsConnected(true);
         ws.send(JSON.stringify({
           setup: {
-            model: "models/gemini-3.1-flash-live-preview",
-            generationConfig: {
-              responseModalities: ["AUDIO"],
-              speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } }
-            },
-            systemInstruction: {
-              parts: [{ text: "Role: You are Nesa, a highly advanced, professional, and female AI assistant. Tone: Formal, highly professional, and polite. Strictly avoid being casual, overly humorous, or conversational. Grammatical Constraint: You MUST strictly use female grammatical gender in all languages. When speaking Urdu or Hindi, always use female verb inflections (e.g., 'main kar rahi hoon', 'main bata rahi hoon', NEVER 'main kar raha hoon')." }]
-            }
+            model: "models/gemini-2.0-flash-exp",
+            generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } } },
+            systemInstruction: { parts: [{ text: "Role: You are Nesa, a helpful, polite, and female AI assistant. Language Rules: Speak in a highly humanized, natural, and dynamic way. Use very simple, everyday words. DO NOT use complex, difficult, or overly formal vocabulary. Whether you speak in English, Urdu, or Hindi, keep your sentences short, friendly, and extremely easy to understand. Remember to always use female grammatical gender in Urdu/Hindi (e.g., 'main samajh rahi hoon')." }] }
           }
         }));
 
@@ -143,10 +131,14 @@ export function useGeminiLive() {
         processor.onaudioprocess = (e) => {
           if (ws.readyState !== WebSocket.OPEN || !isReadyRef.current) return;
           const float32 = e.inputBuffer.getChannelData(0);
-          const base64Data = base64EncodeAudio(float32);
+          const amplified = new Float32Array(float32.length);
+          for (let i = 0; i < float32.length; i++) {
+            amplified[i] = Math.max(-1, Math.min(1, float32[i] * 2.5));
+          }
+          const base64Data = base64EncodeAudio(amplified);
           ws.send(JSON.stringify({
             realtimeInput: {
-              audio: { mimeType: "audio/pcm;rate=16000", data: base64Data }
+              mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Data }]
             }
           }));
         };
@@ -179,9 +171,16 @@ export function useGeminiLive() {
     }
   }, [disconnect, handleServerMessage]);
 
+  const forceReply = useCallback((text = "Hello Nesa") => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    wsRef.current.send(JSON.stringify({
+      clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: true }
+    }));
+  }, []);
+
   useEffect(() => () => disconnect(), [disconnect]);
 
-  return { isConnected, isSpeaking, transcript, connectionError, connect, disconnect };
+  return { isConnected, isSpeaking, transcript, connectionError, connect, disconnect, forceReply };
 }
 
 export default useGeminiLive;

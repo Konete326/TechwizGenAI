@@ -9,7 +9,7 @@ export function useNesaCall({ onSendMessage, onMicDenied } = {}) {
   const isCallActiveRef = useRef(false);
   const ringTimerRef = useRef(null);
 
-  const { isConnected, isSpeaking, transcript, connectionError, connect, disconnect } = useGeminiLive();
+  const { isConnected, isSpeaking, transcript, connectionError, connect, disconnect, forceReply } = useGeminiLive();
 
   const clearRingTimer = () => {
     if (ringTimerRef.current) {
@@ -73,7 +73,8 @@ export function useNesaCall({ onSendMessage, onMicDenied } = {}) {
     connectionError,
     startCall,
     endCall,
-    onStreamComplete: () => {}
+    onStreamComplete: () => {},
+    forceReply
   };
 }
 
