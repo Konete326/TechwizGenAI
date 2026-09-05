@@ -28,6 +28,12 @@ export const verifyToken = async (req, res, next) => {
         message: "User associated with this token not found"
       });
     }
+    if (user.status === "suspended") {
+      return res.status(403).json({
+        success: false,
+        message: "Account has been suspended by an administrator"
+      });
+    }
 
     req.user = user;
     next();

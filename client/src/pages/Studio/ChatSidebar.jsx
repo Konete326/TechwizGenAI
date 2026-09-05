@@ -34,7 +34,14 @@ export function ChatSidebar({ isOpen, onClose, sessions, activeSessionId, onSele
   };
 
   const filtered = sessions.filter((s) => (s.title || "New Chat").toLowerCase().includes(search.toLowerCase()));
-  const sorted = [...filtered].sort((a, b) => (pinnedIds.includes(b.id) ? 1 : 0) - (pinnedIds.includes(a.id) ? 1 : 0));
+  const sorted = [...filtered].sort((a, b) => {
+    const isPinnedA = pinnedIds.includes(a.id) || a.isPinned ? 1 : 0;
+    const isPinnedB = pinnedIds.includes(b.id) || b.isPinned ? 1 : 0;
+    if (isPinnedB !== isPinnedA) return isPinnedB - isPinnedA;
+    const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+    const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+    return timeB - timeA;
+  });
 
   return (
     <>
