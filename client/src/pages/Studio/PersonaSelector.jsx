@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Sparkle, UserGear, ChartBar, FileText, GitFork, CaretDown, Check, X } from "@phosphor-icons/react";
+import { Sparkle, UserGear, ChartBar, FileText, GitFork, Check, X } from "@phosphor-icons/react";
 
 const PERSONA_CONFIGS = [
   { id: "general", label: "General", desc: "Polymath general assistant", icon: Sparkle },
@@ -38,7 +38,6 @@ export function PersonaSelector({ selectedPersona = "general", onSelectPersona, 
       >
         <ActiveIcon size={14} className="text-accent shrink-0" />
         <span className="max-w-[70px] sm:max-w-[100px] truncate">{active.label}</span>
-        <CaretDown size={11} className="text-text-muted" />
       </button>
 
       {open && typeof document !== "undefined" && createPortal(

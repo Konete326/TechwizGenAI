@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Sparkle, CaretDown, Check, X } from "@phosphor-icons/react";
+import { Sparkle, Check, X } from "@phosphor-icons/react";
 import { useToast } from "@/context/ToastContext";
 
 export const MODEL_TIERS = [
@@ -83,7 +83,6 @@ export function ModelSelector({ selectedModel, onSelectModel }) {
         <span className="hidden md:inline-block text-[10px] px-1.5 py-0.2 rounded bg-surface-card border border-border text-text-muted font-mono">
           {currentTier.tag}
         </span>
-        <CaretDown size={12} className="text-text-muted" />
       </button>
 
       {isOpen && typeof document !== "undefined" && createPortal(
