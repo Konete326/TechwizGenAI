@@ -1,4 +1,4 @@
-import { Waveform, CornersOut, PhoneDisconnect } from "@phosphor-icons/react";
+import { Waveform, CornersOut, Phone } from "@phosphor-icons/react";
 
 export function NesaCallMinimized({
   durationText,
@@ -44,7 +44,7 @@ export function NesaCallMinimized({
           title="End call"
           aria-label="End call"
         >
-          <PhoneDisconnect size={14} weight="fill" />
+          <Phone size={14} weight="fill" className="rotate-[135deg]" />
         </button>
       </div>
     </div>

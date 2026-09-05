@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import Draggable from "react-draggable";
-import { PhoneDisconnect, PhoneCall, Sparkle, Waveform, Minus, X } from "@phosphor-icons/react";
+import { Phone, PhoneCall, Sparkle, Waveform, Minus, X } from "@phosphor-icons/react";
 import { NesaCallMinimized } from "./NesaCallMinimized";
 import { NesaCallVideos } from "./NesaCallVideos";
 
@@ -44,7 +44,7 @@ export function NesaCallInterface({
         className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-lg shadow-rose-600/30 transition-all cursor-pointer active:scale-95"
         title="Cancel Call"
       >
-        <PhoneDisconnect size={16} weight="fill" />
+        <Phone size={16} weight="fill" className="rotate-[135deg]" />
         <span>Cancel</span>
       </button>
     </div>
@@ -116,7 +116,7 @@ export function NesaCallInterface({
           title="End Call"
           aria-label="End call"
         >
-          <PhoneDisconnect size={22} weight="fill" />
+          <Phone size={22} weight="fill" className="rotate-[135deg]" />
         </button>
       </div>
     </div>
