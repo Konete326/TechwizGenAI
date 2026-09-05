@@ -84,9 +84,9 @@ export function useGeminiLive() {
       const parts = (sc?.modelTurn || sc?.model_turn)?.parts || [];
       for (const part of parts) {
         if (part.text) setTranscript((prev) => (prev ? prev + " " + part.text : part.text));
-        const inline = part.inlineData || part.inline_data;
+        const inline = part.inlineData || part.inline_data || part.audio;
         const mime = inline?.mimeType || inline?.mime_type;
-        if (inline?.data && mime?.startsWith("audio/")) {
+        if (inline?.data && (mime?.startsWith("audio/") || !mime)) {
           scheduleAudioChunk(base64DecodeAudio(inline.data));
         }
       }
@@ -146,7 +146,7 @@ export function useGeminiLive() {
           const base64Data = base64EncodeAudio(float32);
           ws.send(JSON.stringify({
             realtimeInput: {
-              mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Data }]
+              audio: { mimeType: "audio/pcm;rate=16000", data: base64Data }
             }
           }));
         };
