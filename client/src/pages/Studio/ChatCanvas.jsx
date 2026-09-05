@@ -88,8 +88,6 @@ export function ChatCanvas({
             <AiThinking />
           )
         )}
-
-        <div ref={scrollBottomRef} />
       </div>
     </div>
   );
