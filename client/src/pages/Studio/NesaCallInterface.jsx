@@ -69,42 +69,35 @@ export function NesaCallInterface({
         </div>
       )}
 
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4">
+      <div className="relative z-10 flex-1" />
+
+      <div className="relative z-10 w-full px-4 pb-4 md:pb-3 pt-1 flex flex-col items-center gap-2 bg-gradient-to-t from-zinc-950/95 via-zinc-950/75 to-transparent">
         {!isRinging && (
-          <>
-            <div className="relative flex items-center justify-center mb-4">
-              <div
-                className={`absolute w-24 h-24 rounded-full transition-all duration-700 ${
-                  isSpeaking ? "bg-accent/20 scale-150 animate-ping opacity-60" : isListening ? "bg-emerald-500/20 scale-125 animate-pulse opacity-50" : "bg-zinc-800/30 scale-100 opacity-20"
-                }`}
-              />
-              <div
-                className={`relative w-14 h-14 rounded-full border flex items-center justify-center backdrop-blur-md shadow-xl ${
-                  isSpeaking ? "bg-accent/25 border-accent text-accent shadow-accent/20" : isListening ? "bg-emerald-950/50 border-emerald-500/60 text-emerald-400 shadow-emerald-500/20" : "bg-zinc-900/60 border-zinc-700 text-zinc-400"
-                }`}
-              >
-                <Waveform size={26} weight="duotone" className={isSpeaking || isListening ? "animate-pulse" : ""} />
-              </div>
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-7 h-7 rounded-full border flex items-center justify-center backdrop-blur-md shadow-md shrink-0 ${
+                isSpeaking ? "bg-accent/25 border-accent text-accent shadow-accent/20" : isListening ? "bg-emerald-950/50 border-emerald-500/60 text-emerald-400 shadow-emerald-500/20" : "bg-zinc-900/60 border-zinc-700 text-zinc-400"
+              }`}
+            >
+              <Waveform size={14} weight="duotone" className={isSpeaking || isListening ? "animate-pulse" : ""} />
             </div>
 
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900/90 border border-zinc-800 backdrop-blur shadow-md">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-900/90 border border-zinc-800 backdrop-blur shadow-sm">
               <span className={`w-1.5 h-1.5 rounded-full ${isSpeaking ? "bg-accent animate-ping" : isListening ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
               <span className="text-[11px] font-medium text-zinc-200">
                 {isSpeaking ? "Nesa is speaking..." : isListening ? "Nesa is listening..." : "Nesa is thinking..."}
               </span>
             </div>
-          </>
+          </div>
         )}
-      </div>
 
-      <div className="relative z-10 w-full px-4 pb-8 md:pb-5 pt-2 flex flex-col items-center gap-3">
-        <div className="w-full min-h-[44px] flex items-center justify-center">
+        <div className="w-full min-h-[26px] max-h-14 flex items-center justify-center">
           {transcript ? (
-            <div className="px-3 py-2 rounded-xl bg-zinc-900/90 border border-zinc-800/80 backdrop-blur-md text-xs text-zinc-200 shadow-lg text-center max-h-20 overflow-y-auto">
+            <div className="px-2.5 py-1 rounded-lg bg-zinc-900/90 border border-zinc-800/80 backdrop-blur-md text-[11px] text-zinc-200 shadow text-center max-h-12 overflow-y-auto leading-tight">
               <span>{transcript}</span>
             </div>
           ) : (
-            <p className="text-[11px] text-zinc-400 text-center font-mono">
+            <p className="text-[10px] text-zinc-400 text-center font-mono">
               {isRinging ? "Connecting..." : isSpeaking ? "Listen to Nesa's reply..." : "Speak naturally..."}
             </p>
           )}
@@ -113,11 +106,11 @@ export function NesaCallInterface({
         <button
           type="button"
           onClick={onEndCall}
-          className="w-12 h-12 rounded-full bg-rose-600 hover:bg-rose-500 active:scale-95 text-white flex items-center justify-center shadow-xl shadow-rose-600/40 border-2 border-rose-400/30 transition-all cursor-pointer"
+          className="w-11 h-11 rounded-full bg-rose-600 hover:bg-rose-500 active:scale-95 text-white flex items-center justify-center shadow-lg shadow-rose-600/40 border-2 border-rose-400/30 transition-all cursor-pointer"
           title="End Call"
           aria-label="End call"
         >
-          <Phone size={22} weight="fill" className="rotate-[135deg]" />
+          <Phone size={20} weight="fill" className="rotate-[135deg]" />
         </button>
       </div>
     </div>
