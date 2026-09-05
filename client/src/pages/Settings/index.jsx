@@ -1,14 +1,12 @@
 import { useState } from "react";
-import { User, Coins, Key } from "@phosphor-icons/react";
-import { ProfileSettings } from "./ProfileSettings";
+import { Coins, Key } from "@phosphor-icons/react";
 import { BillingSettings } from "./BillingSettings";
 import { ApiSettings } from "./ApiSettings";
 
 export function Settings() {
-  const [activeTab, setActiveTab] = useState("profile");
+  const [activeTab, setActiveTab] = useState("billing");
 
   const tabs = [
-    { id: "profile", label: "Profile", icon: User },
     { id: "billing", label: "Billing & Storage", icon: Coins },
     { id: "api", label: "API & Integrations", icon: Key }
   ];
@@ -18,7 +16,7 @@ export function Settings() {
       <div className="pb-3 border-b border-border">
         <h2 className="text-xl font-bold tracking-tight text-text-primary">Global Settings</h2>
         <p className="text-xs text-text-muted mt-0.5">
-          Manage identity, monitor storage & token quotas, and configure Bring-Your-Own-Key parameters.
+          Monitor storage & token quotas, and configure Bring-Your-Own-Key parameters.
         </p>
       </div>
 
@@ -46,7 +44,6 @@ export function Settings() {
         </div>
 
         <div className="flex-1 w-full min-w-0 bg-surface-card p-6 md:p-8 rounded-xl border border-border shadow-xs">
-          {activeTab === "profile" && <ProfileSettings />}
           {activeTab === "billing" && <BillingSettings />}
           {activeTab === "api" && <ApiSettings />}
         </div>
