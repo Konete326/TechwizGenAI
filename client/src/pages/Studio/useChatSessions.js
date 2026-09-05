@@ -50,7 +50,13 @@ export function useChatSessions() {
       });
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
-        setMessages(data.data);
+        setMessages((prev) => {
+          const incoming = data.data;
+          if (prev.length === incoming.length && prev[prev.length - 1]?.text === incoming[incoming.length - 1]?.text) {
+            return prev;
+          }
+          return incoming;
+        });
       }
     } catch {
       return null;
@@ -60,10 +66,16 @@ export function useChatSessions() {
   useEffect(() => {
     fetchSessions();
     const interval = setInterval(() => {
-      if (document.visibilityState === "visible") fetchSessions(true);
-    }, 15000);
+      if (document.visibilityState === "visible") {
+        fetchSessions(true);
+        if (activeSessionId) fetchMessages(activeSessionId);
+      }
+    }, 3000);
 
-    const handleSync = () => fetchSessions(true);
+    const handleSync = () => {
+      fetchSessions(true);
+      if (activeSessionId) fetchMessages(activeSessionId);
+    };
     window.addEventListener("focus", handleSync);
     window.addEventListener("storage", handleSync);
     document.addEventListener("visibilitychange", handleSync);
@@ -74,7 +86,7 @@ export function useChatSessions() {
       window.removeEventListener("storage", handleSync);
       document.removeEventListener("visibilitychange", handleSync);
     };
-  }, [fetchSessions]);
+  }, [fetchSessions, fetchMessages, activeSessionId]);
 
   useEffect(() => {
     if (activeSessionId) {

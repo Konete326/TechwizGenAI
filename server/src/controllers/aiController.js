@@ -99,6 +99,10 @@ export const streamChat = async (req, res, next, isRegenerate = false) => {
       return handleSpecialRequest({ specialType: streamResult.specialType, specialBuffer: streamResult.specialBuffer, customProvider: req.headers["x-ai-provider"], targetModel: model, cleanPrompt, userId: req.user._id, session, res, customApiKey });
     }
 
+    if (streamResult.accumulatedText) {
+      await ChatMessage.create({ sessionId: session._id, role: "model", text: streamResult.accumulatedText });
+    }
+
     session.updatedAt = new Date();
     await session.save();
     res.write("data: [DONE]\n\n");
