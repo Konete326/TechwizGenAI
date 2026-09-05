@@ -16,6 +16,14 @@
           document.documentElement.classList.remove("dark");
         }
       } catch (e) {}
+      window.PUTER_QUIET = true;
+      if (typeof customElements !== "undefined") {
+        const origDef = customElements.define;
+        customElements.define = function(name, constructor, options) {
+          if (customElements.get(name)) return;
+          return origDef.call(this, name, constructor, options);
+        };
+      }
     </script>
     <script src="https://js.puter.com/v2/"></script>
   </head>

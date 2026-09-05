@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { puter } from "@heyputer/puter.js";
 
 export function sanitizeForSpeech(text) {
   if (!text) return "";
@@ -74,7 +73,8 @@ export function useTextToSpeech() {
     setSpeakingMessageId(messageId);
 
     try {
-      const puterClient = (typeof window !== "undefined" && window.puter) || puter;
+      const puterClient = typeof window !== "undefined" ? window.puter : null;
+      if (puterClient) puterClient.quiet = true;
       if (puterClient?.ai?.txt2speech) {
         const audio = await puterClient.ai.txt2speech(cleanText.slice(0, 3000));
         if (audio) {
