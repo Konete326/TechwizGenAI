@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Sparkle, UserGear, ChartBar, FileText, GitFork, CaretDown, Check, X } from "@phosphor-icons/react";
 
 const PERSONA_CONFIGS = [
@@ -40,9 +41,9 @@ export function PersonaSelector({ selectedPersona = "general", onSelectPersona, 
         <CaretDown size={11} className="text-text-muted" />
       </button>
 
-      {open && (
+      {open && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
           onClick={(e) => {
             if (e.target === e.currentTarget) setOpen(false);
           }}
@@ -104,7 +105,8 @@ export function PersonaSelector({ selectedPersona = "general", onSelectPersona, 
               })}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

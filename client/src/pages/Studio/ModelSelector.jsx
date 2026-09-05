@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Sparkle, CaretDown, Check, X } from "@phosphor-icons/react";
 import { useToast } from "@/context/ToastContext";
 
@@ -85,9 +86,9 @@ export function ModelSelector({ selectedModel, onSelectModel }) {
         <CaretDown size={12} className="text-text-muted" />
       </button>
 
-      {isOpen && (
+      {isOpen && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsOpen(false);
           }}
@@ -156,7 +157,8 @@ export function ModelSelector({ selectedModel, onSelectModel }) {
               })}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
