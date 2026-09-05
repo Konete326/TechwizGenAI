@@ -6,7 +6,6 @@ import rateLimit from "express-rate-limit";
 import { env } from "./src/config/env.js";
 import { connectDB } from "./src/config/db.js";
 import { errorHandler } from "./src/middleware/error.js";
-
 import authRoutes from "./src/routes/authRoutes.js";
 import aiRoutes from "./src/routes/aiRoutes.js";
 import assetRoutes from "./src/routes/assetRoutes.js";
@@ -56,16 +55,6 @@ app.use((req, res, next) => {
 });
 app.use(compression());
 app.use(express.json({ limit: "10mb" }));
-app.use("/uploads", (req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-  if (req.path.endsWith(".pdf")) {
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", "inline");
-  }
-  next();
-}, express.static("uploads"));
-
 app.use("/api", apiLimiter);
 
 app.get(["/api/health", "/health"], (req, res) => {
@@ -86,8 +75,10 @@ app.use(["/api/dashboard", "/dashboard"], dashboardRoutes);
 
 app.use(errorHandler);
 
-app.listen(env.PORT, () => {
-  console.log(`Server listening on port ${env.PORT}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(env.PORT, () => {
+    console.log(`Server listening on port ${env.PORT}`);
+  });
+}
 
 export default app;

@@ -1,64 +1,54 @@
-import fs from "fs";
-import path from "path";
 import { cloudinary } from "../config/cloudinary.js";
 import { Asset } from "../models/Asset.js";
 import { ChatMessage } from "../models/ChatMessage.js";
-import { env } from "../config/env.js";
 import { generateDocumentBuffer } from "./documentBuilders.js";
+
+const MIME_TYPES = {
+  pdf: "application/pdf",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  xls: "application/vnd.ms-excel",
+  csv: "text/csv",
+  txt: "text/plain"
+};
 
 export async function generateDocument(extension, rawContent, userId) {
   const ext = (extension || "txt").toLowerCase().trim();
   const buffer = await generateDocumentBuffer(ext, rawContent);
-
-  const uploadDir = path.join(process.cwd(), "uploads", "documents");
-  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
   const filename = `doc_${Date.now()}.${ext}`;
-  const localFilePath = path.join(uploadDir, filename);
-  fs.writeFileSync(localFilePath, buffer);
-
-  const serverBase = env.SERVER_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : `http://localhost:${env.PORT || 5000}`);
-  const localUrl = `${serverBase}/uploads/documents/${filename}`;
-  let finalUrl = localUrl;
+  const mimeType = MIME_TYPES[ext] || "application/octet-stream";
+  let finalUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
 
   try {
-    const isRaw = ext === "pdf" || ext === "docx" || ext === "xlsx" || ext === "xls";
     const uploadResult = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
           folder: "techwiz_docs",
-          resource_type: isRaw ? "raw" : "auto",
+          resource_type: "raw",
           public_id: filename
         },
         (error, result) => (error ? reject(error) : resolve(result))
       );
       stream.end(buffer);
-    }).catch(() => null);
+    });
 
     if (uploadResult?.secure_url) {
       finalUrl = uploadResult.secure_url;
     }
+  } catch {}
 
+  if (userId) {
     await Asset.create({
       userId,
       title: `Generated Document (${ext.toUpperCase()})`,
       url: finalUrl,
-      publicId: uploadResult?.public_id || filename,
-      format: ext,
-      bytes: uploadResult?.bytes || buffer.length
-    }).catch(() => {});
-  } catch {
-    await Asset.create({
-      userId,
-      title: `Generated Document (${ext.toUpperCase()})`,
-      url: localUrl,
       publicId: filename,
       format: ext,
       bytes: buffer.length
     }).catch(() => {});
   }
 
-  return finalUrl;
+  return { url: finalUrl, filename, mimeType, size: buffer.length };
 }
 
 export async function processAiDocumentRequest({ docReqBuffer, userId, session, res }) {
@@ -67,8 +57,9 @@ export async function processAiDocumentRequest({ docReqBuffer, userId, session, 
     const extension = match ? match[1].toLowerCase().trim() : "pdf";
     const rawContent = match ? match[2].trim() : docReqBuffer;
 
-    const documentUrl = await generateDocument(extension, rawContent, userId);
-    const artifactTag = `[ARTIFACT: ${extension} | ${documentUrl}]`;
+    const docResult = await generateDocument(extension, rawContent, userId);
+    const docUrl = docResult?.url || docResult;
+    const artifactTag = `[ARTIFACT: ${extension} | ${docUrl}]`;
 
     await ChatMessage.create({ sessionId: session._id, role: "model", text: artifactTag });
     session.updatedAt = new Date();

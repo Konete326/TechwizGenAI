@@ -1,51 +1,53 @@
 import XLSX from "xlsx";
 import { Document, Paragraph, TextRun, HeadingLevel, Packer } from "docx";
-import htmlPdf from "html-pdf-node";
+import PDFDocument from "pdfkit";
 
-export const escapeHtml = (s) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+export function buildPdfDocument(title, content) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: "A4", margin: 40, bufferPages: true });
+    const chunks = [];
+    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
 
-const inlineFmt = (str) => {
-  return escapeHtml(str)
-    .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#0f172a;font-weight:700;">$1</strong>')
-    .replace(/\*(.*?)\*/g, "<em>$1</em>");
-};
+    doc.rect(40, 40, doc.page.width - 80, 4).fill("#4f46e5");
+    const mainTitle = (title || "Executive Document").trim();
+    doc.fillColor("#0f172a").fontSize(18).font("Helvetica-Bold").text(mainTitle, 40, 52, { width: doc.page.width - 160 });
+    const dateStr = new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    doc.fillColor("#64748b").fontSize(9).font("Helvetica").text(dateStr, doc.page.width - 150, 56, { align: "right", width: 110 });
+    doc.moveTo(40, 80).lineTo(doc.page.width - 40, 80).strokeColor("#e2e8f0").lineWidth(1).stroke();
+    doc.y = 95;
 
-export function formatDocumentToHtml(content) {
-  const lines = content.split("\n");
-  const parts = [];
-  let inList = false;
-  const dateStr = new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
-
-  for (const raw of lines) {
-    const l = raw.trim();
-    if (!l) {
-      if (inList) { parts.push("</ul>"); inList = false; }
-      continue;
+    const lines = (content || "").split("\n");
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) {
+        doc.moveDown(0.3);
+        continue;
+      }
+      if (line.startsWith("# ")) {
+        doc.moveDown(0.5).fillColor("#0f172a").fontSize(14).font("Helvetica-Bold").text(line.slice(2));
+      } else if (line.startsWith("## ")) {
+        doc.moveDown(0.4).fillColor("#4f46e5").fontSize(11).font("Helvetica-Bold").text(line.slice(3));
+      } else if (line.startsWith("### ")) {
+        doc.moveDown(0.3).fillColor("#334155").fontSize(10).font("Helvetica-Bold").text(line.slice(4));
+      } else if (line.startsWith("- ") || line.startsWith("* ")) {
+        doc.fillColor("#334155").fontSize(9).font("Helvetica").text(`*  ${line.slice(2).replace(/\*\*/g, "")}`, { indent: 10, lineGap: 2 });
+      } else {
+        doc.fillColor("#334155").fontSize(9).font("Helvetica").text(line.replace(/\*\*/g, ""), { lineGap: 2 });
+      }
     }
-    if (l.startsWith("# ")) {
-      if (inList) { parts.push("</ul>"); inList = false; }
-      parts.push(`<h1 style="font-size:22px;font-weight:800;color:#0f172a;margin:14px 0 6px 0;line-height:1.2;">${inlineFmt(l.slice(2))}</h1><div style="height:3px;width:40px;background:#4f46e5;border-radius:2px;margin-bottom:14px;"></div>`);
-    } else if (l.startsWith("## ")) {
-      if (inList) { parts.push("</ul>"); inList = false; }
-      parts.push(`<h2 style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#1e1b4b;background:#f1f5f9;border-left:4px solid #4f46e5;padding:5px 10px;margin:16px 0 8px 0;border-radius:0 4px 4px 0;">${inlineFmt(l.slice(3))}</h2>`);
-    } else if (l.startsWith("### ")) {
-      if (inList) { parts.push("</ul>"); inList = false; }
-      parts.push(`<h3 style="font-size:11px;font-weight:700;color:#334155;margin:10px 0 3px 0;">${inlineFmt(l.slice(4))}</h3>`);
-    } else if (l.startsWith("- ") || l.startsWith("* ")) {
-      if (!inList) { parts.push(`<ul style="margin:4px 0 10px 0;padding-left:18px;">`); inList = true; }
-      parts.push(`<li style="font-size:10.5px;color:#334155;line-height:1.6;margin-bottom:3px;">${inlineFmt(l.slice(2))}</li>`);
-    } else {
-      if (inList) { parts.push("</ul>"); inList = false; }
-      parts.push(`<p style="font-size:10.5px;color:#334155;line-height:1.6;margin:4px 0;">${inlineFmt(l)}</p>`);
+
+    const range = doc.bufferedPageRange();
+    for (let i = range.start; i < range.start + range.count; i++) {
+      doc.switchToPage(i);
+      doc.moveTo(40, doc.page.height - 35).lineTo(doc.page.width - 40, doc.page.height - 35).strokeColor("#e2e8f0").lineWidth(0.5).stroke();
+      doc.fillColor("#94a3b8").fontSize(8).font("Helvetica").text("Techwiz GenAI - Confidential", 40, doc.page.height - 26);
+      doc.text(`Page ${i + 1} of ${range.count}`, doc.page.width - 120, doc.page.height - 26, { align: "right", width: 80 });
     }
-  }
-  if (inList) parts.push("</ul>");
 
-  const headerBand = `<div style="height:5px;background:linear-gradient(90deg,#4f46e5 0%,#7c3aed 50%,#06b6d4 100%);margin-bottom:18px;border-radius:2px;"></div>`;
-  const brandBar = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #e2e8f0;"><span style="font-size:8.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#4f46e5;background:#eef2ff;border:1px solid #c7d2fe;padding:2px 8px;border-radius:10px;">Executive Document</span><span style="font-size:9.5px;color:#64748b;font-family:monospace;">${dateStr}</span></div>`;
-  const footerBar = `<div style="margin-top:28px;padding-top:10px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:8.5px;color:#94a3b8;font-family:monospace;"><span>Generated by Techwiz GenAI</span><span>Confidential</span></div>`;
-
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>@page{margin:14mm 16mm;size:A4;}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#0f172a;line-height:1.5;margin:0;padding:12px;background:#fff;}</style></head><body>${headerBand}${brandBar}${parts.join("\n")}${footerBar}</body></html>`;
+    doc.end();
+  });
 }
 
 export async function generateDocumentBuffer(extension, rawContent) {
@@ -85,11 +87,12 @@ export async function generateDocumentBuffer(extension, rawContent) {
   }
 
   if (ext === "pdf") {
-    const html = formatDocumentToHtml(content);
-    return await htmlPdf.generatePdf({ content: html }, { format: "A4" });
+    const firstLine = content.split("\n")[0] || "";
+    const title = firstLine.startsWith("# ") ? firstLine.slice(2).trim() : "Executive Document";
+    return await buildPdfDocument(title, content);
   }
 
   return Buffer.from(content, "utf-8");
 }
 
-export default { escapeHtml, formatDocumentToHtml, generateDocumentBuffer };
+export default { buildPdfDocument, generateDocumentBuffer };
