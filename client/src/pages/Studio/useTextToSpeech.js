@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { base64DecodeAudio } from "./audioUtils";
-
-const TTS_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent";
+import { puter } from "@heyputer/puter.js";
 
 export function sanitizeForSpeech(text) {
   if (!text) return "";
@@ -28,23 +26,36 @@ export function detectLanguage(text) {
 
 export function useTextToSpeech() {
   const [speakingMessageId, setSpeakingMessageId] = useState(null);
-  const audioCtxRef = useRef(null);
-  const currentSourceRef = useRef(null);
-  const abortControllerRef = useRef(null);
+  const currentAudioRef = useRef(null);
 
   const stop = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-    if (currentSourceRef.current) {
-      try { currentSourceRef.current.stop(); } catch {}
-      currentSourceRef.current = null;
+    if (currentAudioRef.current) {
+      try {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+      } catch {}
+      currentAudioRef.current = null;
     }
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try { window.speechSynthesis.cancel(); } catch {}
     }
     setSpeakingMessageId(null);
+  }, []);
+
+  const playBrowserSpeech = useCallback((text, onEnd) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      setSpeakingMessageId(null);
+      if (onEnd) onEnd();
+      return;
+    }
+    const detected = detectLanguage(text);
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = detected.bcp47;
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.onend = () => { setSpeakingMessageId(null); if (onEnd) onEnd(); };
+    utterance.onerror = () => { setSpeakingMessageId(null); if (onEnd) onEnd(); };
+    window.speechSynthesis.speak(utterance);
   }, []);
 
   const speak = useCallback(async (messageId, rawText, onEnd) => {
@@ -62,74 +73,29 @@ export function useTextToSpeech() {
 
     setSpeakingMessageId(messageId);
 
-    const apiKey = localStorage.getItem("techwiz_custom_api_key") ||
-      localStorage.getItem("custom_api_key") ||
-      import.meta.env.VITE_GEMINI_API_KEY || "";
-
-    if (apiKey) {
-      try {
-        const controller = new AbortController();
-        abortControllerRef.current = controller;
-
-        const res = await fetch(`${TTS_URL}?key=${apiKey}`, {
-          method: "POST",
-          signal: controller.signal,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: cleanText.slice(0, 1500) }] }],
-            generationConfig: {
-              responseModalities: ["AUDIO"],
-              speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } }
-            }
-          })
-        });
-
-        if (res.ok) {
-          const json = await res.json();
-          const base64Data = json.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-          if (base64Data) {
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            const ctx = audioCtxRef.current || new AudioCtx({ sampleRate: 24000 });
-            audioCtxRef.current = ctx;
-            if (ctx.state === "suspended") await ctx.resume();
-
-            const float32 = base64DecodeAudio(base64Data);
-            const buffer = ctx.createBuffer(1, float32.length, 24000);
-            buffer.copyToChannel(float32, 0);
-
-            const source = ctx.createBufferSource();
-            source.buffer = buffer;
-            source.connect(ctx.destination);
-            currentSourceRef.current = source;
-
-            source.onended = () => {
-              if (currentSourceRef.current === source) {
-                currentSourceRef.current = null;
-                setSpeakingMessageId(null);
-                if (onEnd) onEnd();
-              }
-            };
-
-            source.start(0);
-            return;
-          }
+    try {
+      const puterClient = (typeof window !== "undefined" && window.puter) || puter;
+      if (puterClient?.ai?.txt2speech) {
+        const audio = await puterClient.ai.txt2speech(cleanText.slice(0, 3000));
+        if (audio) {
+          currentAudioRef.current = audio;
+          audio.onended = () => {
+            currentAudioRef.current = null;
+            setSpeakingMessageId(null);
+            if (onEnd) onEnd();
+          };
+          audio.onerror = () => {
+            currentAudioRef.current = null;
+            playBrowserSpeech(cleanText, onEnd);
+          };
+          await audio.play();
+          return;
         }
-      } catch (err) {
-        if (err.name === "AbortError") return;
       }
-    }
+    } catch {}
 
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      const detected = detectLanguage(cleanText);
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = detected.bcp47;
-      utterance.onend = () => { setSpeakingMessageId(null); if (onEnd) onEnd(); };
-      utterance.onerror = () => { setSpeakingMessageId(null); if (onEnd) onEnd(); };
-      window.speechSynthesis.speak(utterance);
-    } else {
-      setSpeakingMessageId(null);
-    }
-  }, [speakingMessageId, stop]);
+    playBrowserSpeech(cleanText, onEnd);
+  }, [speakingMessageId, stop, playBrowserSpeech]);
 
   useEffect(() => {
     return () => stop();
