@@ -16,6 +16,7 @@ export function useChatSessions() {
       const res = await fetch(`${VITE_API_URL}/ai/sessions`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (!res.ok) return null;
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
         const incoming = data.data;
@@ -59,8 +60,8 @@ export function useChatSessions() {
   useEffect(() => {
     fetchSessions();
     const interval = setInterval(() => {
-      fetchSessions(true);
-    }, 2500);
+      if (document.visibilityState === "visible") fetchSessions(true);
+    }, 15000);
 
     const handleSync = () => fetchSessions(true);
     window.addEventListener("focus", handleSync);

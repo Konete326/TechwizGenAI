@@ -13,6 +13,7 @@ export function useAssets() {
       const res = await fetch(`${VITE_API_URL}/assets`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (!res.ok) return;
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
         let assetList = data.data;
@@ -49,8 +50,12 @@ export function useAssets() {
 
   useEffect(() => {
     fetchAssets();
-    const interval = setInterval(fetchAssets, 4000);
-    const handleSync = () => fetchAssets();
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") fetchAssets();
+    }, 30000);
+    const handleSync = () => {
+      if (document.visibilityState === "visible") fetchAssets();
+    };
     window.addEventListener("profile_updated", handleSync);
     window.addEventListener("asset_uploaded", handleSync);
     window.addEventListener("focus", handleSync);

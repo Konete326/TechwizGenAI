@@ -24,7 +24,8 @@ const app = express();
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 3000,
+  skip: (req) => req.ip === "127.0.0.1" || req.ip === "::1" || req.ip === "::ffff:127.0.0.1",
   standardHeaders: true,
   legacyHeaders: false,
   message: {
