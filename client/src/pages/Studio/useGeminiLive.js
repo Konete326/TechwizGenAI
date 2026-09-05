@@ -126,6 +126,10 @@ export function useGeminiLive() {
         ws.send(JSON.stringify({
           setup: {
             model: "models/gemini-3.1-flash-live-preview",
+            generationConfig: {
+              responseModalities: ["AUDIO"],
+              speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } }
+            },
             systemInstruction: {
               parts: [{ text: "Your name is Nesa. You are a helpful, conversational AI assistant." }]
             }
