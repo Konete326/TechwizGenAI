@@ -43,8 +43,8 @@ export function DashboardSidebar({
   return (
     <>
       {isDrawerOpen && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur lg:hidden">
-          <div className="fixed inset-y-0 left-0 w-64 bg-surface border-r border-border p-5 flex flex-col justify-between">
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur lg:hidden" onClick={onCloseDrawer}>
+          <div className="fixed inset-y-0 left-0 w-64 bg-surface border-r border-border p-5 flex flex-col justify-between animate-in slide-in-from-left duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

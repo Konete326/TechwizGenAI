@@ -29,11 +29,21 @@ export function DashboardHeader({ onOpenDrawer }) {
 
   return (
     <>
-      <header className="h-14 shrink-0 border-b border-border bg-surface/80 backdrop-blur flex items-center justify-between px-4 lg:hidden">
-        <Link to="/dashboard" className="flex items-center gap-2.5">
-          <img src={logoImg} alt="Techwiz GenAI" className="w-7 h-7 object-contain" />
-          <span className="font-semibold tracking-tight text-text-primary text-sm">{pageTitle}</span>
-        </Link>
+      <header className="h-14 shrink-0 border-b border-border bg-surface/80 backdrop-blur flex items-center justify-between px-3 sm:px-4 lg:hidden">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onOpenDrawer}
+            className="p-2 rounded-[var(--radius-sm)] text-text-muted hover:text-text-primary hover:bg-surface btn-tactile cursor-pointer"
+            aria-label="Toggle navigation"
+          >
+            <List size={20} />
+          </button>
+          <Link to="/dashboard" className="flex items-center gap-2">
+            <img src={logoImg} alt="Techwiz GenAI" className="w-6 h-6 object-contain" />
+            <span className="font-semibold tracking-tight text-text-primary text-sm">{pageTitle}</span>
+          </Link>
+        </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -42,14 +52,6 @@ export function DashboardHeader({ onOpenDrawer }) {
             aria-label="Toggle theme"
           >
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-          <button
-            type="button"
-            onClick={onOpenDrawer}
-            className="p-2 rounded-[var(--radius-sm)] text-text-muted hover:text-text-primary hover:bg-surface btn-tactile cursor-pointer"
-            aria-label="Toggle navigation"
-          >
-            <List size={20} />
           </button>
         </div>
       </header>
