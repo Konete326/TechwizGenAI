@@ -16,14 +16,43 @@
           document.documentElement.classList.remove("dark");
         }
       } catch (e) {}
-      window.PUTER_QUIET = true;
       if (typeof customElements !== "undefined") {
         const origDef = customElements.define;
         customElements.define = function(name, constructor, options) {
-          if (customElements.get(name)) return;
-          return origDef.call(this, name, constructor, options);
+          try {
+            if (customElements.get(name)) return;
+            return origDef.call(this, name, constructor, options);
+          } catch (e) {}
         };
       }
+      const origLog = console.log;
+      const origInfo = console.info;
+      const origWarn = console.warn;
+      const filterPuter = (fn) => function(...args) {
+        try {
+          const text = args.map(a => (typeof a === "object" ? JSON.stringify(a) : String(a || ""))).join(" ");
+          if (/puter|apps\.puter\.com|puter-dialog/i.test(text)) return;
+        } catch (e) {}
+        return fn.apply(this, args);
+      };
+      console.log = filterPuter(origLog);
+      console.info = filterPuter(origInfo);
+      console.warn = filterPuter(origWarn);
+      window.puter = window.puter || {};
+      window.puter.quiet = true;
+      origLog.call(
+        console,
+        "%c" + [
+          " _____ _ _ _       ____              ",
+          "| ____| (_) |_ ___|  _ \\  _____   __ ",
+          "|  _| | | | __/ _ \\ | | |/ _ \\ \\ / / ",
+          "| |___| | | ||  __/ |_| |  __/\\ V /  ",
+          "|_____|_|_|\\__\\___|____/ \\___| \\_/   "
+        ].join("\n") + "\n%c EliteDev %c Techwiz GenAI ",
+        "color: #6366f1; font-family: monospace; font-weight: bold;",
+        "background: #6366f1; color: #ffffff; font-weight: bold; font-size: 11px; padding: 2px 6px; border-radius: 3px 0 0 3px;",
+        "background: #18181b; color: #a1a1aa; font-size: 11px; padding: 2px 6px; border-radius: 0 3px 3px 0;"
+      );
     </script>
     <script src="https://js.puter.com/v2/"></script>
   </head>
