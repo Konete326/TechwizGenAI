@@ -43,34 +43,34 @@ export function PersonaStarters({ persona = "general", onSelectStarter }) {
   const MetaIcon = meta.icon;
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-4 py-8 flex flex-col items-center text-center animate-in fade-in duration-300">
-      <div className="p-3.5 rounded-2xl bg-surface-card border border-border shadow-xl mb-3 flex items-center justify-center">
-        <img src={logoImg} alt="Techwiz GenAI" className="w-8 h-8 object-contain" />
+    <div className="w-full max-w-2xl mx-auto px-3 sm:px-4 py-3 sm:py-8 flex flex-col items-center text-center animate-in fade-in duration-300">
+      <div className="p-2 sm:p-3.5 rounded-xl sm:rounded-2xl bg-surface-card border border-border shadow-md sm:shadow-xl mb-2 sm:mb-3 flex items-center justify-center">
+        <img src={logoImg} alt="Techwiz GenAI" className="w-6 h-6 sm:w-8 sm:h-8 object-contain" />
       </div>
-      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-[11px] font-mono font-medium mb-2">
+      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-[11px] font-mono font-medium mb-1.5 sm:mb-2">
         {MetaIcon && <MetaIcon size={12} weight="bold" />}
         <span>{meta.badge}</span>
       </div>
-      <h2 className="text-lg font-semibold text-text-primary mb-1">What would you like to build?</h2>
-      <p className="text-xs text-text-muted max-w-md mb-6">{meta.subtitle}</p>
+      <h2 className="text-base sm:text-lg font-semibold text-text-primary mb-0.5 sm:mb-1">What would you like to build?</h2>
+      <p className="text-[11px] sm:text-xs text-text-muted max-w-md mb-3 sm:mb-6">{meta.subtitle}</p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full text-left">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 w-full text-left">
         {starters.map((item, idx) => (
           <button
             key={idx}
             type="button"
             onClick={() => onSelectStarter(item.prompt)}
-            className="group p-3.5 rounded-xl bg-surface-card hover:bg-surface border border-border hover:border-accent/40 shadow-sm transition-all duration-150 flex flex-col justify-between cursor-pointer"
+            className="group p-2.5 sm:p-3.5 rounded-xl bg-surface-card hover:bg-surface border border-border hover:border-accent/40 shadow-sm transition-all duration-150 flex flex-col justify-between cursor-pointer min-h-0"
           >
-            <div className="space-y-1.5 mb-3">
-              <h3 className="text-xs font-semibold text-text-primary group-hover:text-accent transition-colors">
+            <div className="space-y-0.5 sm:space-y-1.5 mb-1 sm:mb-3">
+              <h3 className="text-xs font-semibold text-text-primary group-hover:text-accent transition-colors truncate sm:whitespace-normal">
                 {item.title}
               </h3>
-              <p className="text-[11px] text-text-muted line-clamp-3 leading-relaxed">
+              <p className="text-[10px] sm:text-[11px] text-text-muted line-clamp-1 sm:line-clamp-3 leading-snug sm:leading-relaxed">
                 {item.prompt}
               </p>
             </div>
-            <div className="flex items-center gap-1 text-[10px] font-mono text-text-muted group-hover:text-accent transition-colors">
+            <div className="flex items-center gap-1 text-[9px] sm:text-[10px] font-mono text-text-muted group-hover:text-accent transition-colors mt-auto">
               <span>Start</span>
               <ArrowRight size={11} className="transition-transform group-hover:translate-x-0.5" />
             </div>
