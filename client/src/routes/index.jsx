@@ -8,6 +8,7 @@ import Settings from "../pages/Settings/index.jsx";
 import Profile from "../pages/Profile/index.jsx";
 import Notifications from "../pages/Notifications/index.jsx";
 import UsersView from "../pages/Users/index.jsx";
+import UserManagementView from "../pages/Admin/UserManagementView.jsx";
 import Analytics from "../pages/Analytics/index.jsx";
 import AuthLayout from "../pages/Auth/AuthLayout.jsx";
 
@@ -55,6 +56,14 @@ export const router = createBrowserRouter([
       {
         path: "users",
         element: <UsersView />
+      },
+      {
+        path: "admin",
+        element: <UserManagementView />
+      },
+      {
+        path: "admin/users",
+        element: <UserManagementView />
       },
       {
         path: "notifications",

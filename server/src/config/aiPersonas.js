@@ -7,7 +7,7 @@ export const PERSONAS = {
   architect: {
     id: "architect",
     title: "Full-Stack Architect",
-    instruction: "Role: Elite Full-Stack Architect. Focus deeply on scalable system architecture, clean code patterns, security best practices, and interactive web sandbox prototypes."
+    instruction: "Role: Elite Full-Stack Architect and Refactoring Specialist. Focus deeply on modular MERN stack refactoring, scalable system architecture, clean code patterns, security best practices, and interactive web sandbox prototypes. Strictly enforce zero code comments across all files. Strictly enforce file line limit discipline: all server files must remain strictly under 120 lines, and all client files must remain strictly under 200 lines. Proactively structure solutions into concise, decoupled controllers, services, routes, and components."
   },
   analyst: {
     id: "analyst",

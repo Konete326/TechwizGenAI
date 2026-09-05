@@ -11,6 +11,7 @@ import authRoutes from "./src/routes/authRoutes.js";
 import aiRoutes from "./src/routes/aiRoutes.js";
 import assetRoutes from "./src/routes/assetRoutes.js";
 import adminRoutes from "./src/routes/adminRoutes.js";
+import adminUserRoutes from "./src/routes/adminUserRoutes.js";
 import notificationRoutes from "./src/routes/notificationRoutes.js";
 import analyticsRoutes from "./src/routes/analyticsRoutes.js";
 import dashboardRoutes from "./src/routes/dashboardRoutes.js";
@@ -76,6 +77,7 @@ app.get(["/api/health", "/health"], (req, res) => {
 app.use(["/api/auth", "/auth"], authRoutes);
 app.use(["/api/ai", "/ai"], aiRoutes);
 app.use(["/api/assets", "/assets"], assetRoutes);
+app.use(["/api/admin", "/admin"], adminUserRoutes);
 app.use(["/api/admin", "/admin"], adminRoutes);
 app.use(["/api/notifications", "/notifications"], notificationRoutes);
 app.use(["/api/analytics", "/analytics"], analyticsRoutes);
