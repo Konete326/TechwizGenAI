@@ -78,23 +78,10 @@ export function NesaCallInterface({
 
       <div className="relative z-10 w-full px-4 pb-4 md:pb-3 pt-1 flex flex-col items-center gap-2 bg-gradient-to-t from-zinc-950/95 via-zinc-950/75 to-transparent">
         {!isRinging && (
-          <div className="flex items-center gap-2 transition-opacity duration-700">
+          <div className="flex items-center justify-center transition-opacity duration-700">
             <div className={`w-7 h-7 rounded-full border flex items-center justify-center backdrop-blur-md shadow-md shrink-0 relative transition-all ${isSpeaking ? "bg-accent/25 border-accent text-accent shadow-accent/20" : isListening ? "bg-emerald-950/50 border-emerald-500/60 text-emerald-400 shadow-emerald-500/20" : "bg-zinc-900/60 border-zinc-700 text-zinc-400"}`}>
               {isSpeaking && <span className="absolute inset-0 rounded-full bg-accent/30 animate-ping pointer-events-none" />}
               <Waveform size={14} weight="duotone" className={isSpeaking ? "animate-pulse scale-110" : ""} />
-            </div>
-
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-900/90 border border-zinc-800 backdrop-blur shadow-sm">
-              <span className={`w-1.5 h-1.5 rounded-full ${isSpeaking ? "bg-accent animate-ping" : isListening ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
-              <span className="text-[11px] font-medium text-zinc-200">{isSpeaking ? "Nesa is speaking..." : isListening ? "Nesa is listening..." : "Nesa is thinking..."}</span>
-            </div>
-          </div>
-        )}
-
-        {transcript && (
-          <div className="w-full max-h-14 flex items-center justify-center">
-            <div className="px-2.5 py-1 rounded-lg bg-zinc-900/90 border border-zinc-800/80 backdrop-blur-md text-[11px] text-zinc-200 shadow text-center max-h-12 overflow-y-auto leading-tight">
-              <span>{transcript}</span>
             </div>
           </div>
         )}

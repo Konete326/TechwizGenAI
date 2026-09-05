@@ -119,13 +119,13 @@ export function useGeminiLive() {
         ws.send(JSON.stringify({
           setup: {
             model: "models/gemini-2.5-flash-native-audio-latest",
-            generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } } },
-            systemInstruction: { parts: [{ text: "Role: You are Nesa, a helpful, polite, and female AI assistant. Language Rules: Speak in a highly humanized, natural, and dynamic way. Use very simple, everyday words. DO NOT use complex, difficult, or overly formal vocabulary. Whether you speak in English, Urdu, or Hindi, keep your sentences short, friendly, and extremely easy to understand. Remember to always use female grammatical gender in Urdu/Hindi (e.g., 'main samajh rahi hoon')." }] }
+            generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } }, thinkingConfig: { thinkingBudget: 0 } },
+            systemInstruction: { parts: [{ text: "Role: You are Nesa, a helpful, polite, and female AI assistant. Language Rules: Speak in a highly humanized, natural, and dynamic way. Use very simple, everyday words. Keep sentences short, friendly, and reply immediately in 1-2 sentences without delay. Never output internal thought or preamble. Always use female grammatical gender in Urdu/Hindi (e.g., 'main samajh rahi hoon')." }] }
           }
         }));
 
         const sourceNode = inputCtx.createMediaStreamSource(stream);
-        const processor = inputCtx.createScriptProcessor(4096, 1, 1);
+        const processor = inputCtx.createScriptProcessor(2048, 1, 1);
         processorRef.current = processor;
 
         processor.onaudioprocess = (e) => {
@@ -133,14 +133,11 @@ export function useGeminiLive() {
           const float32 = e.inputBuffer.getChannelData(0);
           const amplified = new Float32Array(float32.length);
           for (let i = 0; i < float32.length; i++) {
-            amplified[i] = Math.max(-1, Math.min(1, float32[i] * 2.5));
+            const val = float32[i];
+            amplified[i] = Math.abs(val) < 0.012 ? 0 : Math.max(-1, Math.min(1, val * 2.0));
           }
           const base64Data = base64EncodeAudio(amplified);
-          ws.send(JSON.stringify({
-            realtimeInput: {
-              mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Data }]
-            }
-          }));
+          ws.send(JSON.stringify({ realtimeInput: { mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Data }] } }));
         };
 
         sourceNode.connect(processor);
