@@ -25,3 +25,49 @@ export function base64DecodeAudio(base64String) {
   }
   return float32Array;
 }
+
+export function playRingingTone() {
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return () => {};
+  const ctx = new AudioCtx();
+  let isStopped = false;
+  let timer = null;
+
+  const playBurst = () => {
+    if (isStopped || ctx.state === "closed") return;
+    if (ctx.state === "suspended") ctx.resume();
+    try {
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc1.type = "sine";
+      osc2.type = "sine";
+      osc1.frequency.setValueAtTime(440, ctx.currentTime);
+      osc2.frequency.setValueAtTime(480, ctx.currentTime);
+
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 0.05);
+      gain.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 1.2);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.3);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(ctx.currentTime);
+      osc2.start(ctx.currentTime);
+      osc1.stop(ctx.currentTime + 1.3);
+      osc2.stop(ctx.currentTime + 1.3);
+    } catch {}
+  };
+
+  playBurst();
+  timer = setInterval(playBurst, 2500);
+
+  return () => {
+    isStopped = true;
+    if (timer) clearInterval(timer);
+    try { ctx.close(); } catch {}
+  };
+}

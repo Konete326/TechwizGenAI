@@ -4,6 +4,7 @@ import { Phone, PhoneCall, Waveform, Minus, X } from "@phosphor-icons/react";
 import logoImg from "@/assets/logo.png";
 import { NesaCallMinimized } from "./NesaCallMinimized";
 import { NesaCallVideos } from "./NesaCallVideos";
+import { playRingingTone } from "./audioUtils";
 
 export function NesaCallInterface({
   isActive = false, callPhase = "ended", isMinimized = false,
@@ -17,6 +18,12 @@ export function NesaCallInterface({
     if (callPhase !== "connected") { setDuration(0); return; }
     const timer = setInterval(() => setDuration((p) => p + 1), 1000);
     return () => clearInterval(timer);
+  }, [callPhase]);
+
+  useEffect(() => {
+    if (callPhase !== "ringing") return;
+    const stopTone = playRingingTone();
+    return () => stopTone();
   }, [callPhase]);
 
   if (!isActive && callPhase === "ended") return null;
@@ -33,12 +40,12 @@ export function NesaCallInterface({
         <div className="w-36 h-36 rounded-full bg-accent/10 animate-ping opacity-20 absolute" />
         <div className="w-28 h-28 rounded-full bg-accent/20 animate-ping opacity-40 absolute [animation-delay:200ms]" />
         <div className="w-20 h-20 rounded-full bg-accent/30 animate-ping opacity-60 absolute [animation-delay:400ms]" />
-        <div className="w-16 h-16 rounded-full bg-accent/25 border border-accent/80 flex items-center justify-center text-accent shadow-2xl shadow-accent/30 relative">
-          <PhoneCall size={28} weight="fill" className="animate-pulse" />
+        <div className="w-16 h-16 rounded-full border-2 border-accent/80 p-0.5 shadow-2xl shadow-accent/40 relative overflow-hidden bg-zinc-900 flex items-center justify-center">
+          <img src="/Nesa.jpeg" alt="Nesa" className="w-full h-full object-cover rounded-full" />
         </div>
       </div>
-      <h2 className="text-base font-semibold text-zinc-100 mb-1">Calling Nesa...</h2>
-      <p className="text-xs font-mono text-zinc-400 mb-6">Connecting secure audio stream</p>
+      <h2 className="text-base font-semibold text-zinc-100 mb-1">Ringing...</h2>
+      <p className="text-xs text-zinc-400 mb-6">Calling Nesa, picking up shortly</p>
       <button
         type="button"
         onClick={onEndCall}

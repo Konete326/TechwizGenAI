@@ -44,7 +44,7 @@ export function useNesaCall({ onSendMessage, onMicDenied } = {}) {
       isCallActiveRef.current = true;
       setIsCallActive(true);
       connect();
-    }, 2000);
+    }, 3000);
     return true;
   }, [connect, disconnect, onMicDenied]);
 
