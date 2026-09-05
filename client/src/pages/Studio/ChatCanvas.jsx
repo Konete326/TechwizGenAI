@@ -14,7 +14,8 @@ export function ChatCanvas({
   onRegenerate,
   onSendSuggested,
   onOpenArtifact,
-  onSelectChoice
+  onSelectChoice,
+  isSidebarOpen = false
 }) {
   const containerRef = useRef(null);
   const scrollBottomRef = useRef(null);
@@ -43,7 +44,9 @@ export function ChatCanvas({
     <div ref={containerRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
       <div className="w-full space-y-6">
         {messages.length === 0 && !isStreaming ? (
-          <PersonaStarters persona={activePersona} onSelectStarter={onSendSuggested} />
+          <div className={`w-full ${isSidebarOpen ? "hidden md:block" : "block"}`}>
+            <PersonaStarters persona={activePersona} onSelectStarter={onSendSuggested} />
+          </div>
         ) : (
           messages.map((m) => (
             <MessageBubble

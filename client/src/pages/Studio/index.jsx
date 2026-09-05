@@ -166,6 +166,7 @@ export function Studio() {
               onEdit={handleEditMessage} onRegenerate={handleRegenerate}
               onSendSuggested={(s) => handleSendMessage(s)} onOpenArtifact={setActiveArtifact}
               onSelectChoice={(c) => !isStreaming && handleSendMessage(c)}
+              isSidebarOpen={isSidebarOpen}
             />
             <ChatInput
               inputPrompt={inputPrompt} setInputPrompt={setInputPrompt}
