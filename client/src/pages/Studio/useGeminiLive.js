@@ -66,6 +66,11 @@ export function useGeminiLive() {
   const handleServerMessage = useCallback((event) => {
     try {
       const data = JSON.parse(event.data);
+      if (data.error) {
+        setConnectionError(data.error.message || "Gemini Live stream error occurred");
+        stopActiveAudio();
+        return;
+      }
       if (data.serverContent?.interrupted) {
         stopActiveAudio();
         return;
@@ -151,7 +156,8 @@ export function useGeminiLive() {
       };
       ws.onclose = (event) => {
         if (event && event.code !== 1000 && event.code !== 1005) {
-          setConnectionError(event.reason || `Connection closed with code ${event.code}`);
+          const reason = event.reason ? String(event.reason).trim() : "";
+          setConnectionError(reason || "WebSocket connection closed unexpectedly. Ensure the correct API key and model version are used.");
         }
         disconnect();
       };
