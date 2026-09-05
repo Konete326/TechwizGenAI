@@ -17,6 +17,7 @@ export function useGeminiLive() {
   const nextPlayTimeRef = useRef(0);
   const activeSourcesRef = useRef([]);
   const timerRef = useRef(null);
+  const isReadyRef = useRef(false);
 
   const stopActiveAudio = useCallback(() => {
     activeSourcesRef.current.forEach((src) => { try { src.stop(); } catch {} });
@@ -26,6 +27,7 @@ export function useGeminiLive() {
   }, []);
 
   const disconnect = useCallback(() => {
+    isReadyRef.current = false;
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
     stopActiveAudio();
@@ -57,32 +59,35 @@ export function useGeminiLive() {
 
     source.onended = () => {
       activeSourcesRef.current = activeSourcesRef.current.filter((s) => s !== source);
-      if (activeSourcesRef.current.length === 0) {
-        setIsSpeaking(false);
-      }
+      if (activeSourcesRef.current.length === 0) setIsSpeaking(false);
     };
   }, []);
 
-  const handleServerMessage = useCallback((event) => {
+  const handleServerMessage = useCallback(async (event) => {
     try {
-      const data = JSON.parse(event.data);
+      let raw = event.data;
+      if (typeof raw !== "string") {
+        raw = raw?.text ? await raw.text() : new TextDecoder().decode(raw);
+      }
+      const data = JSON.parse(raw);
+      if (data.setupComplete || data.setup_complete) {
+        isReadyRef.current = true;
+        return;
+      }
       if (data.error) {
         setConnectionError(data.error.message || "Gemini Live stream error occurred");
         stopActiveAudio();
         return;
       }
-      if (data.serverContent?.interrupted) {
-        stopActiveAudio();
-        return;
-      }
-      const parts = data.serverContent?.modelTurn?.parts || [];
+      const sc = data.serverContent || data.server_content;
+      if (sc?.interrupted) { stopActiveAudio(); return; }
+      const parts = (sc?.modelTurn || sc?.model_turn)?.parts || [];
       for (const part of parts) {
-        if (part.text) {
-          setTranscript((prev) => (prev ? prev + " " + part.text : part.text));
-        }
-        if (part.inlineData && part.inlineData.mimeType?.startsWith("audio/")) {
-          const float32 = base64DecodeAudio(part.inlineData.data);
-          scheduleAudioChunk(float32);
+        if (part.text) setTranscript((prev) => (prev ? prev + " " + part.text : part.text));
+        const inline = part.inlineData || part.inline_data;
+        const mime = inline?.mimeType || inline?.mime_type;
+        if (inline?.data && mime?.startsWith("audio/")) {
+          scheduleAudioChunk(base64DecodeAudio(inline.data));
         }
       }
     } catch {}
@@ -102,10 +107,7 @@ export function useGeminiLive() {
       const audioContext = new AudioCtx({ sampleRate: 24000 });
       outputAudioCtxRef.current = audioContext;
       nextPlayTimeRef.current = audioContext.currentTime;
-
-      if (audioContext.state === "suspended") {
-        await audioContext.resume();
-      }
+      if (audioContext.state === "suspended") await audioContext.resume();
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { channelCount: 1, sampleRate: 16000, echoCancellation: true, noiseSuppression: true }
@@ -113,9 +115,7 @@ export function useGeminiLive() {
       micStreamRef.current = stream;
 
       const inputCtx = new AudioCtx({ sampleRate: 16000 });
-      if (inputCtx.state === "suspended") {
-        await inputCtx.resume();
-      }
+      if (inputCtx.state === "suspended") await inputCtx.resume();
       inputAudioCtxRef.current = inputCtx;
 
       const ws = new WebSocket(`${WS_BASE_URL}?key=${apiKey}`);
@@ -141,11 +141,11 @@ export function useGeminiLive() {
         processorRef.current = processor;
 
         processor.onaudioprocess = (e) => {
-          if (ws.readyState !== WebSocket.OPEN) return;
+          if (ws.readyState !== WebSocket.OPEN || !isReadyRef.current) return;
           const float32 = e.inputBuffer.getChannelData(0);
           const base64Data = base64EncodeAudio(float32);
           ws.send(JSON.stringify({
-            realtimeInput: { mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Data }] }
+            realtimeInput: { audio: { mimeType: "audio/pcm;rate=16000", data: base64Data } }
           }));
         };
 
