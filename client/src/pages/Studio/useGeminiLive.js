@@ -118,7 +118,7 @@ export function useGeminiLive() {
         setIsConnected(true);
         ws.send(JSON.stringify({
           setup: {
-            model: "models/gemini-2.0-flash-exp",
+            model: "models/gemini-2.5-flash-native-audio-latest",
             generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } } },
             systemInstruction: { parts: [{ text: "Role: You are Nesa, a helpful, polite, and female AI assistant. Language Rules: Speak in a highly humanized, natural, and dynamic way. Use very simple, everyday words. DO NOT use complex, difficult, or overly formal vocabulary. Whether you speak in English, Urdu, or Hindi, keep your sentences short, friendly, and extremely easy to understand. Remember to always use female grammatical gender in Urdu/Hindi (e.g., 'main samajh rahi hoon')." }] }
           }
