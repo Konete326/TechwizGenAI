@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Coins, HardDrive, ArrowClockwise } from "@phosphor-icons/react";
+import { Coins, HardDrive, ArrowClockwise, CheckCircle } from "@phosphor-icons/react";
 import { VITE_API_URL } from "@/config/env";
 
 export function BillingSettings() {
@@ -30,7 +30,8 @@ export function BillingSettings() {
   const totalTokens = metrics?.tokens?.total || 0;
   const promptTokens = metrics?.tokens?.prompt || 0;
   const completionTokens = metrics?.tokens?.completion || 0;
-  const estimatedCost = Number(metrics?.cost || 0).toFixed(4);
+  const rawCost = Number(metrics?.cost ?? (totalTokens * 0.00000025));
+  const estimatedCost = rawCost.toFixed(4);
 
   const totalBytes = metrics?.storage?.totalBytes || 0;
   const maxBytes = 500 * 1024 * 1024;
@@ -55,6 +56,16 @@ export function BillingSettings() {
         </button>
       </div>
 
+      <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <CheckCircle size={18} className="shrink-0 text-emerald-500" />
+          <span>Free Beta Access: All AI model queries, voice calls, and storage are currently 100% free of charge.</span>
+        </div>
+        <span className="font-mono font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px] shrink-0">
+          $0.00 Billed
+        </span>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="p-5 rounded-xl border border-border bg-surface-card space-y-4">
           <div className="flex items-center justify-between">
@@ -62,8 +73,8 @@ export function BillingSettings() {
               <Coins size={16} className="text-accent" />
               <span>Token Consumption</span>
             </div>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-surface border border-border text-accent">
-              Active Tier
+            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-medium">
+              Free Tier
             </span>
           </div>
 
@@ -71,19 +82,24 @@ export function BillingSettings() {
             <div className="text-2xl font-bold text-text-primary font-mono">
               {totalTokens.toLocaleString()}
             </div>
-            <div className="text-xs text-text-muted mt-0.5">
-              Estimated usage cost: ${estimatedCost} USD
+            <div className="text-xs text-text-muted mt-1 flex flex-wrap items-center gap-1.5">
+              <span>Standard API value: ${estimatedCost} USD</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">(Waived - $0.00)</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/60 text-xs">
+          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/60 text-xs">
             <div>
-              <span className="text-text-muted block text-[11px]">Prompt Tokens</span>
+              <span className="text-text-muted block text-[11px]">Prompt</span>
               <span className="font-mono text-text-primary font-medium">{promptTokens.toLocaleString()}</span>
             </div>
             <div>
-              <span className="text-text-muted block text-[11px]">Completion Tokens</span>
+              <span className="text-text-muted block text-[11px]">Completion</span>
               <span className="font-mono text-text-primary font-medium">{completionTokens.toLocaleString()}</span>
+            </div>
+            <div>
+              <span className="text-text-muted block text-[11px]">Total Billed</span>
+              <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">$0.00</span>
             </div>
           </div>
         </div>
@@ -94,7 +110,7 @@ export function BillingSettings() {
               <HardDrive size={16} className="text-accent" />
               <span>Cloud Storage Allocated</span>
             </div>
-            <span className="text-[11px] font-mono text-text-muted">
+            <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-medium px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
               500 MB Free Tier
             </span>
           </div>
