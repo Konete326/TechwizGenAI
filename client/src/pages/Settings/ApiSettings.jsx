@@ -71,8 +71,8 @@ export function ApiSettings() {
           </div>
         </div>
 
-        <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-200 text-xs flex items-start gap-2.5">
-          <ShieldCheck size={18} className="shrink-0 text-amber-400 mt-0.5" />
+        <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-200 text-xs flex items-start gap-2.5">
+          <ShieldCheck size={18} className="shrink-0 text-amber-500 dark:text-amber-400 mt-0.5" />
           <p className="leading-relaxed text-[11px]">
             Security Notice: Your custom API key is stored strictly on your local browser device via secure web storage and is transmitted over encrypted headers per request. It is never logged into platform database tables.
           </p>

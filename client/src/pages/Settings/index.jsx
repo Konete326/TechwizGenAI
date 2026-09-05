@@ -15,7 +15,7 @@ export function Settings() {
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6 pb-12">
-      <div className="pb-3 border-b border-border/40">
+      <div className="pb-3 border-b border-border">
         <h2 className="text-xl font-bold tracking-tight text-text-primary">Global Settings</h2>
         <p className="text-xs text-text-muted mt-0.5">
           Manage identity, monitor storage & token quotas, and configure Bring-Your-Own-Key parameters.
@@ -23,7 +23,7 @@ export function Settings() {
       </div>
 
       <div className="flex flex-col md:flex-row gap-6 items-start">
-        <div className="w-full md:w-56 shrink-0 flex md:flex-col gap-1 overflow-x-auto pb-2 md:pb-0 border-b md:border-b-0 md:border-r border-border/40 md:pr-4">
+        <div className="w-full md:w-56 shrink-0 flex md:flex-col gap-1 overflow-x-auto pb-2 md:pb-0 border-b md:border-b-0 md:border-r border-border md:pr-4">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -34,8 +34,8 @@ export function Settings() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap text-left ${
                   isActive
-                    ? "bg-zinc-900 border border-border/40 text-text-primary shadow-xs"
-                    : "text-text-muted hover:text-text-primary hover:bg-zinc-900/40"
+                    ? "bg-surface-card border border-border text-accent shadow-xs font-semibold"
+                    : "text-text-muted hover:text-text-primary hover:bg-surface"
                 }`}
               >
                 <Icon size={16} className={isActive ? "text-accent" : "text-text-muted"} />
@@ -45,7 +45,7 @@ export function Settings() {
           })}
         </div>
 
-        <div className="flex-1 w-full min-w-0 bg-zinc-950 p-6 rounded-xl border border-border/40 shadow-xl">
+        <div className="flex-1 w-full min-w-0 bg-surface-card p-6 rounded-xl border border-border shadow-sm">
           {activeTab === "profile" && <ProfileSettings />}
           {activeTab === "billing" && <BillingSettings />}
           {activeTab === "api" && <ApiSettings />}
