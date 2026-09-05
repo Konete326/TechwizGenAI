@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import Draggable from "react-draggable";
-import { Phone, PhoneCall, Sparkle, Waveform, Minus, X } from "@phosphor-icons/react";
+import { Phone, PhoneCall, Waveform, Minus, X } from "@phosphor-icons/react";
+import logoImg from "@/assets/logo.png";
 import { NesaCallMinimized } from "./NesaCallMinimized";
 import { NesaCallVideos } from "./NesaCallVideos";
 
@@ -136,7 +137,7 @@ export function NesaCallInterface({
             >
               <X size={18} weight="bold" />
             </button>
-            <Sparkle size={16} weight="fill" className="text-accent" />
+            <img src={logoImg} alt="Techwiz GenAI" className="w-4 h-4 object-contain shrink-0" />
             <span className="text-xs font-semibold text-zinc-100">Nesa</span>
           </div>
           <span className="text-xs font-mono text-zinc-300">{durationText}</span>
@@ -158,7 +159,7 @@ export function NesaCallInterface({
             <div className="md:w-[340px] md:h-[520px] rounded-xl border border-white/10 bg-zinc-950/90 backdrop-blur-md shadow-2xl flex flex-col overflow-hidden relative">
               <div className="call-drag-handle cursor-grab active:cursor-grabbing bg-gradient-to-b from-zinc-950/80 to-transparent p-3 flex justify-between items-center z-20 absolute top-0 w-full select-none">
                 <div className="flex items-center gap-2">
-                  <Sparkle size={14} weight="fill" className="text-accent" />
+                  <img src={logoImg} alt="Techwiz GenAI" className="w-4 h-4 object-contain shrink-0" />
                   <span className="text-xs font-medium text-zinc-200">Call with Nesa</span>
                   <span className="text-[10px] font-mono text-zinc-400">{durationText}</span>
                 </div>

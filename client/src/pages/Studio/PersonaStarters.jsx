@@ -1,4 +1,5 @@
-import { UserGear, ChartBar, FileText, GitFork, Sparkle, ArrowRight } from "@phosphor-icons/react";
+import { UserGear, ChartBar, FileText, GitFork, ArrowRight } from "@phosphor-icons/react";
+import logoImg from "@/assets/logo.png";
 
 const STARTER_PROMPTS = {
   general: [
@@ -29,7 +30,7 @@ const STARTER_PROMPTS = {
 };
 
 const PERSONA_META = {
-  general: { icon: Sparkle, badge: "General Assistant", subtitle: "Ask any question, code challenge, or analysis task" },
+  general: { icon: null, badge: "General Assistant", subtitle: "Ask any question, code challenge, or analysis task" },
   architect: { icon: UserGear, badge: "Full-Stack Architect", subtitle: "Build interactive apps, sandboxes, and system blueprints" },
   analyst: { icon: ChartBar, badge: "Quantitative Analyst", subtitle: "Explore datasets, financial models, and structured metrics" },
   writer: { icon: FileText, badge: "Executive Specialist", subtitle: "Generate authoritative executive reports and documentation" },
@@ -43,10 +44,11 @@ export function PersonaStarters({ persona = "general", onSelectStarter }) {
 
   return (
     <div className="w-full max-w-2xl mx-auto px-4 py-8 flex flex-col items-center text-center animate-in fade-in duration-300">
-      <div className="p-3.5 rounded-2xl bg-surface-card border border-border shadow-xl mb-3 text-accent">
-        <MetaIcon size={32} weight="duotone" />
+      <div className="p-3.5 rounded-2xl bg-surface-card border border-border shadow-xl mb-3 flex items-center justify-center">
+        <img src={logoImg} alt="Techwiz GenAI" className="w-8 h-8 object-contain" />
       </div>
       <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-[11px] font-mono font-medium mb-2">
+        {MetaIcon && <MetaIcon size={12} weight="bold" />}
         <span>{meta.badge}</span>
       </div>
       <h2 className="text-lg font-semibold text-text-primary mb-1">What would you like to build?</h2>
