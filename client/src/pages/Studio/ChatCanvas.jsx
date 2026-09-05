@@ -41,10 +41,17 @@ export function ChatCanvas({
     }
   }, [activeSession?.id, stop]);
 
+  const lastScrollTimeRef = useRef(0);
+
   useEffect(() => {
     const isNewUserMsg = messages.length > 0 && messages[messages.length - 1]?.role === "user";
     if (isNewUserMsg) isAtBottomRef.current = true;
     if (!isAtBottomRef.current) return;
+
+    const now = performance.now();
+    if (streamingText && now - lastScrollTimeRef.current < 60) return;
+    lastScrollTimeRef.current = now;
+
     const frameId = requestAnimationFrame(() => {
       if (containerRef.current && isAtBottomRef.current) {
         containerRef.current.scrollTop = containerRef.current.scrollHeight;

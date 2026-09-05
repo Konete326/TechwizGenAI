@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, memo } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -32,7 +32,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   return null;
 };
 
-export function DashboardChart({
+export const DashboardChart = memo(function DashboardChart({
   type = "bar",
   title = "Analytical Chart",
   data = []
@@ -138,6 +138,6 @@ export function DashboardChart({
       )}
     </div>
   );
-}
+});
 
 export default DashboardChart;

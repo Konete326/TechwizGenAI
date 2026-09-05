@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import {
   PencilSimple,
   ArrowClockwise,
@@ -30,7 +30,7 @@ function DocumentBadge({ attachment, name }) {
   );
 }
 
-export function MessageBubble({ message, onEdit, onRegenerate, isStreaming, onOpenArtifact, onSpeak, isSpeakingThisMessage, onSelectChoice }) {
+export const MessageBubble = memo(function MessageBubble({ message, onEdit, onRegenerate, isStreaming, onOpenArtifact, onSpeak, isSpeakingThisMessage, onSelectChoice }) {
   const [copied, setCopied] = useState(false);
   const isUser = message.role === "user";
   const isDoc = message.attachmentType === "document" || Boolean(message.attachmentName && !String(message.attachment || "").startsWith("data:image/"));
@@ -158,6 +158,6 @@ export function MessageBubble({ message, onEdit, onRegenerate, isStreaming, onOp
       </div>
     </div>
   );
-}
+});
 
 export default MessageBubble;
