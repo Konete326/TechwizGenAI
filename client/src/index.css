@@ -175,3 +175,15 @@ body {
 .animate-shimmer {
   animation: shimmer 2s infinite linear;
 }
+
+@keyframes vibrate {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-2px, 1.5px); }
+  40% { transform: translate(-1.5px, -1.5px); }
+  60% { transform: translate(1.5px, 2px); }
+  80% { transform: translate(1.5px, -1px); }
+}
+
+.animate-vibrate {
+  animation: vibrate 0.25s linear infinite;
+}

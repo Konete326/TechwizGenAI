@@ -16,7 +16,18 @@ export function NesaCallInterface({
   const nodeRef = useRef(null);
 
   useEffect(() => {
-    if (callPhase === "ringing") return playRingingTone();
+    if (callPhase === "ringing") {
+      const stopTone = playRingingTone();
+      const hasVib = typeof navigator !== "undefined" && Boolean(navigator.vibrate);
+      const doVib = () => { try { navigator.vibrate([400, 200, 400, 1000]); } catch {} };
+      if (hasVib) doVib();
+      const vibId = hasVib ? setInterval(doVib, 2000) : null;
+      return () => {
+        stopTone();
+        if (vibId) clearInterval(vibId);
+        if (hasVib) { try { navigator.vibrate(0); } catch {} }
+      };
+    }
     if (callPhase === "connected") {
       const timer = setInterval(() => setDuration((p) => p + 1), 1000);
       return () => clearInterval(timer);
@@ -34,7 +45,7 @@ export function NesaCallInterface({
 
   const renderRinging = () => (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-zinc-950/90 backdrop-blur-md text-zinc-100 p-6 select-none">
-      <div className="relative flex items-center justify-center mb-8">
+      <div className="relative flex items-center justify-center mb-8 animate-vibrate">
         <div className="w-36 h-36 rounded-full bg-accent/10 animate-ping opacity-20 absolute" />
         <div className="w-28 h-28 rounded-full bg-accent/20 animate-ping opacity-40 absolute [animation-delay:200ms]" />
         <div className="w-20 h-20 rounded-full bg-accent/30 animate-ping opacity-60 absolute [animation-delay:400ms]" />
