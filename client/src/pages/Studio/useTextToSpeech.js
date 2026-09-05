@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { base64DecodeAudio } from "./audioUtils";
+
+const TTS_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent";
 
 export function sanitizeForSpeech(text) {
   if (!text) return "";
@@ -23,53 +26,32 @@ export function detectLanguage(text) {
   return { lang: "en", bcp47: "en-US" };
 }
 
-function findVoice(voices, { lang, bcp47 }) {
-  if (!voices?.length) return null;
-  const isNatural = (v) => {
-    const n = (v.name || "").toLowerCase();
-    return n.includes("natural") || n.includes("google") || n.includes("neural") || n.includes("online");
-  };
-
-  const matchesExact = voices.filter((v) => v.lang?.toLowerCase() === bcp47.toLowerCase());
-  const bestExact = matchesExact.find(isNatural) || matchesExact[0];
-  if (bestExact) return bestExact;
-
-  const matchesLang = voices.filter((v) => v.lang?.toLowerCase().startsWith(lang));
-  const bestLang = matchesLang.find(isNatural) || matchesLang[0];
-  if (bestLang) return bestLang;
-
-  if (lang === "ur") {
-    const fallbackUrdu = voices.filter((v) => v.lang?.toLowerCase().startsWith("hi") || v.lang?.toLowerCase().startsWith("ar"));
-    const bestUrdu = fallbackUrdu.find(isNatural) || fallbackUrdu[0];
-    if (bestUrdu) return bestUrdu;
-  }
-
-  const matchesEn = voices.filter((v) => v.lang?.toLowerCase().startsWith("en"));
-  return matchesEn.find(isNatural) || matchesEn[0] || voices[0] || null;
-}
-
 export function useTextToSpeech() {
   const [speakingMessageId, setSpeakingMessageId] = useState(null);
-  const [voices, setVoices] = useState([]);
-  const utteranceRef = useRef(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    const load = () => { const v = window.speechSynthesis.getVoices(); if (v?.length) setVoices(v); };
-    load();
-    window.speechSynthesis.addEventListener("voiceschanged", load);
-    return () => window.speechSynthesis.removeEventListener("voiceschanged", load);
-  }, []);
+  const audioCtxRef = useRef(null);
+  const currentSourceRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   const stop = useCallback(() => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    if (currentSourceRef.current) {
+      try { currentSourceRef.current.stop(); } catch {}
+      currentSourceRef.current = null;
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try { window.speechSynthesis.cancel(); } catch {}
+    }
     setSpeakingMessageId(null);
-    utteranceRef.current = null;
   }, []);
 
-  const speak = useCallback((messageId, rawText, onEnd) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    if (speakingMessageId === messageId) return stop();
+  const speak = useCallback(async (messageId, rawText, onEnd) => {
+    if (speakingMessageId === messageId) {
+      stop();
+      return;
+    }
     stop();
 
     const cleanText = sanitizeForSpeech(rawText);
@@ -78,36 +60,80 @@ export function useTextToSpeech() {
       return;
     }
 
-    const detected = detectLanguage(cleanText);
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    utterance.lang = detected.bcp47;
+    setSpeakingMessageId(messageId);
 
-    const allVoices = voices.length ? voices : window.speechSynthesis.getVoices();
-    const matchedVoice = findVoice(allVoices, detected);
-    if (matchedVoice) {
-      utterance.voice = matchedVoice;
-      utterance.lang = matchedVoice.lang || detected.bcp47;
+    const apiKey = localStorage.getItem("techwiz_custom_api_key") ||
+      localStorage.getItem("custom_api_key") ||
+      import.meta.env.VITE_GEMINI_API_KEY || "";
+
+    if (apiKey) {
+      try {
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        const res = await fetch(`${TTS_URL}?key=${apiKey}`, {
+          method: "POST",
+          signal: controller.signal,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: cleanText.slice(0, 1500) }] }],
+            generationConfig: {
+              responseModalities: ["AUDIO"],
+              speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } }
+            }
+          })
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          const base64Data = json.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+          if (base64Data) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            const ctx = audioCtxRef.current || new AudioCtx({ sampleRate: 24000 });
+            audioCtxRef.current = ctx;
+            if (ctx.state === "suspended") await ctx.resume();
+
+            const float32 = base64DecodeAudio(base64Data);
+            const buffer = ctx.createBuffer(1, float32.length, 24000);
+            buffer.copyToChannel(float32, 0);
+
+            const source = ctx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(ctx.destination);
+            currentSourceRef.current = source;
+
+            source.onended = () => {
+              if (currentSourceRef.current === source) {
+                currentSourceRef.current = null;
+                setSpeakingMessageId(null);
+                if (onEnd) onEnd();
+              }
+            };
+
+            source.start(0);
+            return;
+          }
+        }
+      } catch (err) {
+        if (err.name === "AbortError") return;
+      }
     }
 
-    const handleReset = () => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      const detected = detectLanguage(cleanText);
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.lang = detected.bcp47;
+      utterance.onend = () => { setSpeakingMessageId(null); if (onEnd) onEnd(); };
+      utterance.onerror = () => { setSpeakingMessageId(null); if (onEnd) onEnd(); };
+      window.speechSynthesis.speak(utterance);
+    } else {
       setSpeakingMessageId(null);
-      utteranceRef.current = null;
-      if (onEnd) onEnd();
-    };
-    utterance.onend = handleReset;
-    utterance.onerror = handleReset;
-    utteranceRef.current = utterance;
-    setSpeakingMessageId(messageId);
-    window.speechSynthesis.speak(utterance);
-  }, [speakingMessageId, stop, voices]);
+    }
+  }, [speakingMessageId, stop]);
 
   useEffect(() => {
-    return () => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
-    };
-  }, []);
+    return () => stop();
+  }, [stop]);
 
   return { speakingMessageId, speak, stop };
 }
