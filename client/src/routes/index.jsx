@@ -9,7 +9,6 @@ import Profile from "../pages/Profile/index.jsx";
 import Notifications from "../pages/Notifications/index.jsx";
 import UsersView from "../pages/Users/index.jsx";
 import UserManagementView from "../pages/Admin/UserManagementView.jsx";
-import AdminAssetsView from "../pages/Admin/AdminAssetsView.jsx";
 import Analytics from "../pages/Analytics/index.jsx";
 import AuthLayout from "../pages/Auth/AuthLayout.jsx";
 
@@ -64,7 +63,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "admin/assets",
-        element: <AdminAssetsView />
+        element: <Navigate to="/assets" replace />
       },
       {
         path: "notifications",

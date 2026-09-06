@@ -72,13 +72,9 @@ export const streamChat = async (req, res, next, isRegenerate = false) => {
       const resolvedAttachment = attachmentType === "document" ? (attachmentData || null) : (imageBase64 || null);
       const resolvedType = attachmentType !== "none" ? attachmentType : (imageBase64 ? "image" : "none");
       await ChatMessage.create({ sessionId: session._id, role: "user", text: cleanPrompt, attachment: resolvedAttachment, attachmentType: resolvedType, attachmentName: attachmentName || null });
-      if (resolvedAttachment) {
-        autoPersistDocumentAsset(req.user._id, { name: attachmentName, data: resolvedAttachment, type: resolvedType }).catch(() => {});
-      }
+      if (resolvedAttachment) autoPersistDocumentAsset(req.user._id, { name: attachmentName, data: resolvedAttachment, type: resolvedType }).catch(() => {});
       if (Array.isArray(documents)) {
-        for (const doc of documents) {
-          autoPersistDocumentAsset(req.user._id, { name: doc.name || doc.fileName, data: doc.data || doc.base64, type: doc.type }).catch(() => {});
-        }
+        for (const doc of documents) autoPersistDocumentAsset(req.user._id, { name: doc.name || doc.fileName, data: doc.data || doc.base64, type: doc.type }).catch(() => {});
       }
       if (session.title === "New Chat" || !session.title) {
         const words = cleanPrompt.trim().split(/\s+/).slice(0, 5).join(" ");

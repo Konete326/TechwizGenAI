@@ -132,6 +132,14 @@ export function AssetPreviewModal({ asset, onClose }) {
               <span className="text-text-muted block text-[10px]">Uploaded</span>
               <span className="text-text-primary font-medium">{new Date(asset.createdAt).toLocaleDateString()}</span>
             </div>
+            {asset.ownerName && (
+              <div className="p-2 rounded bg-surface border border-border col-span-2 sm:col-span-3">
+                <span className="text-text-muted block text-[10px]">Asset Owner</span>
+                <span className="text-accent font-medium truncate block" title={asset.ownerEmail ? `${asset.ownerName} (${asset.ownerEmail})` : asset.ownerName}>
+                  {asset.ownerName} {asset.ownerEmail ? `(${asset.ownerEmail})` : ""}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-1 flex-wrap">

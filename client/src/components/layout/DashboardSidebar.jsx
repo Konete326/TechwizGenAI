@@ -8,7 +8,6 @@ import {
   Users,
   User,
   X,
-  HardDrive,
   SidebarSimple
 } from "@phosphor-icons/react";
 import logoImg from "@/assets/logo.png";
@@ -35,7 +34,7 @@ export function DashboardSidebar({
     { label: "Studio", href: "/studio", icon: Sparkle },
     { label: "Assets", href: "/assets", icon: ImageSquare },
     { label: "Analytics", href: "/analytics", icon: ChartLineUp },
-    ...(isAdmin ? [{ label: "Users", href: "/admin", icon: Users }, { label: "Admin Assets", href: "/admin/assets", icon: HardDrive }] : []),
+    ...(isAdmin ? [{ label: "Users", href: "/admin", icon: Users }] : []),
     { label: "Profile", href: "/profile", icon: User },
     { label: "Settings", href: "/settings", icon: Gear }
   ];

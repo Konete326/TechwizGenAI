@@ -31,7 +31,9 @@ export function useAssets() {
               publicId: "avatar_" + (storedUser.id || "admin"),
               format: "png",
               bytes: 42800,
-              createdAt: storedUser.createdAt || new Date().toISOString()
+              createdAt: storedUser.createdAt || new Date().toISOString(),
+              ownerName: storedUser.name || "Admin",
+              ownerEmail: storedUser.email || ""
             },
             ...assetList
           ];

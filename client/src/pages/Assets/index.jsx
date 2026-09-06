@@ -22,6 +22,15 @@ export function Assets() {
   const [assetToDelete, setAssetToDelete] = useState(null);
   const toast = useToast();
 
+  const user = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "{}");
+    } catch {
+      return {};
+    }
+  })();
+  const isAdmin = user?.role === "admin";
+
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedFormat]);
@@ -39,12 +48,13 @@ export function Assets() {
       result = result.filter((a) => a.format?.toLowerCase() === selectedFormat.toLowerCase());
     }
     if (searchQuery.trim()) {
-      try {
-        const regex = new RegExp(searchQuery.trim(), "i");
-        result = result.filter((a) => regex.test(a.title));
-      } catch {
-        result = result.filter((a) => a.title.toLowerCase().includes(searchQuery.toLowerCase().trim()));
-      }
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter((a) => {
+        const titleMatch = (a.title || "").toLowerCase().includes(q);
+        const ownerNameMatch = (a.ownerName || "").toLowerCase().includes(q);
+        const ownerEmailMatch = (a.ownerEmail || "").toLowerCase().includes(q);
+        return titleMatch || ownerNameMatch || ownerEmailMatch;
+      });
     }
     return result;
   }, [assets, searchQuery, selectedFormat]);
@@ -57,7 +67,7 @@ export function Assets() {
 
   return (
     <div className="w-full space-y-6 pb-12">
-      <AssetHeader totalCount={assets.length} onOpenUpload={() => setIsUploaderOpen(true)} />
+      <AssetHeader totalCount={assets.length} onOpenUpload={() => setIsUploaderOpen(true)} isAdmin={isAdmin} />
 
       <AssetSearchFilter
         searchQuery={searchQuery}
@@ -89,7 +99,7 @@ export function Assets() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {paginatedAssets.map((asset) => (
-              <AssetCard key={asset.id} asset={asset} onPreview={setPreviewAsset} onDelete={setAssetToDelete} />
+              <AssetCard key={asset.id} asset={asset} onPreview={setPreviewAsset} onDelete={setAssetToDelete} isAdmin={isAdmin} />
             ))}
           </div>
 

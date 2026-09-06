@@ -27,8 +27,10 @@ export const uploadAsset = async (req, res, next) => {
 
 export const getAssets = async (req, res, next) => {
   try {
-    const userId = req.user._id || req.user.id;
-    const assets = await fetchUserAssets(userId, req.query.q);
+    const isAdmin = req.user?.role === "admin";
+    const assets = isAdmin
+      ? await fetchAdminAssets(req.query.q)
+      : await fetchUserAssets(req.user._id || req.user.id, req.query.q);
 
     return res.status(200).json({
       success: true,
@@ -40,7 +42,8 @@ export const getAssets = async (req, res, next) => {
         format: item.format,
         bytes: item.bytes,
         createdAt: item.createdAt,
-        ownerName: item.ownerName
+        ownerName: item.ownerName,
+        ownerEmail: item.ownerEmail
       }))
     });
   } catch (error) {

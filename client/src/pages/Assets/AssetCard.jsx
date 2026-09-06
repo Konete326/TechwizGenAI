@@ -12,7 +12,7 @@ function CornerBracket() {
   );
 }
 
-export function AssetCard({ asset, onPreview, onDelete }) {
+export function AssetCard({ asset, onPreview, onDelete, isAdmin }) {
   const [copied, setCopied] = useState(false);
   const [imgError, setImgError] = useState(false);
 
@@ -87,14 +87,16 @@ export function AssetCard({ asset, onPreview, onDelete }) {
           </h4>
           <div className="flex items-center justify-between text-[11px] font-mono text-text-muted mt-1">
             <span>{formatSize(asset.bytes)}</span>
-            {asset.ownerName ? (
-              <span className="text-[10px] text-accent font-mono truncate max-w-[90px]" title={asset.ownerName}>
+            <span>{new Date(asset.createdAt).toLocaleDateString()}</span>
+          </div>
+          {isAdmin && asset.ownerName && (
+            <div className="flex items-center gap-1 text-[10px] text-accent font-mono pt-1">
+              <span className="text-text-muted">Owner:</span>
+              <span className="truncate max-w-[130px] font-medium" title={asset.ownerEmail ? `${asset.ownerName} (${asset.ownerEmail})` : asset.ownerName}>
                 {asset.ownerName}
               </span>
-            ) : (
-              <span>{new Date(asset.createdAt).toLocaleDateString()}</span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between pt-2 border-t border-border/50 gap-2">
