@@ -15,7 +15,7 @@ import { useNesaCall } from "./useNesaCall";
 export function Studio() {
   const toast = useToast();
   const [inputPrompt, setInputPrompt] = useState("");
-  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem("selected_ai_model") || "gemini-3.7-flash");
+  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem("selected_ai_model") || "gemini-3.8-flash");
   const [activePersona, setActivePersona] = useState("general");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState("");

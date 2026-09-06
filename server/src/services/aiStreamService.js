@@ -9,7 +9,7 @@ export const getAiClient = (customApiKey) => {
 };
 
 export const createModelStream = async ({ client, model, contents, systemInstruction, customApiKey, persona }) => {
-  const primaryModel = model || "gemini-3.6-flash";
+  const primaryModel = model || "gemini-3.8-flash";
   const personaSuffix = persona ? ` ${getPersonaInstruction(persona)}` : "";
   const finalInstruction = `${systemInstruction || ""}${personaSuffix}`.trim();
   try {
@@ -17,7 +17,7 @@ export const createModelStream = async ({ client, model, contents, systemInstruc
   } catch (apiErr) {
     if (customApiKey) throw apiErr;
     try {
-      return await client.models.generateContentStream({ model: "gemini-3.5-flash", contents, config: { systemInstruction: finalInstruction } });
+      return await client.models.generateContentStream({ model: "gemini-3.8-flash", contents, config: { systemInstruction: finalInstruction } });
     } catch {
       return await client.models.generateContentStream({ model: "gemini-3.7-flash", contents, config: { systemInstruction: finalInstruction } });
     }

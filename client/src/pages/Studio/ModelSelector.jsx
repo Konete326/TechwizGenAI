@@ -5,10 +5,16 @@ import { useToast } from "@/context/ToastContext";
 
 export const MODEL_TIERS = [
   {
+    id: "gemini-3.8-flash",
+    name: "Gemini 3.8 Flash",
+    tag: "Flagship Ultra",
+    desc: "State of the art multimodal reasoning, speed, and analytical depth."
+  },
+  {
     id: "gemini-3.7-flash",
     name: "Gemini 3.7 Flash",
     tag: "Reasoning Pro",
-    desc: "Next-gen flagship reasoning and multi-modal intelligence (Latest)."
+    desc: "Next-gen flagship reasoning and multi-modal intelligence."
   },
   {
     id: "gemini-3.6-flash",
@@ -36,7 +42,7 @@ export function ModelSelector({ selectedModel, onSelectModel }) {
   const toast = useToast();
 
   const [activeModel, setActiveModel] = useState(() => {
-    return selectedModel || localStorage.getItem("selected_ai_model") || "gemini-3.7-flash";
+    return selectedModel || localStorage.getItem("selected_ai_model") || "gemini-3.8-flash";
   });
 
   useEffect(() => {
