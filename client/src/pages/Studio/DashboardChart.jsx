@@ -1,4 +1,4 @@
-import { useRef, memo } from "react";
+import { useRef, memo, useState, useEffect } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -38,7 +38,15 @@ export const DashboardChart = memo(function DashboardChart({
   data = []
 }) {
   const chartRef = useRef(null);
+  const [isAnimationActive, setIsAnimationActive] = useState(true);
   const chartType = (type || "bar").toLowerCase();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsAnimationActive(false);
+    }, 700);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleDownload = () => {
     if (!chartRef.current) return;
@@ -81,13 +89,13 @@ export const DashboardChart = memo(function DashboardChart({
       </div>
 
       <div ref={chartRef} className="h-64 w-full min-w-0 text-xs font-mono">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" debounce={80}>
           {chartType === "line" ? (
             <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <XAxis dataKey="name" stroke="#71717a" fontSize={11} tickLine={false} />
               <YAxis stroke="#71717a" fontSize={11} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Line type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={2.5} dot={{ r: 3, fill: "#8b5cf6" }} activeDot={{ r: 5 }} />
+              <Line type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={2.5} dot={{ r: 3, fill: "#8b5cf6" }} activeDot={{ r: 5 }} isAnimationActive={isAnimationActive} animationDuration={600} animationEasing="ease-out" />
             </LineChart>
           ) : chartType === "area" ? (
             <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -100,12 +108,12 @@ export const DashboardChart = memo(function DashboardChart({
               <XAxis dataKey="name" stroke="#71717a" fontSize={11} tickLine={false} />
               <YAxis stroke="#71717a" fontSize={11} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#areaGrad)" />
+              <Area type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#areaGrad)" isAnimationActive={isAnimationActive} animationDuration={600} animationEasing="ease-out" />
             </AreaChart>
           ) : chartType === "pie" ? (
             <PieChart>
               <Tooltip content={<CustomTooltip />} />
-              <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={42} paddingAngle={3}>
+              <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={42} paddingAngle={3} isAnimationActive={isAnimationActive} animationDuration={600} animationEasing="ease-out">
                 {data.map((_, idx) => (
                   <Cell key={idx} fill={PALETTE[idx % PALETTE.length]} />
                 ))}
@@ -116,7 +124,7 @@ export const DashboardChart = memo(function DashboardChart({
               <XAxis dataKey="name" stroke="#71717a" fontSize={11} tickLine={false} />
               <YAxis stroke="#71717a" fontSize={11} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]}>
+              <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} isAnimationActive={isAnimationActive} animationDuration={600} animationEasing="ease-out">
                 {data.map((_, idx) => (
                   <Cell key={idx} fill={PALETTE[idx % PALETTE.length]} />
                 ))}
@@ -138,6 +146,12 @@ export const DashboardChart = memo(function DashboardChart({
       )}
     </div>
   );
+}, (prev, next) => {
+  if (prev.type !== next.type || prev.title !== next.title) return false;
+  if (prev.data === next.data) return true;
+  if (!Array.isArray(prev.data) || !Array.isArray(next.data)) return false;
+  if (prev.data.length !== next.data.length) return false;
+  return prev.data.every((d, i) => d.name === next.data[i].name && d.value === next.data[i].value);
 });
 
 export default DashboardChart;

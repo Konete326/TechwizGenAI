@@ -33,7 +33,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, onOpen
       }
 
       const parsed = parseChartFromText(raw);
-      if (parsed) return <DashboardChart type={parsed.type} title={parsed.title} data={parsed.data} />;
+      if (parsed) return <DashboardChart key={raw} type={parsed.type} title={parsed.title} data={parsed.data} />;
       if (isDiagram) return <MermaidChart chart={raw} onOpenArtifact={onOpenArtifact} isStreaming={isStreaming} />;
 
       const langMatch = /language-(html|javascript|js|jsx|svg)/i.exec(className || "");
