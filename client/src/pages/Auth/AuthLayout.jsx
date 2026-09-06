@@ -5,8 +5,8 @@ import { AuthFormContainer } from "./AuthForms";
 
 const defaultSignInContent = {
   image: {
-    src: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop",
-    alt: "High performance AI computing architecture"
+    src: "/signin.gif",
+    alt: "Sign in animation"
   },
   quote: {
     text: "Welcome Back! The journey continues.",
@@ -16,8 +16,8 @@ const defaultSignInContent = {
 
 const defaultSignUpContent = {
   image: {
-    src: "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=1200&auto=format&fit=crop",
-    alt: "Vibrant creative digital art studio"
+    src: "/signup.gif",
+    alt: "Sign up animation"
   },
   quote: {
     text: "Create an account. A new chapter awaits.",
@@ -48,10 +48,14 @@ export function AuthLayout({ defaultIsSignIn = true }) {
       </div>
 
       <div
-        className="hidden md:block relative bg-cover bg-center transition-all duration-500 ease-in-out border-border"
-        style={{ backgroundImage: `url(${currentContent.image.src})` }}
+        className="hidden md:block relative bg-cover bg-center transition-all duration-500 ease-in-out border-border overflow-hidden"
         key={currentContent.image.src}
       >
+        <img
+          src={currentContent.image.src}
+          alt={currentContent.image.alt}
+          className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
+        />
         <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" />
         <div className="absolute inset-x-0 bottom-0 h-[150px] bg-gradient-to-t from-background to-transparent" />
 
