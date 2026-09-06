@@ -12,6 +12,8 @@ export function ChatInput({
   isStreaming,
   onStop,
   selectedModel = "gemini-3.7-flash",
+  attachedImages = [],
+  setAttachedImages,
   attachedImage,
   setAttachedImage
 }) {
@@ -24,13 +26,20 @@ export function ChatInput({
     setPendingImageSrc,
     isCropOpen,
     setIsCropOpen,
-    attachedDoc,
-    setAttachedDoc,
+    attachedDocs,
     handleAttachmentClick,
     handleFileChange,
     handlePaste,
-    handleCropSuccess
-  } = useChatAttachment({ setAttachedImage, selectedModel });
+    handleCropSuccess,
+    removeImage,
+    removeDoc,
+    clearAllAttachments
+  } = useChatAttachment({ attachedImages, setAttachedImages, attachedImage, setAttachedImage, selectedModel });
+
+  const currentImgList = Array.isArray(attachedImages) && attachedImages.length > 0 ? attachedImages : (attachedImage ? [attachedImage] : []);
+  const hasImages = currentImgList.length > 0;
+  const hasDocs = attachedDocs.length > 0;
+  const hasAttachment = Boolean(hasImages || hasDocs);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -42,38 +51,17 @@ export function ChatInput({
   const handleFormSubmit = (e) => {
     if (e) e.preventDefault();
     if (isStreaming) return;
-    if (!inputPrompt.trim() && !attachedImage && !attachedDoc) return;
-
-    if (attachedDoc) {
-      onSubmit({
-        text: inputPrompt,
-        attachmentType: "document",
-        attachmentName: attachedDoc.name,
-        attachmentData: attachedDoc.data
-      });
-      setAttachedDoc(null);
-      setInputPrompt("");
-      return;
-    }
-
-    if (attachedImage) {
-      onSubmit({
-        text: inputPrompt,
-        attachmentType: "image",
-        attachmentName: null,
-        attachmentData: attachedImage
-      });
-      setAttachedImage(null);
-      setInputPrompt("");
-      return;
-    }
+    if (!inputPrompt.trim() && !hasAttachment) return;
 
     onSubmit({
       text: inputPrompt,
-      attachmentType: "none",
-      attachmentName: null,
-      attachmentData: null
+      images: currentImgList,
+      documents: attachedDocs,
+      attachmentType: hasDocs ? "document" : (hasImages ? "image" : "none"),
+      attachmentName: hasDocs ? attachedDocs[0].name : null,
+      attachmentData: hasDocs ? attachedDocs[0].data : (hasImages ? currentImgList[0] : null)
     });
+    clearAllAttachments();
     setInputPrompt("");
   };
 
@@ -84,22 +72,25 @@ export function ChatInput({
     }
   };
 
-  const hasAttachment = Boolean(attachedImage || attachedDoc);
+  const placeholderText = hasDocs
+    ? (attachedDocs.length === 1 ? `Ask about ${attachedDocs[0].name}...` : `Ask about ${attachedDocs.length} documents...`)
+    : (hasImages ? (currentImgList.length === 1 ? "Ask about image..." : `Ask about ${currentImgList.length} images...`) : "Ask anything...");
 
   return (
     <div className="p-3 md:p-4 border-t border-border bg-surface-card/90 backdrop-blur shrink-0 w-full">
       <form onSubmit={handleFormSubmit} className="w-full space-y-2">
         <AttachedPreview
-          attachedImage={attachedImage}
-          onClearImage={() => setAttachedImage(null)}
-          attachedDocument={attachedDoc}
-          onClearDocument={() => setAttachedDoc(null)}
+          attachedImages={currentImgList}
+          attachedDocs={attachedDocs}
+          onRemoveImage={removeImage}
+          onRemoveDoc={removeDoc}
         />
 
         <div className="relative flex items-end gap-2 p-2 rounded-[var(--radius-md)] bg-surface border border-border focus-within:border-accent shadow-sm transition-all w-full">
           <input
             ref={fileInputRef}
             type="file"
+            multiple
             accept=".pdf,.docx,.doc,.txt,.csv,.xlsx,.xls,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,image/*"
             onChange={handleFileChange}
             className="hidden"
@@ -111,8 +102,8 @@ export function ChatInput({
             className={`p-2 rounded transition-colors cursor-pointer shrink-0 ${
               hasAttachment ? "text-accent bg-accent/15" : "text-text-muted hover:text-text-primary hover:bg-surface-elevated"
             }`}
-            title="Attach file"
-            aria-label="Attach file"
+            title="Attach files (up to 3 images, 5 documents)"
+            aria-label="Attach files"
           >
             <Paperclip size={18} />
           </button>
@@ -136,7 +127,7 @@ export function ChatInput({
             onChange={(e) => setInputPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            placeholder={attachedDoc ? "Ask about document..." : (attachedImage ? "Ask about image..." : "Ask anything...")}
+            placeholder={placeholderText}
             className="flex-1 max-h-32 bg-transparent text-text-primary text-xs resize-none focus:outline-none py-1.5 px-1 leading-relaxed"
           />
 

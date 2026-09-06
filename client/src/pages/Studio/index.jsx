@@ -19,11 +19,10 @@ export function Studio() {
   const [activePersona, setActivePersona] = useState("general");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState("");
-  const [attachedImage, setAttachedImage] = useState(null);
+  const [attachedImages, setAttachedImages] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeArtifact, setActiveArtifact] = useState(null);
-  const abortControllerRef = useRef(null);
-  const onStreamCompleteRef = useRef(null);
+  const abortControllerRef = useRef(null), onStreamCompleteRef = useRef(null);
 
   const {
     sessions, setSessions, activeSessionId, setActiveSessionId,
@@ -37,7 +36,6 @@ export function Studio() {
     if (activeSession?.persona) setActivePersona(activeSession.persona);
   }, [activeSession?.persona, activeSessionId]);
 
-
   const handleSelectPersona = (id) => {
     setActivePersona(id);
     if (activeSessionId) updateSessionPersona(activeSessionId, id);
@@ -50,9 +48,11 @@ export function Studio() {
 
     await streamCompletion({
       sessionId: targetSessionId, prompt: promptText, model: selectedModel, imageBase64,
-      attachmentType: docPayload.attachmentType || (imageBase64 ? "image" : "none"),
-      attachmentName: docPayload.attachmentName || null,
-      attachmentData: docPayload.attachmentData || null,
+      images: docPayload.images || (imageBase64 ? [imageBase64] : null),
+      documents: docPayload.documents || null,
+      attachmentType: docPayload.documents?.length > 0 ? "document" : (imageBase64 ? "image" : "none"),
+      attachmentName: docPayload.documents?.[0]?.name || null,
+      attachmentData: docPayload.documents?.[0]?.data || null,
       persona: activePersona, isRegenerate, signal: controller.signal,
       onChunk: (c) => { accumulated += c; setStreamingText((p) => p + c); },
       onComplete: () => {
@@ -67,32 +67,33 @@ export function Studio() {
 
   const handleSendMessage = async (payloadOrText, imageToSend) => {
     let textToSend = inputPrompt;
-    let imageToUpload = imageToSend !== undefined ? imageToSend : attachedImage;
-    let docPayload = {};
+    let imagesToUpload = Array.isArray(imageToSend) ? imageToSend : (imageToSend ? [imageToSend] : attachedImages);
+    let docsToUpload = [];
 
     if (payloadOrText && typeof payloadOrText === "object") {
       textToSend = payloadOrText.text !== undefined ? payloadOrText.text : inputPrompt;
-      if (payloadOrText.attachmentType === "document") {
-        docPayload = { attachmentType: "document", attachmentName: payloadOrText.attachmentName, attachmentData: payloadOrText.attachmentData };
-        imageToUpload = null;
-      } else if (payloadOrText.attachmentType === "image") imageToUpload = payloadOrText.attachmentData;
+      if (Array.isArray(payloadOrText.images)) imagesToUpload = payloadOrText.images;
+      else if (payloadOrText.attachmentData && payloadOrText.attachmentType === "image") imagesToUpload = [payloadOrText.attachmentData];
+      if (Array.isArray(payloadOrText.documents)) docsToUpload = payloadOrText.documents;
+      else if (payloadOrText.attachmentData && payloadOrText.attachmentType === "document") docsToUpload = [{ name: payloadOrText.attachmentName, data: payloadOrText.attachmentData }];
     } else if (typeof payloadOrText === "string") textToSend = payloadOrText;
 
-    if ((!textToSend.trim() && !imageToUpload && !docPayload.attachmentData) || isStreaming) return;
+    if ((!textToSend.trim() && imagesToUpload.length === 0 && docsToUpload.length === 0) || isStreaming) return;
     let targetSessionId = activeSessionId;
     if (!targetSessionId) targetSessionId = await createSession(activePersona);
     if (!targetSessionId) return;
 
-    const fallbackDoc = docPayload.attachmentName ? `Analyze ${docPayload.attachmentName}` : "Analyze attachment";
-    const promptText = textToSend.trim() || (docPayload.attachmentData ? fallbackDoc : (imageToUpload ? "Analyze attached image" : ""));
+    const fallbackDoc = docsToUpload[0]?.name ? `Analyze ${docsToUpload[0].name}` : "Analyze attachment";
+    const promptText = textToSend.trim() || (docsToUpload.length > 0 ? fallbackDoc : (imagesToUpload.length > 0 ? "Analyze attached image" : ""));
     const userMsg = {
       id: "usr-" + Date.now(), role: "user", text: promptText,
-      attachment: docPayload.attachmentData || imageToUpload || null,
-      attachmentType: docPayload.attachmentType || (imageToUpload ? "image" : "none"),
-      attachmentName: docPayload.attachmentName || null, createdAt: new Date().toISOString()
+      attachment: imagesToUpload[0] || docsToUpload[0]?.data || null,
+      attachmentType: docsToUpload.length > 0 ? "document" : (imagesToUpload.length > 0 ? "image" : "none"),
+      attachmentName: docsToUpload[0]?.name || null,
+      images: imagesToUpload, documents: docsToUpload, createdAt: new Date().toISOString()
     };
     setMessages((prev) => [...prev, userMsg]);
-    setInputPrompt(""); setAttachedImage(null);
+    setInputPrompt(""); setAttachedImages([]);
 
     const currSess = sessions.find((s) => s.id === targetSessionId);
     if (!currSess || currSess.title === "New Chat") {
@@ -100,7 +101,7 @@ export function Studio() {
       const autoTitle = words ? words.charAt(0).toUpperCase() + words.slice(1) : "Document Chat";
       setSessions((p) => p.map((s) => (s.id === targetSessionId ? { ...s, title: autoTitle } : s)));
     }
-    await runStream(targetSessionId, promptText, imageToUpload, false, docPayload);
+    await runStream(targetSessionId, promptText, imagesToUpload[0] || null, false, { images: imagesToUpload, documents: docsToUpload });
   };
 
   const { isCallActive, callPhase, isMinimized, toggleMinimize, nesaState, isListening: isNesaListening, transcript: nesaTranscript, startCall, endCall, onStreamComplete, connectionError, forceReply } = useNesaCall({ onSendMessage: handleSendMessage, isStreaming, onMicDenied: (m) => toast.error(m || "Microphone access is required") });
@@ -114,7 +115,7 @@ export function Studio() {
 
   const handleEditMessage = (id, text, att) => {
     setInputPrompt(text || "");
-    if (att) setAttachedImage(att);
+    if (att) setAttachedImages(Array.isArray(att) ? att : [att]);
     setMessages((p) => { const idx = p.findIndex((m) => m.id === id); return idx === -1 ? p : p.slice(0, idx); });
   };
 
@@ -126,7 +127,6 @@ export function Studio() {
         onSelectSession={setActiveSessionId} onNewChat={() => createSession(activePersona)}
         onDeleteSession={deleteSession} onRenameSession={renameSession}
       />
-
       <main className="flex-1 flex flex-col h-full min-w-0 relative bg-surface/20 overflow-hidden">
         <div className="h-12 border-b border-border px-4 flex items-center justify-between bg-surface-card/60 backdrop-blur shrink-0">
           <div className="flex items-center gap-2.5 truncate pr-2">
@@ -172,10 +172,9 @@ export function Studio() {
               inputPrompt={inputPrompt} setInputPrompt={setInputPrompt}
               onSubmit={(p) => handleSendMessage(p)} isStreaming={isStreaming}
               onStop={() => { abortControllerRef.current?.abort(); setIsStreaming(false); }}
-              selectedModel={selectedModel} attachedImage={attachedImage} setAttachedImage={setAttachedImage}
+              selectedModel={selectedModel} attachedImages={attachedImages} setAttachedImages={setAttachedImages}
             />
           </div>
-
           {activeArtifact && <ArtifactPanel artifact={activeArtifact} onClose={() => setActiveArtifact(null)} />}
         </div>
       </main>

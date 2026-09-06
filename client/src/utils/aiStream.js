@@ -24,9 +24,11 @@ export async function streamCompletion({
   prompt,
   model = "gemini-3.7-flash",
   imageBase64 = null,
+  images = null,
   attachmentType = "none",
   attachmentName = null,
   attachmentData = null,
+  documents = null,
   persona = "general",
   isRegenerate = false,
   onChunk,
@@ -62,7 +64,7 @@ export async function streamCompletion({
       response = await fetch(endpoint, {
         method: "POST",
         headers,
-        body: JSON.stringify({ prompt, model, imageBase64, attachmentType, attachmentName, attachmentData, persona }),
+        body: JSON.stringify({ prompt, model, imageBase64, images, attachmentType, attachmentName, attachmentData, documents, persona }),
         signal
       });
 

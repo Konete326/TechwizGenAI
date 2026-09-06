@@ -31,6 +31,14 @@ const chatMessageSchema = new mongoose.Schema(
       type: String,
       default: null
     },
+    images: {
+      type: [String],
+      default: []
+    },
+    documents: {
+      type: [{ name: String, data: String, mimeType: String, size: Number }],
+      default: []
+    },
     tokensUsed: {
       prompt: { type: Number, default: 0 },
       completion: { type: Number, default: 0 },

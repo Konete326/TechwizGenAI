@@ -36,12 +36,12 @@ export function prepareDocumentPayload(fileBase64, mimeType, fileName) {
   return { text: `[ATTACHED DOCUMENT: ${fileName || "attachment"} (${effectiveMime || "application/octet-stream"})]\n[END DOCUMENT]` };
 }
 
-export function buildUserParts(cleanPrompt, { imageBase64, attachmentType, attachmentName, attachmentData, documents, attachments } = {}) {
+export function buildUserParts(cleanPrompt, { imageBase64, images, attachmentType, attachmentName, attachmentData, documents, attachments } = {}) {
   const parts = [];
   const docList = Array.isArray(documents) ? documents : (Array.isArray(attachments) ? attachments : []);
 
   if (docList.length > 0) {
-    for (const doc of docList) {
+    for (const doc of docList.slice(0, 5)) {
       const base64 = doc.data || doc.fileBase64 || doc.base64;
       const mime = doc.mimeType || doc.type || "application/octet-stream";
       const name = doc.fileName || doc.name || "document";
@@ -62,10 +62,14 @@ export function buildUserParts(cleanPrompt, { imageBase64, attachmentType, attac
     if (docPayload) parts.push(docPayload);
   }
 
-  if (imageBase64 && typeof imageBase64 === "string" && imageBase64.includes(",")) {
-    const [meta, raw] = imageBase64.split(",");
-    const match = meta.match(/data:([^;]+);base64/);
-    parts.push({ inlineData: { data: raw, mimeType: match ? match[1] : "image/jpeg" } });
+  const imgList = Array.isArray(images) && images.length > 0 ? images : (imageBase64 ? [imageBase64] : []);
+  for (const img of imgList.slice(0, 3)) {
+    const rawStr = typeof img === "string" ? img : (img?.data || img?.base64 || "");
+    if (rawStr && rawStr.includes(",")) {
+      const [meta, raw] = rawStr.split(",");
+      const match = meta.match(/data:([^;]+);base64/);
+      parts.push({ inlineData: { data: raw, mimeType: match ? match[1] : "image/jpeg" } });
+    }
   }
 
   parts.push({ text: cleanPrompt || "Analyze the attached content in detail." });

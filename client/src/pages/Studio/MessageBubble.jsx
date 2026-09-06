@@ -96,9 +96,24 @@ export const MessageBubble = memo(function MessageBubble({ message, onEdit, onRe
       <div className="flex w-full justify-end">
         <div className="max-w-[92%] sm:max-w-[85%] md:max-w-[80%] min-w-0 flex flex-col items-end group">
           <div className="w-full min-w-0 flex flex-col gap-2 p-3 sm:p-4 bg-accent text-white rounded-2xl rounded-tr-sm shadow-sm">
-            {message.attachment && (isDoc ? <DocumentBadge attachment={message.attachment} name={message.attachmentName} /> : (
+            {Array.isArray(message.images) && message.images.length > 0 ? (
+              <div className="flex flex-wrap gap-2 max-w-full">
+                {message.images.map((img, i) => (
+                  <img key={i} src={img} alt={`Attachment ${i + 1}`} className="w-full max-w-full sm:max-w-xs max-h-60 object-contain rounded-md border border-white/20 shadow-sm cursor-pointer" onClick={() => window.open(img, "_blank")} />
+                ))}
+              </div>
+            ) : (message.attachment && !isDoc ? (
               <img src={message.attachment} alt="Attachment" className="w-full max-w-full sm:max-w-xs max-h-60 object-contain rounded-md border border-white/20 shadow-sm cursor-pointer" onClick={() => window.open(message.attachment, "_blank")} />
-            ))}
+            ) : null)}
+            {Array.isArray(message.documents) && message.documents.length > 0 ? (
+              <div className="flex flex-col gap-1.5 w-full">
+                {message.documents.map((doc, i) => (
+                  <DocumentBadge key={i} attachment={doc.data} name={doc.name} />
+                ))}
+              </div>
+            ) : (message.attachment && isDoc ? (
+              <DocumentBadge attachment={message.attachment} name={message.attachmentName} />
+            ) : null)}
             <div className="text-xs leading-relaxed break-words whitespace-pre-wrap">{message.text}</div>
           </div>
           <div className="flex items-center gap-1 pt-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-text-muted">

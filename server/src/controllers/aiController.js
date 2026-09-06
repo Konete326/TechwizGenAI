@@ -58,9 +58,11 @@ export const regenerateSession = async (req, res, next) => {
 export const streamChat = async (req, res, next, isRegenerate = false) => {
   try {
     const { id: sessionId } = req.params;
-    const { prompt, model, imageBase64, attachmentType = "none", attachmentName = null, attachmentData = null, documents = null, persona = "general" } = req.body;
+    const { prompt, model, imageBase64, images = null, attachmentType = "none", attachmentName = null, attachmentData = null, documents = null, persona = "general" } = req.body;
+    if (Array.isArray(images) && images.length > 3) return res.status(400).json({ success: false, message: "Maximum 3 images allowed" });
+    if (Array.isArray(documents) && documents.length > 5) return res.status(400).json({ success: false, message: "Maximum 5 documents allowed" });
     const customApiKey = req.headers["x-custom-api-key"];
-    const hasAttachment = Boolean(imageBase64 || attachmentData || (Array.isArray(documents) && documents.length > 0));
+    const hasAttachment = Boolean(imageBase64 || (Array.isArray(images) && images.length > 0) || attachmentData || (Array.isArray(documents) && documents.length > 0));
     const effectivePrompt = (prompt && typeof prompt === "string" && prompt.trim()) ? prompt.trim() : (hasAttachment ? "Analyze the attached content in detail." : "");
     if (!effectivePrompt) return res.status(400).json({ success: false, message: "Prompt or attachment is required" });
     const cleanPrompt = sanitizeText(effectivePrompt);
@@ -69,13 +71,11 @@ export const streamChat = async (req, res, next, isRegenerate = false) => {
     if (persona && session.persona !== persona) { session.persona = persona; await session.save(); }
 
     if (!isRegenerate) {
-      const resolvedAttachment = attachmentType === "document" ? (attachmentData || null) : (imageBase64 || null);
-      const resolvedType = attachmentType !== "none" ? attachmentType : (imageBase64 ? "image" : "none");
-      await ChatMessage.create({ sessionId: session._id, role: "user", text: cleanPrompt, attachment: resolvedAttachment, attachmentType: resolvedType, attachmentName: attachmentName || null });
+      const resolvedAttachment = attachmentType === "document" ? (attachmentData || null) : (imageBase64 || (Array.isArray(images) && images[0]) || null);
+      const resolvedType = attachmentType !== "none" ? attachmentType : (imageBase64 || (Array.isArray(images) && images.length > 0) ? "image" : "none");
+      await ChatMessage.create({ sessionId: session._id, role: "user", text: cleanPrompt, attachment: resolvedAttachment, attachmentType: resolvedType, attachmentName: attachmentName || null, images: Array.isArray(images) ? images.slice(0, 3) : [], documents: Array.isArray(documents) ? documents.slice(0, 5) : [] });
       if (resolvedAttachment) autoPersistDocumentAsset(req.user._id, { name: attachmentName, data: resolvedAttachment, type: resolvedType }).catch(() => {});
-      if (Array.isArray(documents)) {
-        for (const doc of documents) autoPersistDocumentAsset(req.user._id, { name: doc.name || doc.fileName, data: doc.data || doc.base64, type: doc.type }).catch(() => {});
-      }
+      if (Array.isArray(documents)) for (const doc of documents.slice(0, 5)) autoPersistDocumentAsset(req.user._id, { name: doc.name || doc.fileName, data: doc.data || doc.base64, type: doc.type }).catch(() => {});
       if (session.title === "New Chat" || !session.title) {
         const words = cleanPrompt.trim().split(/\s+/).slice(0, 5).join(" ");
         session.title = words ? words.charAt(0).toUpperCase() + words.slice(1) : "New Chat";
@@ -86,7 +86,7 @@ export const streamChat = async (req, res, next, isRegenerate = false) => {
 
     const past = await ChatMessage.find({ sessionId: session._id }).sort({ createdAt: 1 }).limit(20);
     const history = past.slice(0, -1).map((m) => ({ role: m.role, parts: [{ text: m.text }] }));
-    const userParts = buildUserParts(cleanPrompt, { imageBase64, attachmentType, attachmentName, attachmentData, documents });
+    const userParts = buildUserParts(cleanPrompt, { imageBase64, images, attachmentType, attachmentName, attachmentData, documents });
 
     const client = getAiClient(customApiKey);
     const responseStream = await createModelStream({ client, model, contents: [...history, { role: "user", parts: userParts }], systemInstruction: SYSTEM_INSTRUCTION, customApiKey, persona: persona || session.persona });
@@ -102,9 +102,7 @@ export const streamChat = async (req, res, next, isRegenerate = false) => {
       return handleSpecialRequest({ specialType: streamResult.specialType, specialBuffer: streamResult.specialBuffer, customProvider: req.headers["x-ai-provider"], targetModel: model, cleanPrompt, userId: req.user._id, session, res, customApiKey });
     }
 
-    if (streamResult.accumulatedText) {
-      await ChatMessage.create({ sessionId: session._id, role: "model", text: streamResult.accumulatedText });
-    }
+    if (streamResult.accumulatedText) await ChatMessage.create({ sessionId: session._id, role: "model", text: streamResult.accumulatedText });
 
     session.updatedAt = new Date();
     await session.save();
