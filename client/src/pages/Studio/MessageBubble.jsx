@@ -1,32 +1,35 @@
 import { useState, memo } from "react";
 import {
   PencilSimple, ArrowClockwise, Copy, Check, SpeakerHigh, Stop,
-  FilePdf, FileText, ArrowSquareOut, DownloadSimple, Trash
+  DownloadSimple, Trash
 } from "@phosphor-icons/react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
+import { DocumentBadge } from "./DocumentBadge";
 import logoImg from "@/assets/logo.png";
 
-function DocumentBadge({ attachment, name }) {
-  const isPdf = (name || "").toLowerCase().endsWith(".pdf");
-  return (
-    <div className="bg-surface-elevated/95 border border-border px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg flex items-center gap-2 text-xs shadow-sm w-full max-w-full min-w-0">
-      {isPdf ? <FilePdf size={18} className="text-rose-400 shrink-0" /> : <FileText size={18} className="text-sky-400 shrink-0" />}
-      <span className="font-mono truncate font-medium text-text-primary min-w-0 flex-1">{name || "Attached Document"}</span>
-      {attachment && (
-        <a href={attachment} download={name || "document"} target="_blank" rel="noreferrer" className="ml-auto text-accent hover:text-accent-hover text-[11px] font-semibold flex items-center gap-1 shrink-0 transition-colors" title="View document" aria-label="View document">
-          <span>View</span>
-          <ArrowSquareOut size={12} />
-        </a>
-      )}
-    </div>
-  );
+function checkIsImage(url, type, name) {
+  if (type === "image") return true;
+  if (type === "document") return false;
+  const str = String(url || "");
+  if (str.startsWith("data:image/")) return true;
+  if (str.startsWith("data:application/") || str.startsWith("data:text/")) return false;
+  const ext = `${name || ""} ${str.split("?")[0]}`.toLowerCase();
+  return /\.(jpe?g|png|webp|gif|svg)($|\s)/i.test(ext);
+}
+
+function checkIsDoc(url, type, name) {
+  if (type === "document") return true;
+  if (type === "image") return false;
+  const str = String(url || "");
+  if (str.startsWith("data:application/") || str.startsWith("data:text/")) return true;
+  if (str.startsWith("data:image/")) return false;
+  const ext = `${name || ""} ${str.split("?")[0]}`.toLowerCase();
+  return /\.(pdf|docx?|txt|csv|xlsx?|json)($|\s)/i.test(ext) || (!checkIsImage(url, type, name) && Boolean(url));
 }
 
 export const MessageBubble = memo(function MessageBubble({ message, onEdit, onRegenerate, isStreaming, onOpenArtifact, onSpeak, isSpeakingThisMessage, onSelectChoice }) {
   const [copied, setCopied] = useState(false);
   const isUser = message.role === "user";
-  const isDoc = message.attachmentType === "document" || Boolean(message.attachmentName && !String(message.attachment || "").startsWith("data:image/"));
-
   const artifactMatch = /\[ARTIFACT:\s*([a-zA-Z0-9]+)\s*\|\s*([^\]]+)\]/i.exec(message.text || "");
   const markdownImgMatch = /!\[.*?\]\((https?:\/\/[^\s)]+)\)/i.exec(message.text || "");
 
@@ -35,16 +38,12 @@ export const MessageBubble = memo(function MessageBubble({ message, onEdit, onRe
 
   const isArtifact = Boolean(artifactMatch);
   const isMarkdownImg = Boolean(markdownImgMatch);
-  const isPdf = !isAttachmentDeleted && (isArtifact || (isDoc && (message.attachmentName || "").toLowerCase().endsWith(".pdf")));
-  const isImage = !isAttachmentDeleted && (isMarkdownImg || (Boolean(message.attachment) && !isDoc));
-  const isMedia = !isAttachmentDeleted && (isPdf || isImage || isDoc);
+  const isDoc = !isAttachmentDeleted && (isArtifact || checkIsDoc(message.attachment, message.attachmentType, message.attachmentName));
+  const isImage = !isAttachmentDeleted && (isMarkdownImg || checkIsImage(message.attachment, message.attachmentType, message.attachmentName));
+  const isMedia = !isAttachmentDeleted && (isDoc || isImage);
 
   const downloadUrl = isAttachmentDeleted ? "" : (markdownImgMatch?.[1] || artifactMatch?.[2] || message.attachment || "");
-  const downloadName = isArtifact
-    ? `document.${artifactMatch[1].toLowerCase()}`
-    : isMarkdownImg
-    ? "generated-image.jpg"
-    : message.attachmentName || (isDoc ? "document.pdf" : "image.png");
+  const downloadName = isArtifact ? `document.${artifactMatch[1].toLowerCase()}` : (isMarkdownImg ? "generated-image.jpg" : (message.attachmentName || (isDoc ? "document.pdf" : "image.png")));
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.text);
@@ -97,17 +96,17 @@ export const MessageBubble = memo(function MessageBubble({ message, onEdit, onRe
                   <img key={i} src={img} alt={`Attachment ${i + 1}`} className="w-full max-w-full sm:max-w-xs max-h-60 object-contain rounded-md border border-white/20 shadow-sm cursor-pointer" onClick={() => window.open(img, "_blank")} />
                 ))}
               </div>
-            ) : (message.attachment && !isDoc ? (
+            ) : (message.attachment && isImage ? (
               <img src={message.attachment} alt="Attachment" className="w-full max-w-full sm:max-w-xs max-h-60 object-contain rounded-md border border-white/20 shadow-sm cursor-pointer" onClick={() => window.open(message.attachment, "_blank")} />
             ) : null)}
             {Array.isArray(message.documents) && message.documents.length > 0 ? (
               <div className="flex flex-col gap-1.5 w-full">
                 {message.documents.map((doc, i) => (
-                  <DocumentBadge key={i} attachment={doc.data} name={doc.name} />
+                  <DocumentBadge key={i} attachment={doc.data} name={doc.name} isUser={true} />
                 ))}
               </div>
             ) : (message.attachment && isDoc ? (
-              <DocumentBadge attachment={message.attachment} name={message.attachmentName} />
+              <DocumentBadge attachment={message.attachment} name={message.attachmentName} isUser={true} />
             ) : null)}
             {isAttachmentDeleted && (
               <div className="bg-white/10 border border-white/20 text-white text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-2">
@@ -150,9 +149,12 @@ export const MessageBubble = memo(function MessageBubble({ message, onEdit, onRe
               <span className="font-medium">{deletedNotice}</span>
             </div>
           )}
-          {message.attachment && (isDoc ? <DocumentBadge attachment={message.attachment} name={message.attachmentName} /> : (
+          {message.attachment && isDoc && (
+            <DocumentBadge attachment={message.attachment} name={message.attachmentName} isUser={false} />
+          )}
+          {message.attachment && isImage && (
             <img src={message.attachment} alt="Attachment" className="w-full max-w-full sm:max-w-xs max-h-60 object-contain rounded-md border border-border shadow-sm cursor-pointer" onClick={() => window.open(message.attachment, "_blank")} />
-          ))}
+          )}
           <div className="text-xs leading-relaxed break-words min-w-0 w-full overflow-hidden">
             <MarkdownRenderer content={message.text || ""} onOpenArtifact={onOpenArtifact} onSelectChoice={onSelectChoice} isStreaming={isStreaming} />
             {isStreaming && <span className="inline-block w-1.5 h-3.5 ml-1 bg-accent animate-pulse align-middle" />}
