@@ -21,15 +21,12 @@ export function useChatSessions() {
       if (data.success && Array.isArray(data.data)) {
         const incoming = data.data;
         setSessions((prev) => {
-          const isSame =
-            prev.length === incoming.length &&
-            prev.every((p, i) => p.id === incoming[i].id && p.title === incoming[i].title && p.persona === incoming[i].persona);
+          const isSame = prev.length === incoming.length && prev.every((p, i) => p.id === incoming[i].id && p.title === incoming[i].title && p.persona === incoming[i].persona);
           return isSame ? prev : incoming;
         });
         setActiveSessionId((curr) => {
           if (!curr) return incoming.length > 0 ? incoming[0].id : null;
-          const exists = incoming.some((s) => s.id === curr);
-          return exists ? curr : (incoming.length > 0 ? incoming[0].id : null);
+          return incoming.some((s) => s.id === curr) ? curr : (incoming.length > 0 ? incoming[0].id : null);
         });
         if (incoming.length === 0) {
           setMessages([]);
@@ -78,12 +75,14 @@ export function useChatSessions() {
     };
     window.addEventListener("focus", handleSync);
     window.addEventListener("storage", handleSync);
+    window.addEventListener("asset_deleted", handleSync);
     document.addEventListener("visibilitychange", handleSync);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener("focus", handleSync);
       window.removeEventListener("storage", handleSync);
+      window.removeEventListener("asset_deleted", handleSync);
       document.removeEventListener("visibilitychange", handleSync);
     };
   }, [fetchSessions, fetchMessages, activeSessionId]);

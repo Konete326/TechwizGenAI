@@ -61,6 +61,11 @@ export const getSessionMessages = async (req, res, next) => {
         role: m.role,
         text: m.text,
         attachment: m.attachment || null,
+        attachmentType: m.attachmentType || "none",
+        attachmentName: m.attachmentName || null,
+        attachmentDeleted: Boolean(m.attachmentDeleted),
+        images: Array.isArray(m.images) ? m.images : [],
+        documents: Array.isArray(m.documents) ? m.documents : [],
         createdAt: m.createdAt
       }))
     });

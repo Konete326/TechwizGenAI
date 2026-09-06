@@ -1,15 +1,7 @@
 import { useState, memo } from "react";
 import {
-  PencilSimple,
-  ArrowClockwise,
-  Copy,
-  Check,
-  SpeakerHigh,
-  Stop,
-  FilePdf,
-  FileText,
-  ArrowSquareOut,
-  DownloadSimple
+  PencilSimple, ArrowClockwise, Copy, Check, SpeakerHigh, Stop,
+  FilePdf, FileText, ArrowSquareOut, DownloadSimple, Trash
 } from "@phosphor-icons/react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import logoImg from "@/assets/logo.png";
@@ -38,13 +30,16 @@ export const MessageBubble = memo(function MessageBubble({ message, onEdit, onRe
   const artifactMatch = /\[ARTIFACT:\s*([a-zA-Z0-9]+)\s*\|\s*([^\]]+)\]/i.exec(message.text || "");
   const markdownImgMatch = /!\[.*?\]\((https?:\/\/[^\s)]+)\)/i.exec(message.text || "");
 
+  const isAttachmentDeleted = Boolean(message.attachmentDeleted || message.attachmentName?.includes("[Attachment was deleted") || message.text?.includes("[Attachment was deleted"));
+  const deletedNotice = message.attachmentName?.includes("administrator") || message.text?.includes("administrator") ? "Attachment was deleted by administrator" : "Attachment was deleted";
+
   const isArtifact = Boolean(artifactMatch);
   const isMarkdownImg = Boolean(markdownImgMatch);
-  const isPdf = isArtifact || (isDoc && (message.attachmentName || "").toLowerCase().endsWith(".pdf"));
-  const isImage = isMarkdownImg || (Boolean(message.attachment) && !isDoc);
-  const isMedia = isPdf || isImage || isDoc;
+  const isPdf = !isAttachmentDeleted && (isArtifact || (isDoc && (message.attachmentName || "").toLowerCase().endsWith(".pdf")));
+  const isImage = !isAttachmentDeleted && (isMarkdownImg || (Boolean(message.attachment) && !isDoc));
+  const isMedia = !isAttachmentDeleted && (isPdf || isImage || isDoc);
 
-  const downloadUrl = markdownImgMatch?.[1] || artifactMatch?.[2] || message.attachment || "";
+  const downloadUrl = isAttachmentDeleted ? "" : (markdownImgMatch?.[1] || artifactMatch?.[2] || message.attachment || "");
   const downloadName = isArtifact
     ? `document.${artifactMatch[1].toLowerCase()}`
     : isMarkdownImg
@@ -114,6 +109,12 @@ export const MessageBubble = memo(function MessageBubble({ message, onEdit, onRe
             ) : (message.attachment && isDoc ? (
               <DocumentBadge attachment={message.attachment} name={message.attachmentName} />
             ) : null)}
+            {isAttachmentDeleted && (
+              <div className="bg-white/10 border border-white/20 text-white text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-2">
+                <Trash size={14} className="shrink-0 text-rose-300" />
+                <span className="font-medium">{deletedNotice}</span>
+              </div>
+            )}
             <div className="text-xs leading-relaxed break-words whitespace-pre-wrap">{message.text}</div>
           </div>
           <div className="flex items-center gap-1 pt-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-text-muted">
@@ -143,6 +144,12 @@ export const MessageBubble = memo(function MessageBubble({ message, onEdit, onRe
             <img src={logoImg} alt="Techwiz GenAI" className="w-3.5 h-3.5 object-contain" />
             <span>Techwiz AI</span>
           </div>
+          {isAttachmentDeleted && (
+            <div className="bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-2">
+              <Trash size={14} className="shrink-0 text-rose-400" />
+              <span className="font-medium">{deletedNotice}</span>
+            </div>
+          )}
           {message.attachment && (isDoc ? <DocumentBadge attachment={message.attachment} name={message.attachmentName} /> : (
             <img src={message.attachment} alt="Attachment" className="w-full max-w-full sm:max-w-xs max-h-60 object-contain rounded-md border border-border shadow-sm cursor-pointer" onClick={() => window.open(message.attachment, "_blank")} />
           ))}

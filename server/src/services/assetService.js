@@ -4,6 +4,7 @@ import { Notification } from "../models/Notification.js";
 import { uploadBufferToCloudinary } from "../utils/cloudinaryUploader.js";
 import { cloudinary } from "../config/cloudinary.js";
 import { sanitizeText } from "../utils/validators.js";
+import { purgeAssetFromChat } from "./assetChatSyncService.js";
 
 const escapeRegex = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -83,18 +84,30 @@ export const removeAssetById = async (user, assetId) => {
 
   if (asset.publicId) {
     await cloudinary.uploader.destroy(asset.publicId).catch(() => {});
+    await cloudinary.uploader.destroy(asset.publicId, { resource_type: "raw" }).catch(() => {});
   }
 
+  await purgeAssetFromChat(asset.url, asset.title, isAdmin);
   await Asset.deleteOne({ _id: assetId });
 
   if (asset.publicId === `avatar_${user._id}`) {
     await User.findByIdAndUpdate(user._id, { profileImage: "" }).catch(() => {});
   }
 
+  if (asset.userId && asset.userId.toString() !== user._id.toString()) {
+    await Notification.create({
+      userId: asset.userId,
+      title: "Asset Removed by Admin",
+      message: `"${asset.title}" was permanently removed by an administrator.`,
+      type: "warning",
+      href: "/assets"
+    }).catch(() => {});
+  }
+
   await Notification.create({
     userId: user._id,
     title: "Asset Deleted",
-    message: "Asset successfully removed from storage.",
+    message: `"${asset.title}" was removed from storage and chats.`,
     type: "success",
     href: "/assets"
   }).catch(() => {});

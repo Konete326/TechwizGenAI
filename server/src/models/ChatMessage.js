@@ -39,6 +39,10 @@ const chatMessageSchema = new mongoose.Schema(
       type: [{ name: String, data: String, mimeType: String, size: Number }],
       default: []
     },
+    attachmentDeleted: {
+      type: Boolean,
+      default: false
+    },
     tokensUsed: {
       prompt: { type: Number, default: 0 },
       completion: { type: Number, default: 0 },

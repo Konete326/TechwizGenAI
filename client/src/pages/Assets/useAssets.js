@@ -104,6 +104,7 @@ export function useAssets() {
             const nextBytes = Math.max(0, currentBytes - (removed.bytes || 0));
             localStorage.setItem("platform_usage_bytes", String(nextBytes));
             window.dispatchEvent(new CustomEvent("storage_updated", { detail: { bytes: nextBytes } }));
+            window.dispatchEvent(new CustomEvent("asset_deleted", { detail: { assetId, url: removed.url, title: removed.title } }));
           }
           return prev.filter((a) => a.id !== assetId);
         });
