@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 export function Typewriter({
   text,
@@ -7,12 +7,14 @@ export function Typewriter({
   loop = false,
   deleteSpeed = 50,
   delay = 1500,
+  random = false,
   className,
 }) {
   const [displayText, setDisplayText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [textArrayIndex, setTextArrayIndex] = useState(0);
+  const delayTimerRef = useRef(null);
 
   const textArray = Array.isArray(text) ? text : [text];
   const currentText = textArray[textArrayIndex] || "";
@@ -27,7 +29,7 @@ export function Typewriter({
             setDisplayText((prev) => prev + currentText[currentIndex]);
             setCurrentIndex((prev) => prev + 1);
           } else if (loop) {
-            setTimeout(() => setIsDeleting(true), delay);
+            delayTimerRef.current = setTimeout(() => setIsDeleting(true), delay);
           }
         } else {
           if (displayText.length > 0) {
@@ -35,14 +37,26 @@ export function Typewriter({
           } else {
             setIsDeleting(false);
             setCurrentIndex(0);
-            setTextArrayIndex((prev) => (prev + 1) % textArray.length);
+            setTextArrayIndex((prev) => {
+              if (textArray.length <= 1) return 0;
+              if (random) {
+                const next = Math.floor(Math.random() * textArray.length);
+                return next === prev ? (prev + 1) % textArray.length : next;
+              }
+              return (prev + 1) % textArray.length;
+            });
           }
         }
       },
       isDeleting ? deleteSpeed : speed,
     );
 
-    return () => clearTimeout(timeout);
+    return () => {
+      clearTimeout(timeout);
+      if (delayTimerRef.current) {
+        clearTimeout(delayTimerRef.current);
+      }
+    };
   }, [
     currentIndex,
     isDeleting,
@@ -52,7 +66,8 @@ export function Typewriter({
     deleteSpeed,
     delay,
     displayText,
-    text,
+    random,
+    textArray.length,
   ]);
 
   return (

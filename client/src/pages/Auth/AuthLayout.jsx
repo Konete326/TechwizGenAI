@@ -3,27 +3,21 @@ import { clsx } from "clsx";
 import { Typewriter } from "@/components/ui/Typewriter";
 import { AuthFormContainer } from "./AuthForms";
 
-const defaultSignInContent = {
-  image: {
-    src: "/signin.gif",
-    alt: "Sign in animation"
-  },
-  quote: {
-    text: "Welcome Back! The journey continues.",
-    author: "Techwiz GenAI"
-  }
-};
+const signInQuotes = [
+  "Welcome back to Techwiz GenAI - transform your vision into intelligent reality.",
+  "Continue crafting with autonomous AI avatars and real-time video intelligence.",
+  "Resume your creative workflow across multimodal AI studios and neural engines.",
+  "Empowering enterprise teams with automated documents and real-time generation.",
+  "Your generative AI command center is ready - build the future today."
+];
 
-const defaultSignUpContent = {
-  image: {
-    src: "/signup.gif",
-    alt: "Sign up animation"
-  },
-  quote: {
-    text: "Create an account. A new chapter awaits.",
-    author: "Techwiz GenAI"
-  }
-};
+const signUpQuotes = [
+  "Join Techwiz GenAI - unlock the next generation of multimodal intelligence.",
+  "Step into the future with real-time Nesa AI video calling and live avatars.",
+  "Generate professional documents, audio, and visual assets seamlessly.",
+  "Experience an all-in-one AI ecosystem built for modern creators and teams.",
+  "Transform how you create, automate, and collaborate with intelligent agents."
+];
 
 export function AuthLayout({ defaultIsSignIn }) {
   const location = useLocation();
@@ -41,10 +35,6 @@ export function AuthLayout({ defaultIsSignIn }) {
   const toggleForm = () => {
     navigate(isSignIn ? "/register" : "/login");
   };
-
-  const currentQuote = isSignIn
-    ? defaultSignInContent.quote
-    : defaultSignUpContent.quote;
 
   return (
     <div className="w-full min-h-screen md:grid md:grid-cols-2 bg-background overflow-x-hidden overflow-y-auto">
@@ -69,37 +59,41 @@ export function AuthLayout({ defaultIsSignIn }) {
         )}
       >
         <img
-          src={defaultSignInContent.image.src}
-          alt={defaultSignInContent.image.alt}
+          src="/signin.gif"
+          alt="Sign in animation"
           className={clsx(
             "absolute inset-0 h-full w-full object-cover pointer-events-none select-none transition-opacity duration-700 ease-in-out",
             isSignIn ? "opacity-100 z-[1]" : "opacity-0 z-0"
           )}
         />
         <img
-          src={defaultSignUpContent.image.src}
-          alt={defaultSignUpContent.image.alt}
+          src="/signup.gif"
+          alt="Sign up animation"
           className={clsx(
             "absolute inset-0 h-full w-full object-cover pointer-events-none select-none transition-opacity duration-700 ease-in-out",
             !isSignIn ? "opacity-100 z-[1]" : "opacity-0 z-0"
           )}
         />
         <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] z-[2]" />
-        <div className="absolute inset-x-0 bottom-0 h-[150px] bg-gradient-to-t from-background to-transparent z-[2]" />
+        <div className="absolute inset-x-0 bottom-0 h-[220px] bg-gradient-to-t from-background via-background/60 to-transparent z-[2]" />
 
-        <div className="relative z-10 flex h-full flex-col items-center justify-end p-6 pb-12">
-          <blockquote className="space-y-2 text-center text-foreground max-w-md bg-background/60 p-5 rounded-[var(--radius-md)] border border-border/60 backdrop-blur-md">
-            <p className="text-base font-semibold tracking-tight text-white">
+        <div className="relative z-10 flex h-full flex-col items-center justify-end p-8 pb-14 text-center select-none">
+          <div className="max-w-md space-y-3">
+            <p className="text-base md:text-lg font-medium tracking-tight text-white leading-relaxed drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] min-h-[4.5rem] flex items-center justify-center">
               "<Typewriter
-                key={currentQuote.text}
-                text={currentQuote.text}
-                speed={45}
+                key={isSignIn ? "signin-quotes" : "signup-quotes"}
+                text={isSignIn ? signInQuotes : signUpQuotes}
+                loop={true}
+                random={true}
+                speed={40}
+                deleteSpeed={20}
+                delay={2500}
               />"
             </p>
-            <cite className="block text-xs font-mono text-zinc-300 not-italic">
-              - {currentQuote.author}
-            </cite>
-          </blockquote>
+            <p className="text-xs font-mono text-zinc-400 uppercase tracking-widest drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
+              - Techwiz GenAI
+            </p>
+          </div>
         </div>
       </div>
     </div>
