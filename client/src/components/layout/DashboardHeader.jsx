@@ -48,10 +48,12 @@ export function DashboardHeader({ onOpenDrawer }) {
           <button
             type="button"
             onClick={toggleTheme}
-            className="p-2 rounded-[var(--radius-sm)] text-text-muted hover:text-text-primary hover:bg-surface border border-border cursor-pointer"
+            className="p-2 rounded-[var(--radius-sm)] text-text-muted hover:text-text-primary hover:bg-surface border border-border transition-all duration-300 active:scale-95 cursor-pointer"
             aria-label="Toggle theme"
           >
-            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            <span className="inline-block transition-transform duration-300">
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </span>
           </button>
         </div>
       </header>
@@ -73,10 +75,12 @@ export function DashboardHeader({ onOpenDrawer }) {
           <button
             type="button"
             onClick={toggleTheme}
-            className="p-2 rounded-[var(--radius-sm)] text-text-muted hover:text-text-primary hover:bg-surface border border-border transition-colors cursor-pointer"
+            className="p-2 rounded-[var(--radius-sm)] text-text-muted hover:text-text-primary hover:bg-surface border border-border transition-all duration-300 active:scale-95 cursor-pointer"
             aria-label="Toggle theme"
           >
-            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            <span className="inline-block transition-transform duration-300">
+              {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            </span>
           </button>
           <UserNavDropdown />
         </div>

@@ -32,16 +32,12 @@ export function ThemeProvider({ children }) {
   }, [theme]);
 
   const setTheme = (nextTheme) => {
-    const css = document.createElement("style");
-    css.appendChild(
-      document.createTextNode("*,*::before,*::after{transition:none !important}")
-    );
-    document.head.appendChild(css);
-
+    const root = document.documentElement;
+    root.classList.add("theme-transition");
     setThemeState(nextTheme);
-
-    window.getComputedStyle(css).opacity;
-    document.head.removeChild(css);
+    setTimeout(() => {
+      root.classList.remove("theme-transition");
+    }, 400);
   };
 
   const toggleTheme = () => {
