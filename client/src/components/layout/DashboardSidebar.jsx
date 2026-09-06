@@ -8,7 +8,8 @@ import {
   Users,
   User,
   X,
-  SidebarSimple
+  SidebarSimple,
+  HardDrive
 } from "@phosphor-icons/react";
 import logoImg from "@/assets/logo.png";
 
