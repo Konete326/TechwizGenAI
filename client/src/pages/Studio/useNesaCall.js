@@ -6,10 +6,30 @@ export function useNesaCall({ onSendMessage, onMicDenied } = {}) {
   const [callPhase, setCallPhase] = useState("ended");
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [debouncedSpeaking, setDebouncedSpeaking] = useState(false);
   const isCallActiveRef = useRef(false);
   const ringTimerRef = useRef(null);
+  const debounceTimerRef = useRef(null);
 
   const { isConnected, isSpeaking, transcript, connectionError, connect, disconnect, forceReply } = useGeminiLive();
+
+  useEffect(() => {
+    if (isSpeaking) {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+      setDebouncedSpeaking(true);
+    } else {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(() => {
+        setDebouncedSpeaking(false);
+      }, 450);
+    }
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [isSpeaking]);
 
   const clearRingTimer = () => {
     if (ringTimerRef.current) {
@@ -20,6 +40,11 @@ export function useNesaCall({ onSendMessage, onMicDenied } = {}) {
 
   const endCall = useCallback(() => {
     clearRingTimer();
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    setDebouncedSpeaking(false);
     isCallActiveRef.current = false;
     disconnect();
     setCallPhase("ended");
@@ -55,11 +80,13 @@ export function useNesaCall({ onSendMessage, onMicDenied } = {}) {
   useEffect(() => {
     return () => {
       clearRingTimer();
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       disconnect();
     };
   }, [disconnect]);
 
-  const nesaState = isSpeaking ? "speaking" : "idle";
+  const activeSpeaking = debouncedSpeaking || isSpeaking;
+  const nesaState = activeSpeaking ? "speaking" : "idle";
 
   return {
     isCallActive,
@@ -68,6 +95,7 @@ export function useNesaCall({ onSendMessage, onMicDenied } = {}) {
     setIsMinimized,
     toggleMinimize,
     nesaState,
+    isSpeaking: activeSpeaking,
     isListening: isConnected,
     transcript,
     connectionError,

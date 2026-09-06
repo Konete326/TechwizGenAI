@@ -12,8 +12,11 @@ export function useGeminiLive() {
   const wsRef = useRef(null), inputAudioCtxRef = useRef(null), outputAudioCtxRef = useRef(null);
   const micStreamRef = useRef(null), processorRef = useRef(null), nextPlayTimeRef = useRef(0);
   const activeSourcesRef = useRef([]), timerRef = useRef(null), isReadyRef = useRef(false);
+  const isPlayingRef = useRef(false), debounceTimerRef = useRef(null);
 
   const stopActiveAudio = useCallback(() => {
+    if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
+    isPlayingRef.current = false;
     activeSourcesRef.current.forEach((src) => { try { src.stop(); } catch {} });
     activeSourcesRef.current = [];
     if (outputAudioCtxRef.current) nextPlayTimeRef.current = outputAudioCtxRef.current.currentTime;
@@ -24,6 +27,8 @@ export function useGeminiLive() {
     isReadyRef.current = false;
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
+    if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
+    isPlayingRef.current = false;
     stopActiveAudio();
     if (processorRef.current) { try { processorRef.current.disconnect(); } catch {} processorRef.current = null; }
     if (micStreamRef.current) { micStreamRef.current.getTracks().forEach((t) => t.stop()); micStreamRef.current = null; }
@@ -39,6 +44,10 @@ export function useGeminiLive() {
     const ctx = outputAudioCtxRef.current;
     if (ctx.state === "suspended") ctx.resume();
 
+    if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
+    isPlayingRef.current = true;
+    setIsSpeaking(true);
+
     const buffer = ctx.createBuffer(1, float32Array.length, 24000);
     buffer.copyToChannel(float32Array, 0);
     const source = ctx.createBufferSource();
@@ -49,25 +58,25 @@ export function useGeminiLive() {
     source.start(startTime);
     nextPlayTimeRef.current = startTime + buffer.duration;
     activeSourcesRef.current.push(source);
-    setIsSpeaking(true);
 
     source.onended = () => {
       activeSourcesRef.current = activeSourcesRef.current.filter((s) => s !== source);
-      if (activeSourcesRef.current.length === 0) setIsSpeaking(false);
+      if (activeSourcesRef.current.length === 0) {
+        isPlayingRef.current = false;
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = setTimeout(() => {
+          if (activeSourcesRef.current.length === 0) setIsSpeaking(false);
+        }, 450);
+      }
     };
   }, []);
 
   const handleServerMessage = useCallback(async (event) => {
     try {
       let raw = event.data;
-      if (typeof raw !== "string") {
-        raw = raw?.text ? await raw.text() : new TextDecoder().decode(raw);
-      }
+      if (typeof raw !== "string") raw = raw?.text ? await raw.text() : new TextDecoder().decode(raw);
       const data = JSON.parse(raw);
-      if (data.setupComplete || data.setup_complete) {
-        isReadyRef.current = true;
-        return;
-      }
+      if (data.setupComplete || data.setup_complete) { isReadyRef.current = true; return; }
       if (data.error) {
         setConnectionError(data.error.message || "Gemini Live stream error occurred");
         stopActiveAudio();
@@ -91,10 +100,7 @@ export function useGeminiLive() {
     disconnect();
     setConnectionError("");
     const apiKey = localStorage.getItem("techwiz_custom_api_key") || localStorage.getItem("custom_api_key") || import.meta.env.VITE_GEMINI_API_KEY || "";
-    if (!apiKey) {
-      setConnectionError("Gemini API key is required");
-      return;
-    }
+    if (!apiKey) { setConnectionError("Gemini API key is required"); return; }
 
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -104,7 +110,7 @@ export function useGeminiLive() {
       if (audioContext.state === "suspended") await audioContext.resume();
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, sampleRate: 16000, echoCancellation: true, noiseSuppression: true }
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1, sampleRate: 16000 }
       });
       micStreamRef.current = stream;
 
@@ -130,13 +136,16 @@ export function useGeminiLive() {
 
         processor.onaudioprocess = (e) => {
           if (ws.readyState !== WebSocket.OPEN || !isReadyRef.current) return;
+          const isOutputting = isPlayingRef.current || activeSourcesRef.current.length > 0 || (outputAudioCtxRef.current && outputAudioCtxRef.current.currentTime < nextPlayTimeRef.current);
+          if (isOutputting) return;
+
           const float32 = e.inputBuffer.getChannelData(0);
-          const amplified = new Float32Array(float32.length);
+          const normalized = new Float32Array(float32.length);
           for (let i = 0; i < float32.length; i++) {
             const val = float32[i];
-            amplified[i] = Math.abs(val) < 0.012 ? 0 : Math.max(-1, Math.min(1, val * 2.0));
+            normalized[i] = Math.abs(val) < 0.005 ? 0 : Math.max(-1, Math.min(1, val));
           }
-          const base64Data = base64EncodeAudio(amplified);
+          const base64Data = base64EncodeAudio(normalized);
           ws.send(JSON.stringify({ realtimeInput: { mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Data }] } }));
         };
 
@@ -145,10 +154,7 @@ export function useGeminiLive() {
       };
 
       ws.onmessage = handleServerMessage;
-      ws.onerror = (err) => {
-        setConnectionError(err?.message || "WebSocket connection failed");
-        disconnect();
-      };
+      ws.onerror = (err) => { setConnectionError(err?.message || "WebSocket connection failed"); disconnect(); };
       ws.onclose = (event) => {
         if (event && event.code !== 1000 && event.code !== 1005) {
           const reason = event.reason ? String(event.reason).trim() : "";
@@ -158,10 +164,10 @@ export function useGeminiLive() {
       };
 
       timerRef.current = setInterval(() => {
-        if (audioContext && activeSourcesRef.current.length === 0 && audioContext.currentTime >= nextPlayTimeRef.current - 0.05) {
-          setIsSpeaking(false);
+        if (audioContext && activeSourcesRef.current.length === 0 && audioContext.currentTime >= nextPlayTimeRef.current) {
+          isPlayingRef.current = false;
         }
-      }, 200);
+      }, 100);
     } catch (err) {
       setConnectionError(err?.message || "Failed to initialize audio or microphone");
       disconnect();
@@ -170,9 +176,7 @@ export function useGeminiLive() {
 
   const forceReply = useCallback((text = "Hello Nesa") => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
-    wsRef.current.send(JSON.stringify({
-      clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: true }
-    }));
+    wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: true } }));
   }, []);
 
   useEffect(() => () => disconnect(), [disconnect]);

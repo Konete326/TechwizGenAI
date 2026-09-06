@@ -35,7 +35,7 @@ export function NesaCallVideos({ isSpeaking }) {
             e.currentTarget.play().catch(() => {});
           }
         }}
-        className={`transition-opacity duration-500 ease-in-out absolute inset-0 w-full h-full object-cover object-center pointer-events-none ${
+        className={`transition-opacity duration-300 ease-in-out absolute inset-0 w-full h-full object-cover object-center pointer-events-none ${
           isSpeaking ? "opacity-0" : "opacity-100"
         }`}
       />
@@ -53,7 +53,7 @@ export function NesaCallVideos({ isSpeaking }) {
             e.currentTarget.play().catch(() => {});
           }
         }}
-        className={`transition-opacity duration-500 ease-in-out absolute inset-0 w-full h-full object-cover object-center pointer-events-none ${
+        className={`transition-opacity duration-300 ease-in-out absolute inset-0 w-full h-full object-cover object-center pointer-events-none ${
           isSpeaking ? "opacity-100" : "opacity-0"
         }`}
       />
