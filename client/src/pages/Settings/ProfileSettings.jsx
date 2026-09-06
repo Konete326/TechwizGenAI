@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Camera, Check, Trash } from "@phosphor-icons/react";
 import { useToast } from "@/context/ToastContext";
 import { VITE_API_URL } from "@/config/env";
+import { Loader } from "@/components/ui/Loader";
 
 export function ProfileSettings() {
   const toast = useToast();
@@ -96,13 +97,15 @@ export function ProfileSettings() {
               <span className="text-lg font-bold text-accent">{initial}</span>
             )}
             {isUploading && (
-              <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-[10px] text-white">Wait...</div>
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                <Loader size={18} className="text-white" />
+              </div>
             )}
           </div>
 
           <div className="flex items-center gap-2">
             <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border text-xs font-medium text-text-primary hover:border-accent hover:bg-surface-elevated transition-colors cursor-pointer">
-              <Camera size={14} className="text-accent" />
+              {isUploading ? <Loader size={14} className="text-accent" /> : <Camera size={14} className="text-accent" />}
               <span>{isUploading ? "Uploading..." : "Upload New Avatar"}</span>
               <input type="file" accept="image/*" onChange={handleAvatarChange} disabled={isUploading} className="hidden" />
             </label>

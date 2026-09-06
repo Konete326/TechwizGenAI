@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ShieldCheck, UserCheck, UserMinus, ArrowClockwise, MagnifyingGlass, Users, HardDrive } from "@phosphor-icons/react";
 import { VITE_API_URL } from "@/config/env";
 import { useToast } from "@/context/ToastContext";
+import { Loader } from "@/components/ui/Loader";
 
 export function UserManagementView() {
   const [users, setUsers] = useState([]);
@@ -93,7 +94,7 @@ export function UserManagementView() {
             title="Refresh"
             aria-label="Refresh users"
           >
-            <ArrowClockwise size={14} className={loading ? "animate-spin" : ""} />
+            {loading ? <Loader size={14} className="text-accent" /> : <ArrowClockwise size={14} />}
           </button>
         </div>
       </div>
@@ -113,9 +114,11 @@ export function UserManagementView() {
             <tbody className="divide-y divide-border">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-text-muted">
-                    <ArrowClockwise size={18} className="animate-spin inline mr-2 text-accent" />
-                    <span>Loading user metrics...</span>
+                  <td colSpan={5} className="py-10 text-center text-text-muted">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Loader size={24} className="text-accent" />
+                      <span className="text-xs">Loading user metrics...</span>
+                    </div>
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
@@ -162,7 +165,7 @@ export function UserManagementView() {
                             disabled={isBusy}
                             className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--radius-sm)] font-medium text-xs transition-colors btn-tactile cursor-pointer border ${isSuspended ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20" : "border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20"}`}
                           >
-                            {isBusy ? <ArrowClockwise size={12} className="animate-spin" /> : isSuspended ? <UserCheck size={12} /> : <UserMinus size={12} />}
+                            {isBusy ? <Loader size={12} className={isSuspended ? "text-emerald-400" : "text-rose-400"} /> : isSuspended ? <UserCheck size={12} /> : <UserMinus size={12} />}
                             <span>{isSuspended ? "Activate" : "Suspend"}</span>
                           </button>
                         )}

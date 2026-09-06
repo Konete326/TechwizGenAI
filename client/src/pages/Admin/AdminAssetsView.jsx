@@ -4,6 +4,7 @@ import { HardDrive, MagnifyingGlass, ArrowClockwise, Copy, Check, Trash, Users }
 import { VITE_API_URL } from "@/config/env";
 import { useToast } from "@/context/ToastContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Loader } from "@/components/ui/Loader";
 import { AssetPreviewModal } from "../Assets/AssetPreviewModal";
 
 export function AdminAssetsView() {
@@ -87,7 +88,7 @@ export function AdminAssetsView() {
             <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter assets or user..." className="bg-transparent text-xs text-text-primary placeholder:text-text-muted focus:outline-none w-44" />
           </div>
           <button type="button" onClick={fetchAssets} disabled={loading} className="p-2 rounded-[var(--radius-sm)] bg-surface border border-border hover:border-accent text-text-muted hover:text-text-primary cursor-pointer" title="Refresh">
-            <ArrowClockwise size={14} className={loading ? "animate-spin" : ""} />
+            {loading ? <Loader size={14} className="text-accent" /> : <ArrowClockwise size={14} />}
           </button>
         </div>
       </div>

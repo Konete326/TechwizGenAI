@@ -1,10 +1,11 @@
-import { Loader2 } from "lucide-react";
+import { Loader } from "./Loader";
 import { cn } from "@/lib/utils";
 
-export function Spinner({ className, ...props }) {
+export function Spinner({ size = 16, className = "", ...props }) {
   return (
-    <Loader2
-      className={cn("h-4 w-4 animate-spin text-accent", className)}
+    <Loader
+      size={size}
+      className={cn("text-accent", className)}
       {...props}
     />
   );

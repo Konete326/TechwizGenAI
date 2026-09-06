@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Coins, HardDrive, ArrowClockwise, CheckCircle } from "@phosphor-icons/react";
 import { VITE_API_URL } from "@/config/env";
 import { useToast } from "@/context/ToastContext";
+import { Loader } from "@/components/ui/Loader";
 
 export function BillingSettings() {
   const toast = useToast();
@@ -68,7 +69,7 @@ export function BillingSettings() {
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface hover:bg-surface-elevated text-text-muted hover:text-text-primary hover:border-accent text-xs font-medium transition-all cursor-pointer disabled:opacity-50 shrink-0"
           title="Refresh metrics"
         >
-          <ArrowClockwise size={14} className={isLoading || isRefreshing ? "animate-spin text-accent" : ""} />
+          {isLoading || isRefreshing ? <Loader size={14} className="text-accent" /> : <ArrowClockwise size={14} />}
           <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
         </button>
       </div>

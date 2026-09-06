@@ -1,4 +1,5 @@
 import { ArrowsClockwise, Users, User, ShieldCheck } from "@phosphor-icons/react";
+import { Loader } from "@/components/ui/Loader";
 
 export function AnalyticsHeader({
   isAdmin,
@@ -57,7 +58,7 @@ export function AnalyticsHeader({
           title="Refresh analytics"
           aria-label="Refresh analytics data"
         >
-          <ArrowsClockwise size={14} className={loading ? "animate-spin" : ""} />
+          {loading ? <Loader size={14} className="text-accent" /> : <ArrowsClockwise size={14} />}
           <span>Refresh</span>
         </button>
       </div>

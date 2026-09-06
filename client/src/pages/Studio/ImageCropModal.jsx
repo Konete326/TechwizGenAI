@@ -5,6 +5,7 @@ import "react-image-crop/dist/ReactCrop.css";
 import { X, Crop, Check } from "@phosphor-icons/react";
 import { useToast } from "@/context/ToastContext";
 import { VITE_API_URL } from "@/config/env";
+import { Loader } from "@/components/ui/Loader";
 
 export function ImageCropModal({ isOpen, imageSrc, onClose, onSuccess }) {
   const [crop, setCrop] = useState({ unit: "%", width: 80, height: 80, x: 10, y: 10 });
@@ -122,7 +123,10 @@ export function ImageCropModal({ isOpen, imageSrc, onClose, onSuccess }) {
             className="px-4 py-1.5 text-xs rounded-md bg-accent hover:bg-accent-hover text-white font-medium flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
           >
             {isUploading ? (
-              <span>Uploading to Assets...</span>
+              <>
+                <Loader size={13} className="text-white" />
+                <span>Uploading to Assets...</span>
+              </>
             ) : (
               <>
                 <Check size={14} weight="bold" />
