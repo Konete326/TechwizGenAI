@@ -28,7 +28,7 @@ export function Studio() {
     sessions, setSessions, activeSessionId, setActiveSessionId,
     messages, setMessages, isLoading, fetchSessions,
     createSession, deleteSession, renameSession, updateSessionPersona
-  } = useChatSessions();
+  } = useChatSessions({ isStreaming });
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
 

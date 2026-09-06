@@ -63,7 +63,7 @@ export function ChatCanvas({
   return (
     <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       <div className="w-full space-y-4 sm:space-y-6">
-        {messages.length === 0 && !isStreaming ? (
+        {messages.length === 0 && !isStreaming && (!activeSession || activeSession.title === "New Chat") ? (
           <div className={`w-full ${isSidebarOpen ? "hidden md:block" : "block"}`}>
             <PersonaStarters persona={activePersona} onSelectStarter={onSendSuggested} />
           </div>
