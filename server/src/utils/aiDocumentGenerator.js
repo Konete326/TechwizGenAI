@@ -1,4 +1,3 @@
-import { cloudinary } from "../config/cloudinary.js";
 import { Asset } from "../models/Asset.js";
 import { ChatMessage } from "../models/ChatMessage.js";
 import { generateDocumentBuffer } from "./documentBuilders.js";
@@ -17,25 +16,7 @@ export async function generateDocument(extension, rawContent, userId) {
   const buffer = await generateDocumentBuffer(ext, rawContent);
   const filename = `doc_${Date.now()}.${ext}`;
   const mimeType = MIME_TYPES[ext] || "application/octet-stream";
-  let finalUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
-
-  try {
-    const uploadResult = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder: "techwiz_docs",
-          resource_type: "raw",
-          public_id: filename
-        },
-        (error, result) => (error ? reject(error) : resolve(result))
-      );
-      stream.end(buffer);
-    });
-
-    if (uploadResult?.secure_url) {
-      finalUrl = uploadResult.secure_url;
-    }
-  } catch {}
+  const finalUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
 
   if (userId) {
     await Asset.create({
@@ -55,9 +36,10 @@ export async function processAiDocumentRequest({ docReqBuffer, userId, session, 
   try {
     const match = docReqBuffer.match(/\[DOC_REQ:\s*([a-zA-Z0-9]+)\s*\|\s*([\s\S]+?)\]/);
     const extension = match ? match[1].toLowerCase().trim() : "pdf";
-    const rawContent = match ? match[2].trim() : docReqBuffer;
+    const raw = match ? match[2] : docReqBuffer;
+    const cleanContent = raw.replace(/^\[DOC_REQ:[^|]*\|\s*/i, "").replace(/\]\s*$/, "").trim();
 
-    const docResult = await generateDocument(extension, rawContent, userId);
+    const docResult = await generateDocument(extension, cleanContent, userId);
     const docUrl = docResult?.url || docResult;
     const artifactTag = `[ARTIFACT: ${extension} | ${docUrl}]`;
 

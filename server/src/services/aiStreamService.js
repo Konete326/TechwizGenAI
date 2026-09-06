@@ -40,20 +40,28 @@ export const consumeStreamAndTrackUsage = async ({ responseStream, promptText, u
     const chunkText = chunk.text || "";
     if (!chunkText) continue;
 
-    if (!isSpecialReq && accumulatedText.length === 0 && (chunkText.trim().startsWith("[") || specialBuffer.length > 0)) {
-      specialBuffer += chunkText;
-      if (specialBuffer.includes("[IMAGE_REQ:")) {
-        isSpecialReq = true;
-        specialType = "image";
-      } else if (specialBuffer.includes("[DOC_REQ:")) {
+    if (!isSpecialReq) {
+      if (chunkText.includes("[DOC_REQ:") || specialBuffer.includes("[DOC_REQ:")) {
         isSpecialReq = true;
         specialType = "doc";
-      } else if (specialBuffer.length > 30) {
-        accumulatedText += specialBuffer;
-        res.write(`data: ${JSON.stringify({ text: specialBuffer })}\n\n`);
-        specialBuffer = "";
+        specialBuffer += chunkText;
+        continue;
       }
-      continue;
+      if (chunkText.includes("[IMAGE_REQ:") || specialBuffer.includes("[IMAGE_REQ:")) {
+        isSpecialReq = true;
+        specialType = "image";
+        specialBuffer += chunkText;
+        continue;
+      }
+      if (accumulatedText.length === 0 && (chunkText.trim().startsWith("[") || specialBuffer.length > 0)) {
+        specialBuffer += chunkText;
+        if (specialBuffer.length > 30) {
+          accumulatedText += specialBuffer;
+          res.write(`data: ${JSON.stringify({ text: specialBuffer })}\n\n`);
+          specialBuffer = "";
+        }
+        continue;
+      }
     }
 
     if (isSpecialReq) {

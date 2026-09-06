@@ -33,6 +33,12 @@ export function buildPdfDocument(title, content) {
         doc.moveDown(0.3).fillColor("#334155").fontSize(10).font("Helvetica-Bold").text(line.slice(4));
       } else if (line.startsWith("- ") || line.startsWith("* ")) {
         doc.fillColor("#334155").fontSize(9).font("Helvetica").text(`*  ${line.slice(2).replace(/\*\*/g, "")}`, { indent: 10, lineGap: 2 });
+      } else if (line.startsWith("|")) {
+        const cells = line.split("|").map((c) => c.trim()).filter(Boolean);
+        if (cells.length > 0 && !line.includes("---")) {
+          const isHeader = line.toLowerCase().includes("qty") || line.toLowerCase().includes("price") || line.toLowerCase().includes("item") || line.toLowerCase().includes("desc");
+          doc.fillColor(isHeader ? "#4f46e5" : (line.toLowerCase().includes("total") ? "#0f172a" : "#334155")).fontSize(9).font(isHeader || line.toLowerCase().includes("total") ? "Helvetica-Bold" : "Helvetica").text(cells.join("    |    "), { lineGap: 3 });
+        }
       } else {
         doc.fillColor("#334155").fontSize(9).font("Helvetica").text(line.replace(/\*\*/g, ""), { lineGap: 2 });
       }

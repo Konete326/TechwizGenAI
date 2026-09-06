@@ -33,6 +33,15 @@ export function ArtifactPreviewer({ extension = "pdf", url, onOpenArtifact }) {
   const { Icon, color } = getIconInfo();
 
   const handleDownload = () => {
+    if (resolvedUrl.startsWith("data:") || resolvedUrl.startsWith("blob:")) {
+      const a = document.createElement("a");
+      a.href = resolvedUrl;
+      a.download = `document_${Date.now()}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
     const a = document.createElement("a");
     a.href = resolvedUrl;
     a.download = `document.${ext}`;
@@ -43,11 +52,27 @@ export function ArtifactPreviewer({ extension = "pdf", url, onOpenArtifact }) {
     document.body.removeChild(a);
   };
 
+  const handleOpenWindow = () => {
+    if (resolvedUrl.startsWith("data:")) {
+      try {
+        const byteCharacters = atob(resolvedUrl.split(",")[1]);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
+        const mime = resolvedUrl.split(";")[0].replace("data:", "") || "application/pdf";
+        const blob = new Blob([new Uint8Array(byteNumbers)], { type: mime });
+        const bUrl = URL.createObjectURL(blob);
+        window.open(bUrl, "_blank");
+        return;
+      } catch {}
+    }
+    window.open(resolvedUrl, "_blank");
+  };
+
   const handlePreview = () => {
     if (onOpenArtifact) {
       onOpenArtifact({ type: "document", extension: ext, url: resolvedUrl });
     } else {
-      window.open(resolvedUrl, "_blank");
+      handleOpenWindow();
     }
   };
 
@@ -89,7 +114,7 @@ export function ArtifactPreviewer({ extension = "pdf", url, onOpenArtifact }) {
           </button>
           <button
             type="button"
-            onClick={() => window.open(resolvedUrl, "_blank")}
+            onClick={handleOpenWindow}
             className="p-1.5 rounded-md bg-surface hover:bg-surface-elevated border border-border text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer"
             title="Open in new window"
             aria-label="Open document in new window"
