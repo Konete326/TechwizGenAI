@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { User, Gear, SignOut, Bell, ShieldCheck } from "@phosphor-icons/react";
+import { User, Gear, SignOut, Bell } from "@phosphor-icons/react";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useToast } from "@/context/ToastContext";
 
@@ -104,16 +104,6 @@ export function UserNavDropdown() {
           </div>
 
           <div className="py-1">
-            {role === "admin" && (
-              <Link
-                to="/admin"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-2.5 px-3.5 py-2 text-xs text-accent hover:bg-surface transition-colors cursor-pointer"
-              >
-                <ShieldCheck size={15} />
-                <span>Admin Governance</span>
-              </Link>
-            )}
             <Link
               to="/profile"
               onClick={() => setIsOpen(false)}
