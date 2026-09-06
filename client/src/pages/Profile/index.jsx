@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { ShieldCheck, CheckCircle, Camera, Trash, Crop } from "@phosphor-icons/react";
 import { AvatarCropModal } from "@/components/ui/AvatarCropModal";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -8,12 +9,9 @@ import { VITE_API_URL } from "@/config/env";
 
 export function Profile() {
   const toast = useToast();
+  const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("user") || "{}");
-    } catch {
-      return {};
-    }
+    try { return JSON.parse(localStorage.getItem("user") || "{}"); } catch { return {}; }
   });
 
   const [name, setName] = useState(currentUser?.name || "Sameer");
@@ -21,14 +19,13 @@ export function Profile() {
   const [rawImageForCrop, setRawImageForCrop] = useState(null);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return;
-    fetch(`${VITE_API_URL}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    fetch(`${VITE_API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((data) => {
         if (data.success && data.user) {
@@ -40,6 +37,15 @@ export function Profile() {
       })
       .catch(() => {});
   }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("platform_usage_bytes");
+    setIsLogoutModalOpen(false);
+    toast.info("Logged out successfully");
+    navigate("/login");
+  };
 
   const email = currentUser?.email || "admin@gmail.com";
   const role = currentUser?.role || "admin";
@@ -64,9 +70,7 @@ export function Profile() {
         window.dispatchEvent(new CustomEvent("profile_updated", { detail: updated }));
         return true;
       }
-    } catch {
-      return false;
-    }
+    } catch { return false; }
     return false;
   };
 
@@ -75,10 +79,7 @@ export function Profile() {
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) return toast.error("Image size must be under 5 MB");
     const reader = new FileReader();
-    reader.onload = () => {
-      setRawImageForCrop(reader.result);
-      setIsCropModalOpen(true);
-    };
+    reader.onload = () => { setRawImageForCrop(reader.result); setIsCropModalOpen(true); };
     reader.readAsDataURL(file);
     e.target.value = "";
   };
@@ -87,16 +88,14 @@ export function Profile() {
     setProfileImage("");
     setIsRemoveModalOpen(false);
     const success = await persistProfile(name, "");
-    if (success) toast.success("Profile picture removed");
-    else toast.error("Failed to remove profile picture");
+    if (success) toast.success("Profile picture removed"); else toast.error("Failed to remove profile picture");
   };
 
   const handleApplyCrop = async (croppedUrl) => {
     setProfileImage(croppedUrl);
     setIsCropModalOpen(false);
     const success = await persistProfile(name, croppedUrl);
-    if (success) toast.success("Profile picture cropped and saved");
-    else toast.error("Failed to save cropped picture");
+    if (success) toast.success("Profile picture cropped and saved"); else toast.error("Failed to save cropped picture");
   };
 
   const handleUpdateProfile = async (e) => {
@@ -105,8 +104,7 @@ export function Profile() {
     setIsSaving(true);
     const success = await persistProfile(name, profileImage);
     setIsSaving(false);
-    if (success) toast.success("Profile updated successfully");
-    else toast.error("Failed to update profile");
+    if (success) toast.success("Profile updated successfully"); else toast.error("Failed to update profile");
   };
 
   return (
@@ -123,34 +121,16 @@ export function Profile() {
           </div>
 
           <div className="flex items-center gap-2 pt-1">
-            <label
-              htmlFor="profile-image-upload"
-              className="w-8 h-8 rounded-full bg-surface border border-border text-text-muted hover:text-text-primary hover:border-accent flex items-center justify-center transition-colors cursor-pointer"
-              title="Upload photo"
-            >
+            <label htmlFor="profile-image-upload" className="w-8 h-8 rounded-full bg-surface border border-border text-text-muted hover:text-text-primary hover:border-accent flex items-center justify-center transition-colors cursor-pointer" title="Upload photo">
               <Camera size={15} />
               <input id="profile-image-upload" type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
             </label>
-
             {profileImage && (
               <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRawImageForCrop(profileImage);
-                    setIsCropModalOpen(true);
-                  }}
-                  className="w-8 h-8 rounded-full bg-surface border border-border text-text-muted hover:text-text-primary hover:border-accent flex items-center justify-center transition-colors cursor-pointer"
-                  title="Crop photo"
-                >
+                <button type="button" onClick={() => { setRawImageForCrop(profileImage); setIsCropModalOpen(true); }} className="w-8 h-8 rounded-full bg-surface border border-border text-text-muted hover:text-text-primary hover:border-accent flex items-center justify-center transition-colors cursor-pointer" title="Crop photo">
                   <Crop size={15} />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setIsRemoveModalOpen(true)}
-                  className="w-8 h-8 rounded-full bg-rose-950/30 border border-rose-800/40 text-rose-400 hover:bg-rose-950/50 flex items-center justify-center transition-colors cursor-pointer"
-                  title="Remove photo"
-                >
+                <button type="button" onClick={() => setIsRemoveModalOpen(true)} className="w-8 h-8 rounded-full bg-rose-950/30 border border-rose-800/40 text-rose-400 hover:bg-rose-950/50 flex items-center justify-center transition-colors cursor-pointer" title="Remove photo">
                   <Trash size={14} />
                 </button>
               </>
@@ -172,7 +152,15 @@ export function Profile() {
           </div>
         </div>
 
-        <ProfileForm name={name} setName={setName} email={email} createdAt={createdAt} isSaving={isSaving} onSubmit={handleUpdateProfile} />
+        <ProfileForm
+          name={name}
+          setName={setName}
+          email={email}
+          createdAt={createdAt}
+          isSaving={isSaving}
+          onSubmit={handleUpdateProfile}
+          onLogout={() => setIsLogoutModalOpen(true)}
+        />
       </div>
 
       <AvatarCropModal isOpen={isCropModalOpen} imageSrc={rawImageForCrop} onClose={() => setIsCropModalOpen(false)} onApply={handleApplyCrop} />
@@ -184,6 +172,16 @@ export function Profile() {
         title="Remove Profile Picture"
         description="Are you sure you want to remove your profile picture? Your initials will be displayed instead."
         confirmText="Remove"
+        isDestructive={true}
+      />
+
+      <ConfirmModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={handleLogout}
+        title="Confirm Sign Out"
+        description="Are you sure you want to end your session? You will need to sign in again to access your account."
+        confirmText="Sign Out"
         isDestructive={true}
       />
     </div>

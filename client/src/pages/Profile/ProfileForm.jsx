@@ -1,7 +1,7 @@
-import { User, Calendar, Clock } from "@phosphor-icons/react";
+import { User, Calendar, Clock, SignOut } from "@phosphor-icons/react";
 import { Loader } from "@/components/ui/Loader";
 
-export function ProfileForm({ name, setName, email, createdAt, isSaving, onSubmit }) {
+export function ProfileForm({ name, setName, email, createdAt, isSaving, onSubmit, onLogout }) {
   return (
     <div className="md:col-span-2 relative p-6 rounded-[var(--radius-md)] bg-surface-card border border-border space-y-4">
       <div className="flex items-center gap-2 pb-2 border-b border-border">
@@ -42,7 +42,15 @@ export function ProfileForm({ name, setName, email, createdAt, isSaving, onSubmi
           </div>
         </div>
 
-        <div className="flex justify-end pt-2">
+        <div className="flex items-center justify-between pt-2">
+          <button
+            type="button"
+            onClick={onLogout}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-[var(--radius-sm)] border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 text-xs font-semibold transition-colors btn-tactile cursor-pointer"
+          >
+            <SignOut size={14} />
+            <span>Log out</span>
+          </button>
           <button
             type="submit"
             disabled={isSaving}
