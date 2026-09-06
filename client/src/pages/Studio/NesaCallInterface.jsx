@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import Draggable from "react-draggable";
 import { Phone, PhoneCall, Waveform, Minus, X } from "@phosphor-icons/react";
-import logoImg from "@/assets/logo.png";
 import { NesaCallMinimized } from "./NesaCallMinimized";
 import { NesaCallVideos } from "./NesaCallVideos";
 import { playRingingTone } from "./audioUtils";
@@ -46,7 +45,7 @@ export function NesaCallInterface({
         <div className="w-28 h-28 rounded-full bg-accent/20 animate-ping opacity-40 absolute [animation-delay:200ms]" />
         <div className="w-20 h-20 rounded-full bg-accent/30 animate-ping opacity-60 absolute [animation-delay:400ms]" />
         <div className="w-16 h-16 rounded-full border-2 border-accent/80 p-0.5 shadow-2xl shadow-accent/40 relative overflow-hidden bg-zinc-900 flex items-center justify-center">
-          <img src="/Nesa.jpeg" alt="Nesa" className="w-full h-full object-cover rounded-full" />
+          <img src="/Nesa.png" alt="Nesa" className="w-full h-full object-cover rounded-full" />
         </div>
       </div>
       <h2 className="text-base font-semibold text-zinc-100 mb-1">{isFadingRinging ? "Connected" : "Ringing..."}</h2>
@@ -107,7 +106,7 @@ export function NesaCallInterface({
         <header className="relative z-10 w-full px-4 py-3 flex items-center justify-between border-b border-border/40 bg-zinc-950/80 backdrop-blur">
           <div className="flex items-center gap-2">
             <button type="button" onClick={onEndCall} className="p-1 rounded-md text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer mr-1" title="Close Call" aria-label="Close call"><X size={18} weight="bold" /></button>
-            <img src={logoImg} alt="Techwiz GenAI" className="w-4 h-4 object-contain shrink-0" />
+            <img src="/Nesa.png" alt="Nesa" className="w-5 h-5 rounded-full object-cover border border-zinc-700 shrink-0" />
             <span className="text-xs font-semibold text-zinc-100">Nesa</span>
           </div>
           <span className="text-xs font-mono text-zinc-300">{durationText}</span>
@@ -123,7 +122,7 @@ export function NesaCallInterface({
             <div className="md:w-[340px] md:h-[520px] rounded-xl border border-white/10 bg-zinc-950/90 backdrop-blur-md shadow-2xl flex flex-col overflow-hidden relative">
               <div className="call-drag-handle cursor-grab active:cursor-grabbing bg-gradient-to-b from-zinc-950/80 to-transparent p-3 flex justify-between items-center z-20 absolute top-0 w-full select-none">
                 <div className="flex items-center gap-2">
-                  <img src={logoImg} alt="Techwiz GenAI" className="w-4 h-4 object-contain shrink-0" />
+                  <img src="/Nesa.png" alt="Nesa" className="w-5 h-5 rounded-full object-cover border border-zinc-700 shrink-0" />
                   <span className="text-xs font-medium text-zinc-200">Call with Nesa</span>
                   <span className="text-[10px] font-mono text-zinc-400">{durationText}</span>
                 </div>

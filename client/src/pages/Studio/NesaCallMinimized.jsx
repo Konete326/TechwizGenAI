@@ -10,23 +10,26 @@ export function NesaCallMinimized({
   return (
     <div className="call-drag-handle cursor-grab active:cursor-grabbing w-64 h-[72px] bg-zinc-900/90 backdrop-blur-lg border border-white/5 rounded-full shadow-xl px-4 py-2 flex items-center justify-between select-none animate-in fade-in zoom-in-95 duration-200">
       <div className="flex items-center gap-3 min-w-0">
-        <div
-          className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 relative ${
-            isSpeaking
-              ? "bg-accent/25 text-accent border border-accent/60 shadow-lg shadow-accent/30"
-              : isListening
-              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-              : "bg-zinc-800 text-zinc-400 border border-zinc-700"
-          }`}
-        >
-          {isSpeaking && (
-            <span className="absolute inset-0 rounded-full bg-accent/30 animate-ping pointer-events-none" />
-          )}
-          <Waveform
-            size={20}
-            weight="duotone"
-            className={isSpeaking ? "animate-pulse scale-125 transition-transform duration-200" : ""}
+        <div className="relative w-10 h-10 shrink-0">
+          <img
+            src="/Nesa.png"
+            alt="Nesa"
+            className={`w-10 h-10 rounded-full object-cover border-2 transition-all duration-300 ${
+              isSpeaking
+                ? "border-accent ring-2 ring-accent/50 shadow-lg shadow-accent/30 scale-105"
+                : isListening
+                ? "border-emerald-500 ring-2 ring-emerald-500/50 shadow-lg shadow-emerald-500/30"
+                : "border-zinc-700"
+            }`}
           />
+          {isSpeaking && (
+            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-accent border-2 border-zinc-900 flex items-center justify-center">
+              <Waveform size={8} weight="bold" className="text-zinc-950 animate-pulse" />
+            </span>
+          )}
+          {isListening && !isSpeaking && (
+            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-zinc-900 animate-ping" />
+          )}
         </div>
         <div className="min-w-0 flex flex-col justify-center">
           <p className="text-xs font-semibold text-zinc-100 truncate leading-tight">Nesa</p>
