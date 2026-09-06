@@ -14,16 +14,12 @@ import AuthLayout from "../pages/Auth/AuthLayout.jsx";
 
 export const router = createBrowserRouter([
   {
-    path: "/login",
-    element: <AuthLayout defaultIsSignIn={true} key="login" />
-  },
-  {
-    path: "/register",
-    element: <AuthLayout defaultIsSignIn={false} key="register" />
-  },
-  {
-    path: "/auth",
-    element: <AuthLayout defaultIsSignIn={true} key="auth" />
+    element: <AuthLayout />,
+    children: [
+      { path: "/login", element: null },
+      { path: "/register", element: null },
+      { path: "/auth", element: null }
+    ]
   },
   {
     path: "/",
