@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export function sanitizeForSpeech(text) {
   if (!text) return "";
@@ -25,16 +25,8 @@ export function detectLanguage(text) {
 
 export function useTextToSpeech() {
   const [speakingMessageId, setSpeakingMessageId] = useState(null);
-  const currentAudioRef = useRef(null);
 
   const stop = useCallback(() => {
-    if (currentAudioRef.current) {
-      try {
-        currentAudioRef.current.pause();
-        currentAudioRef.current.currentTime = 0;
-      } catch {}
-      currentAudioRef.current = null;
-    }
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try { window.speechSynthesis.cancel(); } catch {}
     }
@@ -57,7 +49,7 @@ export function useTextToSpeech() {
     window.speechSynthesis.speak(utterance);
   }, []);
 
-  const speak = useCallback(async (messageId, rawText, onEnd) => {
+  const speak = useCallback((messageId, rawText, onEnd) => {
     if (speakingMessageId === messageId) {
       stop();
       return;
@@ -71,29 +63,6 @@ export function useTextToSpeech() {
     }
 
     setSpeakingMessageId(messageId);
-
-    try {
-      const puterClient = typeof window !== "undefined" ? window.puter : null;
-      if (puterClient) puterClient.quiet = true;
-      if (puterClient?.ai?.txt2speech) {
-        const audio = await puterClient.ai.txt2speech(cleanText.slice(0, 3000));
-        if (audio) {
-          currentAudioRef.current = audio;
-          audio.onended = () => {
-            currentAudioRef.current = null;
-            setSpeakingMessageId(null);
-            if (onEnd) onEnd();
-          };
-          audio.onerror = () => {
-            currentAudioRef.current = null;
-            playBrowserSpeech(cleanText, onEnd);
-          };
-          await audio.play();
-          return;
-        }
-      }
-    } catch {}
-
     playBrowserSpeech(cleanText, onEnd);
   }, [speakingMessageId, stop, playBrowserSpeech]);
 
