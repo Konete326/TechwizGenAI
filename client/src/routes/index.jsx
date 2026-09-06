@@ -11,6 +11,7 @@ import UsersView from "../pages/Users/index.jsx";
 import UserManagementView from "../pages/Admin/UserManagementView.jsx";
 import Analytics from "../pages/Analytics/index.jsx";
 import AuthLayout from "../pages/Auth/AuthLayout.jsx";
+import NotFoundPage from "../pages/NotFound/index.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -81,7 +82,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "*",
-    element: <Navigate to="/dashboard" replace />
+    element: <NotFoundPage />
   }
 ]);
 
