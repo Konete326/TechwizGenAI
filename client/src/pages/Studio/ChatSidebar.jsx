@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, ChatCircleDots, Trash, SidebarSimple, PencilSimple, Check, X, MagnifyingGlass, BookmarkSimple } from "@phosphor-icons/react";
+import { Plus, ChatCircleDots, Trash, SidebarSimple, PencilSimple, Check, X, MagnifyingGlass } from "@phosphor-icons/react";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 export function ChatSidebar({ isOpen, onClose, sessions, activeSessionId, onSelectSession, onNewChat, onDeleteSession, onRenameSession, isLoading }) {
@@ -7,20 +7,8 @@ export function ChatSidebar({ isOpen, onClose, sessions, activeSessionId, onSele
   const [editTitle, setEditTitle] = useState("");
   const [sessionToDelete, setSessionToDelete] = useState(null);
   const [search, setSearch] = useState("");
-  const [pinnedIds, setPinnedIds] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("pinned_sessions") || "[]"); } catch { return []; }
-  });
 
   if (!isOpen) return null;
-
-  const togglePin = (id, e) => {
-    e.stopPropagation();
-    setPinnedIds((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      try { localStorage.setItem("pinned_sessions", JSON.stringify(next)); } catch {}
-      return next;
-    });
-  };
 
   const handleStartRename = (e, s) => { e.stopPropagation(); setEditingId(s.id); setEditTitle(s.title || "New Chat"); };
   const handleSaveRename = (e, id) => {
@@ -35,9 +23,6 @@ export function ChatSidebar({ isOpen, onClose, sessions, activeSessionId, onSele
 
   const filtered = sessions.filter((s) => (s.title || "New Chat").toLowerCase().includes(search.toLowerCase()));
   const sorted = [...filtered].sort((a, b) => {
-    const isPinnedA = pinnedIds.includes(a.id) || a.isPinned ? 1 : 0;
-    const isPinnedB = pinnedIds.includes(b.id) || b.isPinned ? 1 : 0;
-    if (isPinnedB !== isPinnedA) return isPinnedB - isPinnedA;
     const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
     const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
     return timeB - timeA;
@@ -77,7 +62,6 @@ export function ChatSidebar({ isOpen, onClose, sessions, activeSessionId, onSele
           ) : (
             sorted.map((s) => {
               const isActive = s.id === activeSessionId;
-              const isPinned = pinnedIds.includes(s.id);
               return (
                 <div
                   key={s.id}
@@ -104,15 +88,6 @@ export function ChatSidebar({ isOpen, onClose, sessions, activeSessionId, onSele
                         <span className="truncate flex-1 min-w-0 block">{s.title || "New Chat"}</span>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={(e) => togglePin(s.id, e)}
-                          className={`p-1 rounded transition-colors cursor-pointer ${isPinned ? "text-accent hover:text-accent-hover" : "text-text-muted hover:text-text-primary"}`}
-                          title={isPinned ? "Unpin session" : "Pin session"}
-                          aria-label={isPinned ? "Unpin session" : "Pin session"}
-                        >
-                          <BookmarkSimple size={13} weight={isPinned ? "fill" : "regular"} />
-                        </button>
                         <button type="button" onClick={(e) => handleStartRename(e, s)} className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-surface-elevated transition-colors cursor-pointer" title="Rename chat" aria-label="Rename chat"><PencilSimple size={13} /></button>
                         <button type="button" onClick={(e) => { e.stopPropagation(); setSessionToDelete(s); }} className="p-1 rounded text-text-muted hover:text-rose-400 hover:bg-rose-950/20 transition-colors cursor-pointer" title="Delete chat" aria-label="Delete chat"><Trash size={13} /></button>
                       </div>
