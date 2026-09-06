@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { ShieldCheck, UserCheck, UserMinus, ArrowClockwise, MagnifyingGlass, Users } from "@phosphor-icons/react";
+import { Link } from "react-router-dom";
+import { ShieldCheck, UserCheck, UserMinus, ArrowClockwise, MagnifyingGlass, Users, HardDrive } from "@phosphor-icons/react";
 import { VITE_API_URL } from "@/config/env";
 import { useToast } from "@/context/ToastContext";
 
@@ -59,6 +60,14 @@ export function UserManagementView() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
+          <div className="flex items-center gap-3 mb-1">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent px-2.5 py-1 rounded-[var(--radius-sm)] bg-accent/10 border border-accent/30">
+              <Users size={14} /><span>Users</span>
+            </span>
+            <Link to="/admin/assets" className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-text-primary px-2.5 py-1 rounded-[var(--radius-sm)] bg-surface border border-border">
+              <HardDrive size={14} /><span>Tenant Assets</span>
+            </Link>
+          </div>
           <h1 className="text-xl font-bold text-text-primary flex items-center gap-2">
             <Users size={22} className="text-accent" />
             <span>User Governance</span>

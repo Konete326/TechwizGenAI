@@ -35,7 +35,7 @@ export function DashboardSidebar({
     { label: "Studio", href: "/studio", icon: Sparkle },
     { label: "Assets", href: "/assets", icon: ImageSquare },
     { label: "Analytics", href: "/analytics", icon: ChartLineUp },
-    ...(isAdmin ? [{ label: "Users", href: "/admin", icon: Users }] : []),
+    ...(isAdmin ? [{ label: "Users", href: "/admin", icon: Users }, { label: "Admin Assets", href: "/admin/assets", icon: HardDrive }] : []),
     { label: "Profile", href: "/profile", icon: User },
     { label: "Settings", href: "/settings", icon: Gear }
   ];

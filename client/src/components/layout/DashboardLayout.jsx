@@ -5,6 +5,7 @@ import { DashboardHeader } from "./DashboardHeader";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { InstallPrompt } from "@/components/ui/InstallPrompt";
 import { ApiFallbackModal } from "@/components/ui/ApiFallbackModal";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 
 export const DashboardLayout = () => {
   const location = useLocation();
@@ -94,7 +95,9 @@ export const DashboardLayout = () => {
         <DashboardHeader onOpenDrawer={() => setIsDrawerOpen(true)} />
 
         <main className={`flex-1 w-full relative ${isStudio ? "overflow-hidden p-0" : "overflow-y-auto overflow-x-hidden p-6"}`}>
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
 

@@ -22,23 +22,39 @@ export const createUploadedAsset = async (user, file, title) => {
   });
 };
 
-export const fetchUserAssets = async (user, query) => {
-  const isAdmin = user?.role === "admin";
-  if (!isAdmin && user?.profileImage) {
-    const existingAvatar = await Asset.findOne({ userId: user._id, publicId: `avatar_${user._id}` });
-    if (!existingAvatar) {
-      await Asset.create({
-        userId: user._id,
-        title: `${user.name || "User"} Profile Picture`,
-        url: user.profileImage,
-        publicId: `avatar_${user._id}`,
-        format: "png",
-        bytes: 42800
-      }).catch(() => {});
-    }
+export const autoPersistDocumentAsset = async (userId, { name, data, type }) => {
+  if (!userId || !data || typeof data !== "string") return null;
+  try {
+    const raw = data.includes(",") ? data.split(",")[1] : data;
+    const buffer = Buffer.from(raw, "base64");
+    const uploaded = await uploadBufferToCloudinary(buffer);
+    const title = sanitizeText(name || "Uploaded Document").slice(0, 100);
+    const ext = (name ? name.split(".").pop().toLowerCase() : uploaded.format) || "bin";
+    return await Asset.create({
+      userId,
+      title: title || "Uploaded Document",
+      url: uploaded.url,
+      publicId: uploaded.publicId,
+      format: ext,
+      bytes: uploaded.bytes || buffer.length
+    });
+  } catch {
+    return null;
+  }
+};
+
+export const fetchUserAssets = async (userId, query) => {
+  const filter = { userId };
+  if (query && typeof query === "string" && query.trim()) {
+    filter.title = { $regex: escapeRegex(query.trim()), $options: "i" };
   }
 
-  const filter = isAdmin ? {} : { userId: user._id };
+  const assets = await Asset.find(filter).sort({ createdAt: -1 }).lean();
+  return assets.map((a) => ({ ...a, ownerName: "Me" }));
+};
+
+export const fetchAdminAssets = async (query) => {
+  const filter = {};
   if (query && typeof query === "string" && query.trim()) {
     filter.title = { $regex: escapeRegex(query.trim()), $options: "i" };
   }
@@ -50,7 +66,7 @@ export const fetchUserAssets = async (user, query) => {
 
   return assets.map((a) => ({
     ...a,
-    ownerName: a.userId?.name || "System",
+    ownerName: a.userId?.name || "Unknown User",
     ownerEmail: a.userId?.email || ""
   }));
 };
@@ -78,7 +94,7 @@ export const removeAssetById = async (user, assetId) => {
   await Notification.create({
     userId: user._id,
     title: "Asset Deleted",
-    message: "Asset successfully removed from Cloudinary.",
+    message: "Asset successfully removed from storage.",
     type: "success",
     href: "/assets"
   }).catch(() => {});
@@ -86,4 +102,4 @@ export const removeAssetById = async (user, assetId) => {
   return assetId;
 };
 
-export default { createUploadedAsset, fetchUserAssets, removeAssetById };
+export default { createUploadedAsset, autoPersistDocumentAsset, fetchUserAssets, fetchAdminAssets, removeAssetById };

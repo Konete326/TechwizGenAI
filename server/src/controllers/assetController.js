@@ -1,4 +1,4 @@
-import { createUploadedAsset, fetchUserAssets, removeAssetById } from "../services/assetService.js";
+import { createUploadedAsset, fetchUserAssets, fetchAdminAssets, removeAssetById } from "../services/assetService.js";
 
 export const uploadAsset = async (req, res, next) => {
   try {
@@ -27,7 +27,8 @@ export const uploadAsset = async (req, res, next) => {
 
 export const getAssets = async (req, res, next) => {
   try {
-    const assets = await fetchUserAssets(req.user, req.query.q);
+    const userId = req.user._id || req.user.id;
+    const assets = await fetchUserAssets(userId, req.query.q);
 
     return res.status(200).json({
       success: true,
@@ -38,7 +39,31 @@ export const getAssets = async (req, res, next) => {
         publicId: item.publicId,
         format: item.format,
         bytes: item.bytes,
-        createdAt: item.createdAt
+        createdAt: item.createdAt,
+        ownerName: item.ownerName
+      }))
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAdminAssets = async (req, res, next) => {
+  try {
+    const assets = await fetchAdminAssets(req.query.q);
+
+    return res.status(200).json({
+      success: true,
+      data: assets.map((item) => ({
+        id: item._id,
+        title: item.title,
+        url: item.url,
+        publicId: item.publicId,
+        format: item.format,
+        bytes: item.bytes,
+        createdAt: item.createdAt,
+        ownerName: item.ownerName,
+        ownerEmail: item.ownerEmail
       }))
     });
   } catch (error) {
@@ -61,4 +86,4 @@ export const deleteAsset = async (req, res, next) => {
   }
 };
 
-export default { uploadAsset, getAssets, deleteAsset };
+export default { uploadAsset, getAssets, getAdminAssets, deleteAsset };
