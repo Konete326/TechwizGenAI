@@ -35,6 +35,12 @@ export function Assets() {
     setCurrentPage(1);
   }, [searchQuery, selectedFormat]);
 
+  useEffect(() => {
+    const onPreview = (e) => { if (e?.detail) setPreviewAsset(e.detail); };
+    window.addEventListener("asset:preview", onPreview);
+    return () => window.removeEventListener("asset:preview", onPreview);
+  }, []);
+
   const handleConfirmDelete = async () => {
     if (!assetToDelete) return;
     await handleDelete(assetToDelete.id);

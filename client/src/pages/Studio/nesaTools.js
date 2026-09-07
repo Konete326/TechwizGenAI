@@ -2,36 +2,17 @@ export const NESA_TOOL_DECLARATIONS = [
   {
     name: "navigatePage",
     description: "Navigate to a specific platform route or view such as assets, analytics, dashboard, studio, or settings.",
-    parameters: {
-      type: "OBJECT",
-      properties: {
-        route: { type: "STRING", description: "Target route like /assets, /analytics, /dashboard, /studio, /settings" }
-      },
-      required: ["route"]
-    }
+    parameters: { type: "OBJECT", properties: { route: { type: "STRING", description: "Target route like /assets, /analytics, /dashboard, /studio, /settings" } }, required: ["route"] }
   },
   {
     name: "spotlightElement",
     description: "Highlight or spotlight an on-screen UI element with guidance text.",
-    parameters: {
-      type: "OBJECT",
-      properties: {
-        targetKey: { type: "STRING", description: "Identifier or selector for target element (e.g. upload_btn, theme_toggle, new_chat)" },
-        label: { type: "STRING", description: "Short guidance text to show near the arrow" }
-      },
-      required: ["targetKey"]
-    }
+    parameters: { type: "OBJECT", properties: { targetKey: { type: "STRING", description: "Identifier for target element" }, label: { type: "STRING", description: "Short guidance text" } }, required: ["targetKey"] }
   },
   {
     name: "repositionWidget",
     description: "Change the layout position or minimize the floating Nesa voice interface.",
-    parameters: {
-      type: "OBJECT",
-      properties: {
-        position: { type: "STRING", description: "Target dock: top-left, top-right, bottom-left, bottom-right, minimize, maximize" }
-      },
-      required: ["position"]
-    }
+    parameters: { type: "OBJECT", properties: { position: { type: "STRING", description: "Target dock: top-left, top-right, bottom-left, bottom-right, minimize, maximize" } }, required: ["position"] }
   },
   {
     name: "openDynamicModal",
@@ -50,12 +31,7 @@ export const NESA_TOOL_DECLARATIONS = [
   {
     name: "closeModal",
     description: "Dismiss or close any active modal popup or dynamic dialog.",
-    parameters: {
-      type: "OBJECT",
-      properties: {
-        reason: { type: "STRING", description: "Optional dismissal reason" }
-      }
-    }
+    parameters: { type: "OBJECT", properties: { reason: { type: "STRING", description: "Optional dismissal reason" } } }
   },
   {
     name: "executeLogout",
@@ -75,33 +51,37 @@ export const NESA_TOOL_DECLARATIONS = [
   {
     name: "submitStudioPrompt",
     description: "Executes a query directly in the Studio chat canvas. Use this when the user asks to generate a graph, write code, or run a query in the chat.",
-    parameters: {
-      type: "OBJECT",
-      properties: {
-        prompt: { type: "STRING", description: "The full user prompt to submit" },
-        autoSubmit: { type: "BOOLEAN", description: "True to immediately trigger generation" }
-      },
-      required: ["prompt"]
-    }
+    parameters: { type: "OBJECT", properties: { prompt: { type: "STRING", description: "The full user prompt to submit" }, autoSubmit: { type: "BOOLEAN", description: "True to trigger generation" } }, required: ["prompt"] }
   },
   {
     name: "deleteAsset",
     description: "Deletes an asset or file. Provide the asset title or id if known, or deletes the target asset.",
-    parameters: {
-      type: "OBJECT",
-      properties: {
-        assetId: { type: "STRING" },
-        title: { type: "STRING" }
-      }
-    }
+    parameters: { type: "OBJECT", properties: { assetId: { type: "STRING" }, title: { type: "STRING" } } }
   },
   {
     name: "deleteSession",
     description: "Deletes the active or specified chat session.",
-    parameters: {
-      type: "OBJECT",
-      properties: { sessionId: { type: "STRING" } }
-    }
+    parameters: { type: "OBJECT", properties: { sessionId: { type: "STRING" } } }
+  },
+  {
+    name: "toggleWorkspaceControl",
+    description: "Toggles workspace interface controls such as dark or light theme or sidebar collapse.",
+    parameters: { type: "OBJECT", properties: { control: { type: "STRING", description: "theme, sidebar" } }, required: ["control"] }
+  },
+  {
+    name: "previewAsset",
+    description: "Opens an asset preview modal to view a document, image, or media asset.",
+    parameters: { type: "OBJECT", properties: { query: { type: "STRING", description: "Name or format of asset to view" } } }
+  },
+  {
+    name: "switchSession",
+    description: "Switches to an existing chat session by title or topic.",
+    parameters: { type: "OBJECT", properties: { query: { type: "STRING", description: "Title or topic of chat session" } }, required: ["query"] }
+  },
+  {
+    name: "exportCallSummary",
+    description: "Generates an executive PDF summary of the call or conversation and provides a download link.",
+    parameters: { type: "OBJECT", properties: { title: { type: "STRING", description: "Title of report" } } }
   }
 ];
 

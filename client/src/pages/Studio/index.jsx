@@ -11,6 +11,7 @@ import { ModelSelector } from "./ModelSelector";
 import { PersonaSelector } from "./PersonaSelector";
 import { ArtifactPanel } from "./ArtifactPanel";
 import { useChatSessions } from "./useChatSessions";
+import { formatToolResponse } from "./nesaTools";
 
 export function Studio() {
   const toast = useToast(), navigate = useNavigate(), location = useLocation();
@@ -21,12 +22,7 @@ export function Studio() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false), [activeArtifact, setActiveArtifact] = useState(null);
   const abortControllerRef = useRef(null), queuedPromptRef = useRef(null);
 
-  const {
-    sessions, setSessions, activeSessionId, setActiveSessionId,
-    messages, setMessages, isLoading, fetchSessions,
-    createSession, deleteSession, renameSession, updateSessionPersona
-  } = useChatSessions({ isStreaming });
-
+  const { sessions, setSessions, activeSessionId, setActiveSessionId, messages, setMessages, isLoading, fetchSessions, createSession, deleteSession, renameSession, updateSessionPersona } = useChatSessions({ isStreaming });
   const activeSession = sessions.find((s) => s.id === activeSessionId);
 
   useEffect(() => {
@@ -89,16 +85,9 @@ export function Studio() {
     await runStream(targetSessionId, promptText, imagesToUpload[0] || null, false, { images: imagesToUpload, documents: docsToUpload });
   };
 
-  const handleRegenerate = async () => {
-    if (isStreaming || !activeSessionId) return;
-    setMessages((p) => (p[p.length - 1]?.role === "model" ? p.slice(0, -1) : p));
-    await runStream(activeSessionId, "", null, true);
-  };
+  const handleRegenerate = async () => { if (!isStreaming && activeSessionId) { setMessages((p) => (p[p.length - 1]?.role === "model" ? p.slice(0, -1) : p)); await runStream(activeSessionId, "", null, true); } };
   const handleDeleteSession = (sid) => { const tid = sid || activeSessionId; if (tid) deleteSession(tid); };
-  const handleEditMessage = (id, text, att) => {
-    setInputPrompt(text || ""); if (att) setAttachedImages(Array.isArray(att) ? att : [att]);
-    setMessages((p) => { const idx = p.findIndex((m) => m.id === id); return idx === -1 ? p : p.slice(0, idx); });
-  };
+  const handleEditMessage = (id, text, att) => { setInputPrompt(text || ""); if (att) setAttachedImages(Array.isArray(att) ? att : [att]); setMessages((p) => { const idx = p.findIndex((m) => m.id === id); return idx === -1 ? p : p.slice(0, idx); }); };
 
   useEffect(() => {
     if (!isStreaming && queuedPromptRef.current) {
@@ -113,6 +102,15 @@ export function Studio() {
         if (isStreaming) { if (auto) queuedPromptRef.current = p; else setInputPrompt(p); return; }
         if (auto) handleSendMessage(p); else setInputPrompt(p);
       }
+      if (d.name === "switchSession") {
+        const q = (d.args?.query || d.query || "").toLowerCase().trim();
+        const matched = sessions.find((s) => (s.title || "").toLowerCase().includes(q)) || sessions[0];
+        if (matched) {
+          if (!location.pathname.startsWith("/studio")) navigate("/studio");
+          setActiveSessionId(matched.id || matched._id);
+          window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(d.id || d.callId || `call_${Date.now()}`, "switchSession", { success: true, title: matched.title }) }));
+        }
+      }
     };
     const handleDel = (e) => handleDeleteSession(e?.detail?.sessionId || e?.detail?.args?.sessionId);
     const handleCancel = () => { queuedPromptRef.current = null; };
@@ -120,7 +118,7 @@ export function Studio() {
     window.addEventListener("nesa:cancel_queued_prompt", handleCancel);
     window.addEventListener("nesa:delete_session", handleDel);
     return () => { window.removeEventListener("nesa:toolcall", handleToolCall); window.removeEventListener("nesa:cancel_queued_prompt", handleCancel); window.removeEventListener("nesa:delete_session", handleDel); };
-  }, [location.pathname, navigate, isStreaming, activeSessionId]);
+  }, [location.pathname, navigate, isStreaming, activeSessionId, sessions]);
 
   return (
     <div className="flex h-full w-full bg-surface-base text-text-primary overflow-hidden select-none pt-2 sm:pt-3">
