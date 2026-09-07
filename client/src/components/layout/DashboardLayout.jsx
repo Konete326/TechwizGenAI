@@ -8,8 +8,23 @@ import { ApiFallbackModal } from "@/components/ui/ApiFallbackModal";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { VisualSpotlight } from "@/components/common/VisualSpotlight";
 import { DynamicModalHost } from "@/components/common/DynamicModalHost";
+import { NesaCallProvider, useNesaCallContext } from "@/context/NesaCallContext";
+import { NesaCallInterface } from "@/pages/Studio/NesaCallInterface";
 
-export const DashboardLayout = () => {
+function PersistentNesaCallHost() {
+  const call = useNesaCallContext();
+  return (
+    <NesaCallInterface
+      isActive={call.isCallActive} callPhase={call.callPhase} isMinimized={call.isMinimized}
+      onToggleMinimize={call.toggleMinimize} onEndCall={call.endCall} nesaState={call.nesaState}
+      isListening={call.isListening} transcript={call.transcript} connectionError={call.connectionError}
+      onRetry={call.startCall} forceReply={call.forceReply} position={call.widgetPosition}
+      onPositionChange={call.setWidgetPosition} widgetSide={call.widgetSide} onReposition={call.reposition}
+    />
+  );
+}
+
+function DashboardLayoutContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const isStudio = location.pathname.startsWith("/studio");
@@ -85,10 +100,7 @@ export const DashboardLayout = () => {
   const formatStorage = (bytes) => {
     if (!bytes || bytes <= 0) return "0 MB";
     const mb = bytes / (1024 * 1024);
-    if (mb < 1) {
-      return `${(bytes / 1024).toFixed(0)} KB`;
-    }
-    return mb < 100 ? `${mb.toFixed(1)} MB` : `${mb.toFixed(0)} MB`;
+    return mb < 1 ? `${(bytes / 1024).toFixed(0)} KB` : mb < 100 ? `${mb.toFixed(1)} MB` : `${mb.toFixed(0)} MB`;
   };
 
   const limitBytes = 500 * 1024 * 1024;
@@ -118,10 +130,17 @@ export const DashboardLayout = () => {
 
       <VisualSpotlight />
       <DynamicModalHost />
+      <PersistentNesaCallHost />
       <InstallPrompt />
       <ApiFallbackModal />
     </div>
   );
-};
+}
+
+export const DashboardLayout = () => (
+  <NesaCallProvider>
+    <DashboardLayoutContent />
+  </NesaCallProvider>
+);
 
 export default DashboardLayout;

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ClockCounterClockwise, PhoneCall } from "@phosphor-icons/react";
 import { useToast } from "@/context/ToastContext";
+import { useNesaCallContext } from "@/context/NesaCallContext";
 import { streamCompletion, getFriendlyErrorMessage } from "@/utils/aiStream";
 import { ChatSidebar } from "./ChatSidebar";
 import { ChatCanvas } from "./ChatCanvas";
@@ -8,12 +9,11 @@ import { ChatInput } from "./ChatInput";
 import { ModelSelector } from "./ModelSelector";
 import { PersonaSelector } from "./PersonaSelector";
 import { ArtifactPanel } from "./ArtifactPanel";
-import { NesaCallInterface } from "./NesaCallInterface";
 import { useChatSessions } from "./useChatSessions";
-import { useNesaCall } from "./useNesaCall";
 
 export function Studio() {
   const toast = useToast();
+  const { startCall, isCallActive } = useNesaCallContext();
   const [inputPrompt, setInputPrompt] = useState("");
   const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem("selected_ai_model") || "gemini-3.8-flash");
   const [activePersona, setActivePersona] = useState("general");
@@ -22,7 +22,7 @@ export function Studio() {
   const [attachedImages, setAttachedImages] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeArtifact, setActiveArtifact] = useState(null);
-  const abortControllerRef = useRef(null), onStreamCompleteRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   const {
     sessions, setSessions, activeSessionId, setActiveSessionId,
@@ -36,10 +36,7 @@ export function Studio() {
     if (activeSession?.persona) setActivePersona(activeSession.persona);
   }, [activeSession?.persona, activeSessionId]);
 
-  const handleSelectPersona = (id) => {
-    setActivePersona(id);
-    if (activeSessionId) updateSessionPersona(activeSessionId, id);
-  };
+  const handleSelectPersona = (id) => { setActivePersona(id); if (activeSessionId) updateSessionPersona(activeSessionId, id); };
 
   const runStream = async (targetSessionId, promptText, imageBase64, isRegenerate = false, docPayload = {}) => {
     setIsStreaming(true); setStreamingText("");
@@ -59,7 +56,6 @@ export function Studio() {
         setIsStreaming(false); setStreamingText("");
         setMessages((p) => [...p, { id: "ai-" + Date.now(), role: "model", text: accumulated, createdAt: new Date().toISOString() }]);
         fetchSessions();
-        if (onStreamCompleteRef.current) onStreamCompleteRef.current(accumulated);
       },
       onError: (err) => { setIsStreaming(false); setStreamingText(""); toast.error(getFriendlyErrorMessage(err)); }
     });
@@ -104,15 +100,11 @@ export function Studio() {
     await runStream(targetSessionId, promptText, imagesToUpload[0] || null, false, { images: imagesToUpload, documents: docsToUpload });
   };
 
-  const { isCallActive, callPhase, isMinimized, toggleMinimize, nesaState, isListening: isNesaListening, transcript: nesaTranscript, startCall, endCall, onStreamComplete, connectionError, forceReply, widgetPosition, setWidgetPosition, widgetSide, reposition } = useNesaCall({ onSendMessage: handleSendMessage, isStreaming, onMicDenied: (m) => toast.error(m || "Microphone access is required") });
-  onStreamCompleteRef.current = onStreamComplete;
-
   const handleRegenerate = async () => {
     if (isStreaming || !activeSessionId) return;
     setMessages((prev) => (prev[prev.length - 1]?.role === "model" ? prev.slice(0, -1) : prev));
     await runStream(activeSessionId, "", null, true);
   };
-
   const handleEditMessage = (id, text, att) => {
     setInputPrompt(text || "");
     if (att) setAttachedImages(Array.isArray(att) ? att : [att]);
@@ -178,15 +170,6 @@ export function Studio() {
           {activeArtifact && <ArtifactPanel artifact={activeArtifact} onClose={() => setActiveArtifact(null)} />}
         </div>
       </main>
-
-      <NesaCallInterface
-        isActive={isCallActive} callPhase={callPhase} isMinimized={isMinimized}
-        onToggleMinimize={toggleMinimize} onEndCall={endCall} nesaState={nesaState}
-        isListening={isNesaListening} transcript={nesaTranscript}
-        connectionError={connectionError} onRetry={startCall} forceReply={forceReply}
-        position={widgetPosition} onPositionChange={setWidgetPosition}
-        widgetSide={widgetSide} onReposition={reposition}
-      />
     </div>
   );
 }
