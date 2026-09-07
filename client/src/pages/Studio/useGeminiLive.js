@@ -16,7 +16,7 @@ export function useGeminiLive({ onToolCall } = {}) {
     isPlayingRef.current = false;
     activeSourcesRef.current.forEach((src) => { try { src.stop(); } catch {} });
     activeSourcesRef.current = [];
-    if (outputAudioCtxRef.current) nextPlayTimeRef.current = outputAudioCtxRef.current.currentTime;
+    nextPlayTimeRef.current = 0;
     setIsSpeaking(false);
   }, []);
 
@@ -50,7 +50,8 @@ export function useGeminiLive({ onToolCall } = {}) {
     source.buffer = buffer;
     source.connect(ctx.destination);
 
-    const startTime = Math.max(ctx.currentTime + 0.05, nextPlayTimeRef.current);
+    if (nextPlayTimeRef.current < ctx.currentTime) nextPlayTimeRef.current = ctx.currentTime + 0.02;
+    const startTime = Math.max(ctx.currentTime + 0.02, nextPlayTimeRef.current);
     source.start(startTime);
     nextPlayTimeRef.current = startTime + buffer.duration;
     activeSourcesRef.current.push(source);
@@ -59,10 +60,9 @@ export function useGeminiLive({ onToolCall } = {}) {
       activeSourcesRef.current = activeSourcesRef.current.filter((s) => s !== source);
       if (activeSourcesRef.current.length === 0) {
         isPlayingRef.current = false;
-        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-        debounceTimerRef.current = setTimeout(() => {
-          if (activeSourcesRef.current.length === 0) setIsSpeaking(false);
-        }, 250);
+        nextPlayTimeRef.current = 0;
+        setIsSpeaking(false);
+        if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
       }
     };
   }, []);
@@ -153,7 +153,7 @@ export function useGeminiLive({ onToolCall } = {}) {
           const normalized = new Float32Array(float32.length);
           for (let i = 0; i < float32.length; i++) {
             const val = float32[i];
-            normalized[i] = Math.abs(val) < 0.005 ? 0 : Math.max(-1, Math.min(1, val));
+            normalized[i] = Math.abs(val) < 0.008 ? 0 : Math.max(-1, Math.min(1, val));
           }
           const base64Data = base64EncodeAudio(normalized);
           ws.send(JSON.stringify({ realtimeInput: { mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Data }] } }));
@@ -173,6 +173,7 @@ export function useGeminiLive({ onToolCall } = {}) {
       timerRef.current = setInterval(() => {
         if (audioContext && activeSourcesRef.current.length === 0 && audioContext.currentTime >= nextPlayTimeRef.current) {
           isPlayingRef.current = false;
+          nextPlayTimeRef.current = 0;
           setIsSpeaking(false);
         }
       }, 100);
@@ -184,7 +185,6 @@ export function useGeminiLive({ onToolCall } = {}) {
   const forceReply = useCallback((text = "Hello Nesa") => {
     if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: true } }));
   }, []);
-
   const sendContextTurn = useCallback((text) => {
     if (wsRef.current?.readyState === WebSocket.OPEN && text) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: false } }));
   }, []);
