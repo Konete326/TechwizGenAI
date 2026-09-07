@@ -27,6 +27,7 @@ function PersistentNesaCallHost() {
 function DashboardLayoutContent() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { sendContextTurn, isCallActive } = useNesaCallContext();
   const isStudio = location.pathname.startsWith("/studio");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -35,13 +36,24 @@ function DashboardLayoutContent() {
     const handleToolCall = (e) => {
       const detail = e?.detail || {};
       const route = detail.args?.route || detail.route;
-      if (detail.name === "navigatePage" && route) {
-        navigate(route);
-      }
+      if (detail.name === "navigatePage" && route) navigate(route);
+      if (detail.name === "closeModal") window.dispatchEvent(new CustomEvent("nesa:modal:close"));
     };
     window.addEventListener("nesa:toolcall", handleToolCall);
     return () => window.removeEventListener("nesa:toolcall", handleToolCall);
   }, [navigate]);
+
+  useEffect(() => {
+    const pushTelemetry = () => {
+      const vp = window.innerWidth < 768 ? "Mobile" : "Desktop";
+      const text = `Current Screen: ${location.pathname}, Viewport: ${vp} (${window.innerWidth}px)`;
+      if (isCallActive && sendContextTurn) sendContextTurn(text);
+      window.dispatchEvent(new CustomEvent("nesa:context", { detail: { text } }));
+    };
+    pushTelemetry();
+    window.addEventListener("resize", pushTelemetry);
+    return () => window.removeEventListener("resize", pushTelemetry);
+  }, [location.pathname, isCallActive, sendContextTurn]);
 
   const [platformBytes, setPlatformBytes] = useState(() => {
     try {
@@ -80,9 +92,8 @@ function DashboardLayoutContent() {
     fetchStorage();
 
     const handleStorageUpdate = (e) => {
-      if (e?.detail?.bytes !== undefined) {
-        setPlatformBytes(Number(e.detail.bytes));
-      } else {
+      if (e?.detail?.bytes !== undefined) setPlatformBytes(Number(e.detail.bytes));
+      else {
         const raw = localStorage.getItem("platform_usage_bytes");
         setPlatformBytes(raw ? Number(raw) : 0);
       }

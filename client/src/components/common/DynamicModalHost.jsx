@@ -12,6 +12,10 @@ export function DynamicModalHost() {
   useEffect(() => {
     const handleToolCall = (e) => {
       const detail = e?.detail || {};
+      if (detail.name === "closeModal") {
+        setIsOpen(false); setFile(null); setError(""); setIsSuccess(false); setIsSubmitting(false);
+        return;
+      }
       if (detail.name !== "openDynamicModal") return;
       const args = detail.args || detail;
       setActiveType(args.modalType || "upload_asset");

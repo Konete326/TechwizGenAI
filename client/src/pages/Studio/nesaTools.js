@@ -62,6 +62,19 @@ export const NESA_TOOL_DECLARATIONS = [
       },
       required: ["modalType"]
     }
+  },
+  {
+    name: "closeModal",
+    description: "Dismiss or close any active modal popup or dynamic dialog.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        reason: {
+          type: "STRING",
+          description: "Optional dismissal reason"
+        }
+      }
+    }
   }
 ];
 

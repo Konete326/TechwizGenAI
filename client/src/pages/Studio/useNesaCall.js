@@ -52,7 +52,7 @@ export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
     if (onToolCall) onToolCall(call);
   }, [onToolCall]);
 
-  const { isConnected, isSpeaking, transcript, connectionError, connect, disconnect, forceReply } = useGeminiLive({
+  const { isConnected, isSpeaking, transcript, connectionError, connect, disconnect, forceReply, sendContextTurn } = useGeminiLive({
     onToolCall: handleLiveToolCall
   });
 
@@ -128,6 +128,15 @@ export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
     };
   }, [disconnect]);
 
+  useEffect(() => {
+    const handleContextEvent = (e) => {
+      const text = e?.detail?.text || e?.detail;
+      if (text && sendContextTurn) sendContextTurn(text);
+    };
+    window.addEventListener("nesa:context", handleContextEvent);
+    return () => window.removeEventListener("nesa:context", handleContextEvent);
+  }, [sendContextTurn]);
+
   const activeSpeaking = debouncedSpeaking || isSpeaking;
   const nesaState = activeSpeaking ? "speaking" : "idle";
 
@@ -146,6 +155,7 @@ export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
     endCall,
     onStreamComplete: () => {},
     forceReply,
+    sendContextTurn,
     lastExecutedTool,
     widgetPosition,
     setWidgetPosition,

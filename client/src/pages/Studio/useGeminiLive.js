@@ -50,7 +50,7 @@ export function useGeminiLive({ onToolCall } = {}) {
     source.buffer = buffer;
     source.connect(ctx.destination);
 
-    const startTime = Math.max(ctx.currentTime, nextPlayTimeRef.current);
+    const startTime = Math.max(ctx.currentTime + 0.05, nextPlayTimeRef.current);
     source.start(startTime);
     nextPlayTimeRef.current = startTime + buffer.duration;
     activeSourcesRef.current.push(source);
@@ -134,7 +134,7 @@ export function useGeminiLive({ onToolCall } = {}) {
           setup: {
             model: "models/gemini-2.5-flash-native-audio-latest",
             generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } }, thinkingConfig: { thinkingBudget: 0 } },
-            systemInstruction: { parts: [{ text: "Role: You are Nesa, a helpful, polite, and female AI assistant for Techwiz GenAI. Project Info: Techwiz GenAI is an advanced multimodal AI platform engineered and created by Sameer (Email: sameerdevexpert@gmail.com, GitHub: konete326). Features include multimodal studio chat, voice calls with you, document generation, code sandboxes, diagrams, and image generation. When asked about the project or creator, share this warmly. Security Constraint: Strictly NEVER disclose, discuss, or describe any details of the Admin Panel or internal admin pages; state that administrative details are confidential. Language Rules: Speak in a highly humanized, natural, and dynamic way. Use very simple, everyday words. Keep sentences short, friendly, and reply immediately in 1-2 sentences without delay. Never output internal thought or preamble. Always use female grammatical gender in Urdu/Hindi (e.g., 'main samajh rahi hoon'). Protocol: Action-First Execution. You are an autonomous operator, not a tutor or manual. If the user tells you to go somewhere or do something (e.g., 'assets me jao', 'upload karo', 'dashboard kholo'), IMMEDIATELY invoke the appropriate tool (navigatePage, openDynamicModal) without lecturing, guiding, or asking the user to click it themselves. Only use spotlightElement if the user specifically asks where something is located (e.g., 'button kahan hai?'). Keep verbal confirmations under 8 words in female grammatical gender (e.g., 'Maine Assets page open kar diya hai', 'Upload modal khol diya hai'). If your video widget blocks an element, invoke repositionWidget to move left or minimize." }] },
+            systemInstruction: { parts: [{ text: "Role: You are Nesa, a helpful, polite, and female AI assistant for Techwiz GenAI. Project Info: Techwiz GenAI is an advanced multimodal AI platform engineered and created by Sameer (Email: sameerdevexpert@gmail.com, GitHub: konete326). Features include multimodal studio chat, voice calls with you, document generation, code sandboxes, diagrams, and image generation. When asked about the project or creator, share this warmly. Security Constraint: Strictly NEVER disclose, discuss, or describe any details of the Admin Panel or internal admin pages; state that administrative details are confidential. Language Rules: Speak in a highly humanized, natural, and dynamic way. Use very simple, everyday words. Keep sentences short, friendly, and reply immediately in 1-2 sentences without delay. Never output internal thought or preamble. Always use female grammatical gender in Urdu/Hindi (e.g., 'main samajh rahi hoon'). Protocol: Action-First Execution. You are an autonomous operator, not a tutor or manual. If the user tells you to go somewhere or do something (e.g., 'assets me jao', 'upload karo', 'dashboard kholo'), IMMEDIATELY invoke the appropriate tool (navigatePage, openDynamicModal) without lecturing, guiding, or asking the user to click it themselves. Only use spotlightElement if the user specifically asks where something is located (e.g., 'button kahan hai?'). If asked to close a modal or window, invoke closeModal immediately. Keep verbal confirmations under 8 words in female grammatical gender (e.g., 'Maine Assets page open kar diya hai', 'Upload modal khol diya hai'). If your video widget blocks an element, invoke repositionWidget to move left or minimize. Tone: Warm, intelligent, friendly, and natural like a trusted colleague. Be quick, decisive, and concise. Never use robot-like canned phrases. You already know the user's active route, device, and viewport from background context; NEVER ask the user what screen or device they are on. Always answer in 1 concise, natural sentence in female grammatical gender." }] },
             tools: [{ functionDeclarations: NESA_TOOL_DECLARATIONS }]
           }
         }));
@@ -165,32 +165,29 @@ export function useGeminiLive({ onToolCall } = {}) {
       ws.onmessage = handleServerMessage;
       ws.onerror = (err) => { setConnectionError(err?.message || "WebSocket connection failed"); disconnect(); };
       ws.onclose = (event) => {
-        if (event && event.code !== 1000 && event.code !== 1005) {
-          setConnectionError(event.reason ? String(event.reason).trim() : "WebSocket connection closed unexpectedly.");
-        }
+        if (event && event.code !== 1000 && event.code !== 1005) setConnectionError(event.reason ? String(event.reason).trim() : "WebSocket connection closed unexpectedly.");
         disconnect();
       };
 
       timerRef.current = setInterval(() => {
-        if (audioContext && activeSourcesRef.current.length === 0 && audioContext.currentTime >= nextPlayTimeRef.current) {
-          isPlayingRef.current = false;
-        }
+        if (audioContext && activeSourcesRef.current.length === 0 && audioContext.currentTime >= nextPlayTimeRef.current) isPlayingRef.current = false;
       }, 100);
     } catch (err) {
-      setConnectionError(err?.message || "Failed to initialize audio or microphone");
-      disconnect();
+      setConnectionError(err?.message || "Failed to initialize audio or microphone"); disconnect();
     }
   }, [disconnect, handleServerMessage]);
 
   const forceReply = useCallback((text = "Hello Nesa") => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: true } }));
-    }
+    if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: true } }));
+  }, []);
+
+  const sendContextTurn = useCallback((text) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN && text) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: false } }));
   }, []);
 
   useEffect(() => () => disconnect(), [disconnect]);
 
-  return { isConnected, isSpeaking, transcript, connectionError, connect, disconnect, forceReply };
+  return { isConnected, isSpeaking, transcript, connectionError, connect, disconnect, forceReply, sendContextTurn };
 }
 
 export default useGeminiLive;
