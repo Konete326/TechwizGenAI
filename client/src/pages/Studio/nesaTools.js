@@ -91,6 +91,14 @@ export const NESA_TOOL_DECLARATIONS = [
       type: "OBJECT",
       properties: {}
     }
+  },
+  {
+    name: "getDashboardMetrics",
+    description: "Fetches live platform analytics and metrics including token usage, total generations, and active assets.",
+    parameters: {
+      type: "OBJECT",
+      properties: {}
+    }
   }
 ];
 

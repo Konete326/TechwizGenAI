@@ -119,7 +119,7 @@ export function VisualSpotlight() {
             </path>
           </svg>
           <div
-            className="absolute rounded-lg ring-4 ring-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.8)] pointer-events-none transition-all duration-200"
+            className="absolute pointer-events-none bg-transparent ring-4 ring-blue-500 shadow-[0_0_25px_rgba(59,130,246,0.6)] rounded-lg transition-all duration-200"
             style={{
               top: `${Math.max(0, targetRect.top - 6)}px`, left: `${Math.max(0, targetRect.left - 6)}px`,
               width: `${targetRect.width + 12}px`, height: `${targetRect.height + 12}px`

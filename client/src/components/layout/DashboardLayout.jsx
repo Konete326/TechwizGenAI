@@ -10,6 +10,7 @@ import { VisualSpotlight } from "@/components/common/VisualSpotlight";
 import { DynamicModalHost } from "@/components/common/DynamicModalHost";
 import { NesaCallProvider, useNesaCallContext } from "@/context/NesaCallContext";
 import { NesaCallInterface } from "@/pages/Studio/NesaCallInterface";
+import { formatToolResponse } from "@/pages/Studio/nesaTools";
 
 function PersistentNesaCallHost() {
   const call = useNesaCallContext();
@@ -38,11 +39,23 @@ function DashboardLayoutContent() {
       navigate("/login");
     };
 
-    const handleToolCall = (e) => {
+    const handleToolCall = async (e) => {
       const detail = e?.detail || {}, route = detail.args?.route || detail.route;
       if (detail.name === "navigatePage" && route) navigate(route);
       if (detail.name === "closeModal") window.dispatchEvent(new CustomEvent("nesa:modal:close"));
       if (detail.name === "executeLogout") handleLogout();
+      if (detail.name === "getDashboardMetrics") {
+        const callId = detail.id || detail.callId || `call_${Date.now()}`;
+        try {
+          const token = localStorage.getItem("token");
+          const res = await fetch(`${VITE_API_URL}/dashboard/stats`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+          const json = await res.json();
+          const metrics = json?.data || { totalGenerations: 0, totalTokens: 0, totalAssets: 0 };
+          window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(callId, "getDashboardMetrics", metrics) }));
+        } catch {
+          window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(callId, "getDashboardMetrics", { status: "error" }) }));
+        }
+      }
     };
 
     window.addEventListener("nesa:toolcall", handleToolCall);
