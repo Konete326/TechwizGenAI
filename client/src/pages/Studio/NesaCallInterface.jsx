@@ -115,13 +115,9 @@ export function NesaCallInterface({
         )}
         <div className="w-full flex items-center justify-between px-1">
           <div className="w-16 flex justify-start">
-            {callPhase === "connected" && forceReply && (
-              <button type="button" onClick={() => forceReply("Hello Nesa")} className="text-[10px] font-mono text-zinc-400 hover:text-accent transition-colors cursor-pointer px-1.5 py-0.5 rounded border border-zinc-800 hover:border-accent/40 bg-zinc-900/60 whitespace-nowrap" title="Force model reply">Say Hello</button>
-            )}
+            {callPhase === "connected" && forceReply && <button type="button" onClick={() => forceReply("Hello Nesa")} className="text-[10px] font-mono text-zinc-400 hover:text-accent transition-colors cursor-pointer px-1.5 py-0.5 rounded border border-zinc-800 hover:border-accent/40 bg-zinc-900/60 whitespace-nowrap" title="Force model reply">Say Hello</button>}
           </div>
-          <button type="button" onClick={onEndCall} className="w-11 h-11 rounded-full bg-rose-600 hover:bg-rose-500 active:scale-95 text-white flex items-center justify-center shadow-lg shadow-rose-600/40 border-2 border-rose-400/30 transition-all cursor-pointer shrink-0" title="End Call" aria-label="End call">
-            <Phone size={20} weight="fill" className="rotate-[135deg]" />
-          </button>
+          <button type="button" onClick={onEndCall} className="w-11 h-11 rounded-full bg-rose-600 hover:bg-rose-500 active:scale-95 text-white flex items-center justify-center shadow-lg shadow-rose-600/40 border-2 border-rose-400/30 transition-all cursor-pointer shrink-0" title="End Call" aria-label="End call"><Phone size={20} weight="fill" className="rotate-[135deg]" /></button>
           <div className="w-16" />
         </div>
       </div>
@@ -130,17 +126,35 @@ export function NesaCallInterface({
 
   return (
     <>
-      <div className="max-md:fixed max-md:inset-0 z-50 md:hidden bg-zinc-950 flex flex-col justify-between overflow-hidden pb-8">
-        <header className="relative z-10 w-full px-4 py-3 flex items-center justify-between border-b border-border/40 bg-zinc-950/80 backdrop-blur">
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={onEndCall} className="p-1 rounded-md text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer mr-1" title="Close Call" aria-label="Close call"><X size={18} weight="bold" /></button>
-            <img src="/Nesa.png" alt="Nesa" className="w-5 h-5 rounded-full object-cover border border-zinc-700 shrink-0" />
-            <span className="text-xs font-semibold text-zinc-100">Nesa</span>
+      {isMinimized ? (
+        <div onClick={onToggleMinimize} className="fixed bottom-4 right-4 z-50 w-44 h-24 rounded-2xl overflow-hidden shadow-2xl border border-white/20 md:hidden bg-zinc-950 cursor-pointer active:scale-95 transition-transform">
+          <NesaCallVideos isSpeaking={isSpeaking} />
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/85 via-transparent to-transparent flex items-end justify-between p-2 z-10 pointer-events-none">
+            <div className="flex items-center gap-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full ${isSpeaking ? "bg-accent animate-ping" : isListening ? "bg-emerald-400" : "bg-zinc-400"}`} />
+              <span className="text-[10px] font-mono text-zinc-200">{durationText}</span>
+            </div>
+            <button type="button" onClick={(e) => { e.stopPropagation(); onEndCall(); }} className="p-1 rounded-full bg-rose-600 hover:bg-rose-500 text-white pointer-events-auto cursor-pointer shadow" title="End Call">
+              <X size={10} weight="bold" />
+            </button>
           </div>
-          <span className="text-xs font-mono text-zinc-300">{durationText}</span>
-        </header>
-        {renderCallBody()}
-      </div>
+        </div>
+      ) : (
+        <div className="max-md:fixed max-md:inset-0 z-50 md:hidden bg-zinc-950 flex flex-col justify-between overflow-hidden pb-8">
+          <header className="relative z-10 w-full px-4 py-3 flex items-center justify-between border-b border-border/40 bg-zinc-950/80 backdrop-blur">
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={onToggleMinimize} className="p-1 rounded-md text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer mr-1" title="Minimize" aria-label="Minimize call"><Minus size={18} weight="bold" /></button>
+              <img src="/Nesa.png" alt="Nesa" className="w-5 h-5 rounded-full object-cover border border-zinc-700 shrink-0" />
+              <span className="text-xs font-semibold text-zinc-100">Nesa</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono text-zinc-300">{durationText}</span>
+              <button type="button" onClick={onEndCall} className="p-1 rounded-md text-zinc-400 hover:text-rose-400 transition-colors cursor-pointer ml-1" title="Close Call" aria-label="Close call"><X size={18} weight="bold" /></button>
+            </div>
+          </header>
+          {renderCallBody()}
+        </div>
+      )}
 
       <Draggable
         nodeRef={nodeRef}

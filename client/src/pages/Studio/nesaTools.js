@@ -39,7 +39,7 @@ export const NESA_TOOL_DECLARATIONS = [
       properties: {
         position: {
           type: "STRING",
-          description: "Desired widget state: left, right, or minimize"
+          description: "Target dock: top-left, top-right, bottom-left, bottom-right, minimize, maximize"
         }
       },
       required: ["position"]
@@ -53,11 +53,19 @@ export const NESA_TOOL_DECLARATIONS = [
       properties: {
         modalType: {
           type: "STRING",
-          description: "Type of modal e.g. upload_asset"
+          description: "upload_asset, text_note, translation, input_prompt"
         },
         title: {
           type: "STRING",
           description: "Modal title"
+        },
+        content: {
+          type: "STRING",
+          description: "Rich text explanation, Urdu translation, or prompt details"
+        },
+        inputPlaceholder: {
+          type: "STRING",
+          description: "Placeholder text for input field"
         }
       },
       required: ["modalType"]

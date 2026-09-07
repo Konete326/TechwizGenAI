@@ -9,30 +9,34 @@ export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
   const [debouncedSpeaking, setDebouncedSpeaking] = useState(false);
   const [lastExecutedTool, setLastExecutedTool] = useState(null);
 
-  const getRightPosition = useCallback(() => ({
-    x: typeof window !== "undefined" ? Math.max(20, window.innerWidth - 370) : 800,
-    y: typeof window !== "undefined" ? Math.max(20, window.innerHeight - 560) : 200
-  }), []);
+  const getRightPosition = useCallback(() => {
+    const w = typeof window !== "undefined" ? window.innerWidth : 1200;
+    const h = typeof window !== "undefined" ? window.innerHeight : 800;
+    return { x: Math.max(20, w - 360), y: Math.max(20, h - 540) };
+  }, []);
 
   const [widgetPosition, setWidgetPosition] = useState(getRightPosition);
-  const [widgetSide, setWidgetSide] = useState("right");
+  const [widgetSide, setWidgetSide] = useState("bottom-right");
   const isCallActiveRef = useRef(false);
   const ringTimerRef = useRef(null);
   const debounceTimerRef = useRef(null);
 
-  const reposition = useCallback((targetSide) => {
-    if (targetSide === "minimize") {
-      setIsMinimized(true);
-      return;
-    }
-    if (targetSide === "left") {
-      setWidgetPosition({ x: 30, y: 120 });
-      setWidgetSide("left");
+  const reposition = useCallback((target) => {
+    if (target === "minimize") { setIsMinimized(true); return; }
+    if (target === "maximize") { setIsMinimized(false); return; }
+    const w = typeof window !== "undefined" ? window.innerWidth : 1200;
+    const h = typeof window !== "undefined" ? window.innerHeight : 800;
+    if (target === "top-left") {
+      setWidgetPosition({ x: 20, y: 80 }); setWidgetSide("top-left");
+    } else if (target === "top-right") {
+      setWidgetPosition({ x: Math.max(20, w - 360), y: 80 }); setWidgetSide("top-right");
+    } else if (target === "bottom-left" || target === "left") {
+      setWidgetPosition({ x: 20, y: Math.max(20, h - 540) }); setWidgetSide("bottom-left");
     } else {
-      setWidgetPosition(getRightPosition());
-      setWidgetSide("right");
+      setWidgetPosition({ x: Math.max(20, w - 360), y: Math.max(20, h - 540) }); setWidgetSide("bottom-right");
     }
-  }, [getRightPosition]);
+    setIsMinimized(false);
+  }, []);
 
   useEffect(() => {
     const handleToolCall = (e) => {
