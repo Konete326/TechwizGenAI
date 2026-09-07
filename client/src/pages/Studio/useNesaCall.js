@@ -2,16 +2,25 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useGeminiLive } from "./useGeminiLive";
 import { checkMicrophonePermission } from "@/utils/checkMicPermission";
 
-export function useNesaCall({ onSendMessage, onMicDenied } = {}) {
+export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
   const [callPhase, setCallPhase] = useState("ended");
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [debouncedSpeaking, setDebouncedSpeaking] = useState(false);
+  const [lastExecutedTool, setLastExecutedTool] = useState(null);
   const isCallActiveRef = useRef(false);
   const ringTimerRef = useRef(null);
   const debounceTimerRef = useRef(null);
 
-  const { isConnected, isSpeaking, transcript, connectionError, connect, disconnect, forceReply } = useGeminiLive();
+  const handleLiveToolCall = useCallback((call) => {
+    setLastExecutedTool(call);
+    console.log("Nesa tool dispatched:", call?.name, call?.args);
+    if (onToolCall) onToolCall(call);
+  }, [onToolCall]);
+
+  const { isConnected, isSpeaking, transcript, connectionError, connect, disconnect, forceReply } = useGeminiLive({
+    onToolCall: handleLiveToolCall
+  });
 
   useEffect(() => {
     if (isSpeaking) {
@@ -102,7 +111,8 @@ export function useNesaCall({ onSendMessage, onMicDenied } = {}) {
     startCall,
     endCall,
     onStreamComplete: () => {},
-    forceReply
+    forceReply,
+    lastExecutedTool
   };
 }
 

@@ -1,18 +1,15 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { base64EncodeAudio, base64DecodeAudio } from "./audioUtils";
+import { NESA_TOOL_DECLARATIONS, formatToolResponse } from "./nesaTools";
 
 const WS_BASE_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
 
-export function useGeminiLive() {
-  const [isConnected, setIsConnected] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [transcript, setTranscript] = useState("");
-  const [connectionError, setConnectionError] = useState("");
+export function useGeminiLive({ onToolCall } = {}) {
+  const [isConnected, setIsConnected] = useState(false), [isSpeaking, setIsSpeaking] = useState(false);
+  const [transcript, setTranscript] = useState(""), [connectionError, setConnectionError] = useState("");
 
-  const wsRef = useRef(null), inputAudioCtxRef = useRef(null), outputAudioCtxRef = useRef(null);
-  const micStreamRef = useRef(null), processorRef = useRef(null), nextPlayTimeRef = useRef(0);
-  const activeSourcesRef = useRef([]), timerRef = useRef(null), isReadyRef = useRef(false);
-  const isPlayingRef = useRef(false), debounceTimerRef = useRef(null);
+  const wsRef = useRef(null), inputAudioCtxRef = useRef(null), outputAudioCtxRef = useRef(null), micStreamRef = useRef(null);
+  const processorRef = useRef(null), nextPlayTimeRef = useRef(0), activeSourcesRef = useRef([]), timerRef = useRef(null), isReadyRef = useRef(false), isPlayingRef = useRef(false), debounceTimerRef = useRef(null);
 
   const stopActiveAudio = useCallback(() => {
     if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
@@ -82,6 +79,18 @@ export function useGeminiLive() {
         stopActiveAudio();
         return;
       }
+      const toolCall = data.toolCall || data.tool_call || data.serverContent?.toolCall;
+      if (toolCall) {
+        const calls = toolCall.functionCalls || toolCall.function_calls || [];
+        for (const call of calls) {
+          if (onToolCall) onToolCall(call);
+          window.dispatchEvent(new CustomEvent("nesa:toolcall", { detail: call }));
+          const callId = call.id || call.callId || `call_${Date.now()}`;
+          const resp = formatToolResponse(callId, call.name, { status: "success", executed: call.name });
+          if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify(resp));
+        }
+        return;
+      }
       const sc = data.serverContent || data.server_content;
       if (sc?.interrupted) { stopActiveAudio(); return; }
       const parts = (sc?.modelTurn || sc?.model_turn)?.parts || [];
@@ -94,7 +103,7 @@ export function useGeminiLive() {
         }
       }
     } catch {}
-  }, [scheduleAudioChunk, stopActiveAudio]);
+  }, [scheduleAudioChunk, stopActiveAudio, onToolCall]);
 
   const connect = useCallback(async () => {
     disconnect();
@@ -126,7 +135,8 @@ export function useGeminiLive() {
           setup: {
             model: "models/gemini-2.5-flash-native-audio-latest",
             generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } }, thinkingConfig: { thinkingBudget: 0 } },
-            systemInstruction: { parts: [{ text: "Role: You are Nesa, a helpful, polite, and female AI assistant for Techwiz GenAI. Project Info: Techwiz GenAI is an advanced multimodal AI platform engineered and created by Sameer (Email: sameerdevexpert@gmail.com, GitHub: konete326). Features include multimodal studio chat, voice calls with you, document generation, code sandboxes, diagrams, and image generation. When asked about the project or creator, share this warmly. Security Constraint: Strictly NEVER disclose, discuss, or describe any details of the Admin Panel or internal admin pages; state that administrative details are confidential. Language Rules: Speak in a highly humanized, natural, and dynamic way. Use very simple, everyday words. Keep sentences short, friendly, and reply immediately in 1-2 sentences without delay. Never output internal thought or preamble. Always use female grammatical gender in Urdu/Hindi (e.g., 'main samajh rahi hoon')." }] }
+            systemInstruction: { parts: [{ text: "Role: You are Nesa, a helpful, polite, and female AI assistant for Techwiz GenAI. Project Info: Techwiz GenAI is an advanced multimodal AI platform engineered and created by Sameer (Email: sameerdevexpert@gmail.com, GitHub: konete326). Features include multimodal studio chat, voice calls with you, document generation, code sandboxes, diagrams, and image generation. When asked about the project or creator, share this warmly. Security Constraint: Strictly NEVER disclose, discuss, or describe any details of the Admin Panel or internal admin pages; state that administrative details are confidential. Language Rules: Speak in a highly humanized, natural, and dynamic way. Use very simple, everyday words. Keep sentences short, friendly, and reply immediately in 1-2 sentences without delay. Never output internal thought or preamble. Always use female grammatical gender in Urdu/Hindi (e.g., 'main samajh rahi hoon')." }] },
+            tools: [{ functionDeclarations: NESA_TOOL_DECLARATIONS }]
           }
         }));
 
@@ -157,8 +167,8 @@ export function useGeminiLive() {
       ws.onerror = (err) => { setConnectionError(err?.message || "WebSocket connection failed"); disconnect(); };
       ws.onclose = (event) => {
         if (event && event.code !== 1000 && event.code !== 1005) {
-          const reason = event.reason ? String(event.reason).trim() : "";
-          setConnectionError(reason || "WebSocket connection closed unexpectedly. Ensure the correct API key and model version are used.");
+          const reason = event.reason ? String(event.reason).trim() : "WebSocket connection closed unexpectedly. Ensure the correct API key and model version are used.";
+          setConnectionError(reason);
         }
         disconnect();
       };
@@ -175,8 +185,9 @@ export function useGeminiLive() {
   }, [disconnect, handleServerMessage]);
 
   const forceReply = useCallback((text = "Hello Nesa") => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
-    wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: true } }));
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: true } }));
+    }
   }, []);
 
   useEffect(() => () => disconnect(), [disconnect]);
