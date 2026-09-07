@@ -42,8 +42,7 @@ export function Studio() {
 
     await streamCompletion({
       sessionId: targetSessionId, prompt: promptText, model: selectedModel, imageBase64,
-      images: docPayload.images || (imageBase64 ? [imageBase64] : null),
-      documents: docPayload.documents || null,
+      images: docPayload.images || (imageBase64 ? [imageBase64] : null), documents: docPayload.documents || null,
       attachmentType: docPayload.documents?.length > 0 ? "document" : (imageBase64 ? "image" : "none"),
       attachmentName: docPayload.documents?.[0]?.name || null, attachmentData: docPayload.documents?.[0]?.data || null,
       persona: activePersona, isRegenerate, signal: controller.signal,
@@ -69,8 +68,7 @@ export function Studio() {
     } else if (typeof payloadOrText === "string") textToSend = payloadOrText;
 
     if ((!textToSend.trim() && imagesToUpload.length === 0 && docsToUpload.length === 0) || isStreaming) return;
-    let targetSessionId = activeSessionId;
-    if (!targetSessionId) targetSessionId = await createSession(activePersona);
+    const targetSessionId = activeSessionId || (await createSession(activePersona));
     if (!targetSessionId) return;
 
     const fallbackDoc = docsToUpload[0]?.name ? `Analyze ${docsToUpload[0].name}` : "Analyze attachment";
@@ -96,6 +94,7 @@ export function Studio() {
     setMessages((p) => (p[p.length - 1]?.role === "model" ? p.slice(0, -1) : p));
     await runStream(activeSessionId, "", null, true);
   };
+  const handleDeleteSession = (sid) => { const tid = sid || activeSessionId; if (tid) deleteSession(tid); };
   const handleEditMessage = (id, text, att) => {
     setInputPrompt(text || ""); if (att) setAttachedImages(Array.isArray(att) ? att : [att]);
     setMessages((p) => { const idx = p.findIndex((m) => m.id === id); return idx === -1 ? p : p.slice(0, idx); });
@@ -115,17 +114,19 @@ export function Studio() {
         if (auto) handleSendMessage(p); else setInputPrompt(p);
       }
     };
+    const handleDel = (e) => handleDeleteSession(e?.detail?.sessionId || e?.detail?.args?.sessionId);
     const handleCancel = () => { queuedPromptRef.current = null; };
     window.addEventListener("nesa:toolcall", handleToolCall);
     window.addEventListener("nesa:cancel_queued_prompt", handleCancel);
-    return () => { window.removeEventListener("nesa:toolcall", handleToolCall); window.removeEventListener("nesa:cancel_queued_prompt", handleCancel); };
-  }, [location.pathname, navigate, isStreaming]);
+    window.addEventListener("nesa:delete_session", handleDel);
+    return () => { window.removeEventListener("nesa:toolcall", handleToolCall); window.removeEventListener("nesa:cancel_queued_prompt", handleCancel); window.removeEventListener("nesa:delete_session", handleDel); };
+  }, [location.pathname, navigate, isStreaming, activeSessionId]);
 
   return (
     <div className="flex h-full w-full bg-surface-base text-text-primary overflow-hidden select-none pt-2 sm:pt-3">
       <ChatSidebar
         isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} sessions={sessions} activeSessionId={activeSessionId}
-        onSelectSession={setActiveSessionId} onNewChat={() => createSession(activePersona)} onDeleteSession={deleteSession} onRenameSession={renameSession}
+        onSelectSession={setActiveSessionId} onNewChat={() => createSession(activePersona)} onDeleteSession={handleDeleteSession} onRenameSession={renameSession}
       />
       <main className="flex-1 flex flex-col h-full min-w-0 relative bg-surface/20 overflow-hidden">
         <div className="h-12 border-b border-border px-4 flex items-center justify-between bg-surface-card/60 backdrop-blur shrink-0">

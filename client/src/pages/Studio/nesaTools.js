@@ -5,10 +5,7 @@ export const NESA_TOOL_DECLARATIONS = [
     parameters: {
       type: "OBJECT",
       properties: {
-        route: {
-          type: "STRING",
-          description: "Target route like /assets, /analytics, /dashboard, /studio, /settings"
-        }
+        route: { type: "STRING", description: "Target route like /assets, /analytics, /dashboard, /studio, /settings" }
       },
       required: ["route"]
     }
@@ -19,14 +16,8 @@ export const NESA_TOOL_DECLARATIONS = [
     parameters: {
       type: "OBJECT",
       properties: {
-        targetKey: {
-          type: "STRING",
-          description: "Identifier or selector for target element (e.g. upload_btn, theme_toggle, new_chat)"
-        },
-        label: {
-          type: "STRING",
-          description: "Short guidance text to show near the arrow"
-        }
+        targetKey: { type: "STRING", description: "Identifier or selector for target element (e.g. upload_btn, theme_toggle, new_chat)" },
+        label: { type: "STRING", description: "Short guidance text to show near the arrow" }
       },
       required: ["targetKey"]
     }
@@ -37,10 +28,7 @@ export const NESA_TOOL_DECLARATIONS = [
     parameters: {
       type: "OBJECT",
       properties: {
-        position: {
-          type: "STRING",
-          description: "Target dock: top-left, top-right, bottom-left, bottom-right, minimize, maximize"
-        }
+        position: { type: "STRING", description: "Target dock: top-left, top-right, bottom-left, bottom-right, minimize, maximize" }
       },
       required: ["position"]
     }
@@ -51,22 +39,10 @@ export const NESA_TOOL_DECLARATIONS = [
     parameters: {
       type: "OBJECT",
       properties: {
-        modalType: {
-          type: "STRING",
-          description: "upload_asset, text_note, translation, input_prompt, logout_confirm"
-        },
-        title: {
-          type: "STRING",
-          description: "Modal title"
-        },
-        content: {
-          type: "STRING",
-          description: "Rich text explanation, Urdu translation, or prompt details"
-        },
-        inputPlaceholder: {
-          type: "STRING",
-          description: "Placeholder text for input field"
-        }
+        modalType: { type: "STRING", description: "upload_asset, text_note, translation, input_prompt, logout_confirm" },
+        title: { type: "STRING", description: "Modal title" },
+        content: { type: "STRING", description: "Rich text explanation, Urdu translation, or prompt details" },
+        inputPlaceholder: { type: "STRING", description: "Placeholder text for input field" }
       },
       required: ["modalType"]
     }
@@ -77,10 +53,7 @@ export const NESA_TOOL_DECLARATIONS = [
     parameters: {
       type: "OBJECT",
       properties: {
-        reason: {
-          type: "STRING",
-          description: "Optional dismissal reason"
-        }
+        reason: { type: "STRING", description: "Optional dismissal reason" }
       }
     }
   },
@@ -109,6 +82,25 @@ export const NESA_TOOL_DECLARATIONS = [
         autoSubmit: { type: "BOOLEAN", description: "True to immediately trigger generation" }
       },
       required: ["prompt"]
+    }
+  },
+  {
+    name: "deleteAsset",
+    description: "Deletes an asset or file. Provide the asset title or id if known, or deletes the target asset.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        assetId: { type: "STRING" },
+        title: { type: "STRING" }
+      }
+    }
+  },
+  {
+    name: "deleteSession",
+    description: "Deletes the active or specified chat session.",
+    parameters: {
+      type: "OBJECT",
+      properties: { sessionId: { type: "STRING" } }
     }
   }
 ];
