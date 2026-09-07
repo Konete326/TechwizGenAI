@@ -19,16 +19,20 @@ const PersistentNesaCallHost = () => {
 
 function DashboardLayoutContent() {
   const location = useLocation(), navigate = useNavigate();
-  const { sendContextTurn, isCallActive, endCall, isSpeaking, reposition } = useNesaCallContext();
+  const { sendContextTurn, isCallActive, endCall, startCall, isSpeaking, reposition } = useNesaCallContext();
   const isStudio = location.pathname.startsWith("/studio");
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false), [isCollapsed, setIsCollapsed] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false), [isCollapsed, setIsCollapsed] = useState(false), [micErrorNotice, setMicErrorNotice] = useState(false);
   const resizeTimerRef = useRef(null);
 
   useEffect(() => {
     const handleLogout = () => {
       if (endCall) endCall();
-      localStorage.removeItem("token"); localStorage.removeItem("user"); localStorage.removeItem("techwiz_custom_api_key");
-      navigate("/login");
+      localStorage.removeItem("token"); localStorage.removeItem("user"); localStorage.removeItem("techwiz_custom_api_key"); navigate("/login");
+    };
+
+    const handleMicLost = () => {
+      try { const u = new SpeechSynthesisUtterance("Aapka mic access khatam ho gaya hai. Main call cut kar rahi hoon, aap wapas call laga lein."); u.rate = 1.05; window.speechSynthesis.speak(u); } catch {}
+      setTimeout(() => { if (endCall) endCall(); }, 3500); setMicErrorNotice(true);
     };
 
     const handleToolCall = async (e) => {
@@ -94,17 +98,13 @@ function DashboardLayoutContent() {
       }
     };
 
-    window.addEventListener("nesa:toolcall", handleToolCall);
-    window.addEventListener("auth:logout", handleLogout);
-    return () => { window.removeEventListener("nesa:toolcall", handleToolCall); window.removeEventListener("auth:logout", handleLogout); };
+    window.addEventListener("nesa:toolcall", handleToolCall); window.addEventListener("auth:logout", handleLogout); window.addEventListener("nesa:mic_lost", handleMicLost);
+    return () => { window.removeEventListener("nesa:toolcall", handleToolCall); window.removeEventListener("auth:logout", handleLogout); window.removeEventListener("nesa:mic_lost", handleMicLost); };
   }, [navigate, endCall, location.pathname, reposition]);
 
   useEffect(() => {
     const pushTelemetry = () => {
-      if (!isSpeaking && isCallActive && sendContextTurn) {
-        const vp = window.innerWidth < 768 ? "Mobile" : "Desktop";
-        sendContextTurn(`Current Screen: ${location.pathname}, Viewport: ${vp} (${window.innerWidth}px)`);
-      }
+      if (!isSpeaking && isCallActive && sendContextTurn) sendContextTurn(`Current Screen: ${location.pathname}, Viewport: ${window.innerWidth < 768 ? "Mobile" : "Desktop"} (${window.innerWidth}px)`);
     };
     pushTelemetry();
     const handleResize = () => { if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current); resizeTimerRef.current = setTimeout(pushTelemetry, 300); };
@@ -119,8 +119,7 @@ function DashboardLayoutContent() {
   useEffect(() => {
     const fetchStorage = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) return;
+        const token = localStorage.getItem("token"); if (!token) return;
         const res = await fetch(`${VITE_API_URL}/assets`, { headers: { Authorization: `Bearer ${token}` } }), data = await res.json();
         if (data.success && Array.isArray(data.data)) { const total = data.data.reduce((sum, item) => sum + (item.bytes || 0), 0); localStorage.setItem("platform_usage_bytes", String(total)); setPlatformBytes(total); }
       } catch {}
@@ -132,8 +131,7 @@ function DashboardLayoutContent() {
   }, []);
 
   const formatStorage = (b) => (!b || b <= 0 ? "0 MB" : b < 1048576 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(b < 104857600 ? 1 : 0)} MB`);
-  const limitBytes = 500 * 1024 * 1024, percentUsed = Math.min(100, Math.max(0, (platformBytes / limitBytes) * 100));
-  const usageDisplay = `${formatStorage(platformBytes)} / 500 MB`;
+  const limitBytes = 500 * 1024 * 1024, percentUsed = Math.min(100, Math.max(0, (platformBytes / limitBytes) * 100)), usageDisplay = `${formatStorage(platformBytes)} / 500 MB`;
 
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-background text-text-primary font-sans transition-colors duration-150">
@@ -142,6 +140,13 @@ function DashboardLayoutContent() {
         <DashboardHeader onOpenDrawer={() => setIsDrawerOpen(true)} />
         <main className={`flex-1 w-full relative ${isStudio ? "overflow-hidden p-0" : "overflow-y-auto overflow-x-hidden p-6"}`}><ErrorBoundary><Outlet /></ErrorBoundary></main>
       </div>
+      {micErrorNotice && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 bg-red-600/90 text-white text-xs font-medium rounded-full shadow-lg backdrop-blur border border-red-500/30">
+          <span>Mic access lost. Call ended.</span>
+          <button onClick={() => { setMicErrorNotice(false); if (startCall) startCall(); }} className="px-2.5 py-0.5 bg-white text-red-600 rounded-full font-semibold hover:bg-red-50 transition-colors">Reconnect Call</button>
+          <button onClick={() => setMicErrorNotice(false)} className="text-white/80 hover:text-white ml-1">×</button>
+        </div>
+      )}
       <VisualSpotlight /><DynamicModalHost /><PersistentNesaCallHost /><InstallPrompt /><ApiFallbackModal />
     </div>
   );
