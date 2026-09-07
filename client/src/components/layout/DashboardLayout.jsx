@@ -7,6 +7,7 @@ import { InstallPrompt } from "@/components/ui/InstallPrompt";
 import { ApiFallbackModal } from "@/components/ui/ApiFallbackModal";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { VisualSpotlight } from "@/components/common/VisualSpotlight";
+import { DynamicModalHost } from "@/components/common/DynamicModalHost";
 
 export const DashboardLayout = () => {
   const location = useLocation();
@@ -103,6 +104,7 @@ export const DashboardLayout = () => {
       </div>
 
       <VisualSpotlight />
+      <DynamicModalHost />
       <InstallPrompt />
       <ApiFallbackModal />
     </div>
