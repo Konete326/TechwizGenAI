@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ClockCounterClockwise, PhoneCall } from "@phosphor-icons/react";
 import { useToast } from "@/context/ToastContext";
 import { useNesaCallContext } from "@/context/NesaCallContext";
@@ -12,16 +13,12 @@ import { ArtifactPanel } from "./ArtifactPanel";
 import { useChatSessions } from "./useChatSessions";
 
 export function Studio() {
-  const toast = useToast();
+  const toast = useToast(), navigate = useNavigate(), location = useLocation();
   const { startCall, isCallActive } = useNesaCallContext();
-  const [inputPrompt, setInputPrompt] = useState("");
-  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem("selected_ai_model") || "gemini-3.8-flash");
-  const [activePersona, setActivePersona] = useState("general");
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamingText, setStreamingText] = useState("");
-  const [attachedImages, setAttachedImages] = useState([]);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeArtifact, setActiveArtifact] = useState(null);
+  const [inputPrompt, setInputPrompt] = useState(""), [selectedModel, setSelectedModel] = useState(() => localStorage.getItem("selected_ai_model") || "gemini-3.8-flash");
+  const [activePersona, setActivePersona] = useState("general"), [isStreaming, setIsStreaming] = useState(false);
+  const [streamingText, setStreamingText] = useState(""), [attachedImages, setAttachedImages] = useState([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false), [activeArtifact, setActiveArtifact] = useState(null);
   const abortControllerRef = useRef(null);
 
   const {
@@ -48,8 +45,7 @@ export function Studio() {
       images: docPayload.images || (imageBase64 ? [imageBase64] : null),
       documents: docPayload.documents || null,
       attachmentType: docPayload.documents?.length > 0 ? "document" : (imageBase64 ? "image" : "none"),
-      attachmentName: docPayload.documents?.[0]?.name || null,
-      attachmentData: docPayload.documents?.[0]?.data || null,
+      attachmentName: docPayload.documents?.[0]?.name || null, attachmentData: docPayload.documents?.[0]?.data || null,
       persona: activePersona, isRegenerate, signal: controller.signal,
       onChunk: (c) => { accumulated += c; setStreamingText((p) => p + c); },
       onComplete: () => {
@@ -82,11 +78,9 @@ export function Studio() {
     const fallbackDoc = docsToUpload[0]?.name ? `Analyze ${docsToUpload[0].name}` : "Analyze attachment";
     const promptText = textToSend.trim() || (docsToUpload.length > 0 ? fallbackDoc : (imagesToUpload.length > 0 ? "Analyze attached image" : ""));
     const userMsg = {
-      id: "usr-" + Date.now(), role: "user", text: promptText,
-      attachment: imagesToUpload[0] || docsToUpload[0]?.data || null,
+      id: "usr-" + Date.now(), role: "user", text: promptText, attachment: imagesToUpload[0] || docsToUpload[0]?.data || null,
       attachmentType: docsToUpload.length > 0 ? "document" : (imagesToUpload.length > 0 ? "image" : "none"),
-      attachmentName: docsToUpload[0]?.name || null,
-      images: imagesToUpload, documents: docsToUpload, createdAt: new Date().toISOString()
+      attachmentName: docsToUpload[0]?.name || null, images: imagesToUpload, documents: docsToUpload, createdAt: new Date().toISOString()
     };
     setMessages((prev) => [...prev, userMsg]);
     setInputPrompt(""); setAttachedImages([]);
@@ -111,6 +105,21 @@ export function Studio() {
     setMessages((p) => { const idx = p.findIndex((m) => m.id === id); return idx === -1 ? p : p.slice(0, idx); });
   };
 
+  useEffect(() => {
+    const handleToolCall = (e) => {
+      const d = e?.detail || {};
+      if (d.name === "submitStudioPrompt") {
+        const p = d.args?.prompt || d.prompt, auto = d.args?.autoSubmit !== undefined ? d.args.autoSubmit : (d.autoSubmit !== undefined ? d.autoSubmit : true);
+        if (!p) return;
+        if (!location.pathname.startsWith("/studio")) navigate("/studio");
+        if (auto) handleSendMessage(p);
+        else setInputPrompt(p);
+      }
+    };
+    window.addEventListener("nesa:toolcall", handleToolCall);
+    return () => window.removeEventListener("nesa:toolcall", handleToolCall);
+  }, [location.pathname, navigate]);
+
   return (
     <div className="flex h-full w-full bg-surface-base text-text-primary overflow-hidden select-none pt-2 sm:pt-3">
       <ChatSidebar
@@ -124,26 +133,20 @@ export function Studio() {
           <div className="flex items-center gap-2.5 truncate pr-2">
             {!isSidebarOpen && (
               <button
-                type="button" onClick={() => setIsSidebarOpen(true)}
+                type="button" onClick={() => setIsSidebarOpen(true)} title="Show History" aria-label="Open chat history"
                 className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-[var(--radius-sm)] border border-border bg-surface text-text-muted hover:text-text-primary hover:border-accent text-xs font-semibold transition-colors cursor-pointer shrink-0"
-                title="Show History" aria-label="Open chat history"
               >
-                <ClockCounterClockwise size={14} weight="bold" />
-                <span className="hidden sm:inline">History</span>
+                <ClockCounterClockwise size={14} weight="bold" /><span className="hidden sm:inline">History</span>
               </button>
             )}
-            <span className={`font-semibold text-xs text-text-primary truncate ${!isSidebarOpen ? "border-l border-border pl-2.5" : ""}`}>
-              {activeSession?.title || "New Chat"}
-            </span>
+            <span className={`font-semibold text-xs text-text-primary truncate ${!isSidebarOpen ? "border-l border-border pl-2.5" : ""}`}>{activeSession?.title || "New Chat"}</span>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
-              type="button" onClick={startCall} disabled={isStreaming || isCallActive}
+              type="button" onClick={startCall} disabled={isStreaming || isCallActive} title="Call Nesa" aria-label="Call Nesa"
               className="flex items-center justify-center h-8 w-8 sm:w-auto sm:h-auto gap-1.5 px-2 py-1.5 sm:px-2.5 rounded-lg border border-accent/40 bg-accent/10 hover:bg-accent/20 text-accent text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 shrink-0"
-              title="Call Nesa" aria-label="Call Nesa"
             >
-              <PhoneCall size={14} weight="fill" />
-              <span className="hidden md:inline">Call Nesa</span>
+              <PhoneCall size={14} weight="fill" /><span className="hidden md:inline">Call Nesa</span>
             </button>
             <PersonaSelector selectedPersona={activePersona} onSelectPersona={handleSelectPersona} disabled={isStreaming} />
             <ModelSelector selectedModel={selectedModel} onSelectModel={(id) => { setSelectedModel(id); localStorage.setItem("selected_ai_model", id); }} />
@@ -154,16 +157,13 @@ export function Studio() {
           <div className={`flex flex-col min-w-0 h-full transition-all duration-200 ${activeArtifact ? "hidden lg:flex lg:w-1/2 border-r border-border" : "flex-1"}`}>
             <ChatCanvas
               messages={messages} activeSession={activeSession} activePersona={activePersona}
-              isStreaming={isStreaming} streamingText={streamingText}
-              onEdit={handleEditMessage} onRegenerate={handleRegenerate}
+              isStreaming={isStreaming} streamingText={streamingText} onEdit={handleEditMessage} onRegenerate={handleRegenerate}
               onSendSuggested={(s) => handleSendMessage(s)} onOpenArtifact={setActiveArtifact}
-              onSelectChoice={(c) => !isStreaming && handleSendMessage(c)}
-              isSidebarOpen={isSidebarOpen}
+              onSelectChoice={(c) => !isStreaming && handleSendMessage(c)} isSidebarOpen={isSidebarOpen}
             />
             <ChatInput
-              inputPrompt={inputPrompt} setInputPrompt={setInputPrompt}
-              onSubmit={(p) => handleSendMessage(p)} isStreaming={isStreaming}
-              onStop={() => { abortControllerRef.current?.abort(); setIsStreaming(false); }}
+              inputPrompt={inputPrompt} setInputPrompt={setInputPrompt} onSubmit={(p) => handleSendMessage(p)}
+              isStreaming={isStreaming} onStop={() => { abortControllerRef.current?.abort(); setIsStreaming(false); }}
               selectedModel={selectedModel} attachedImages={attachedImages} setAttachedImages={setAttachedImages}
             />
           </div>
@@ -173,5 +173,4 @@ export function Studio() {
     </div>
   );
 }
-
 export default Studio;

@@ -87,17 +87,28 @@ export const NESA_TOOL_DECLARATIONS = [
   {
     name: "executeLogout",
     description: "Terminates user session, clears auth tokens, and redirects to login page. Only invoke AFTER user explicitly confirms the logout warning.",
-    parameters: {
-      type: "OBJECT",
-      properties: {}
-    }
+    parameters: { type: "OBJECT", properties: {} }
   },
   {
     name: "getDashboardMetrics",
     description: "Fetches live platform analytics and metrics including token usage, total generations, and active assets.",
+    parameters: { type: "OBJECT", properties: {} }
+  },
+  {
+    name: "disconnectCall",
+    description: "Terminates the active voice call session immediately when the user requests to end or cut the call (e.g. 'call cut kar do', 'bye', 'disconnect').",
+    parameters: { type: "OBJECT", properties: {} }
+  },
+  {
+    name: "submitStudioPrompt",
+    description: "Executes a query directly in the Studio chat canvas. Use this when the user asks to generate a graph, write code, or run a query in the chat.",
     parameters: {
       type: "OBJECT",
-      properties: {}
+      properties: {
+        prompt: { type: "STRING", description: "The full user prompt to submit" },
+        autoSubmit: { type: "BOOLEAN", description: "True to immediately trigger generation" }
+      },
+      required: ["prompt"]
     }
   }
 ];

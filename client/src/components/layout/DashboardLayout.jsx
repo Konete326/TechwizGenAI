@@ -44,13 +44,17 @@ function DashboardLayoutContent() {
       if (detail.name === "navigatePage" && route) navigate(route);
       if (detail.name === "closeModal") window.dispatchEvent(new CustomEvent("nesa:modal:close"));
       if (detail.name === "executeLogout") handleLogout();
+      if (detail.name === "disconnectCall" && endCall) endCall();
+      if (detail.name === "submitStudioPrompt" && !location.pathname.startsWith("/studio")) {
+        navigate("/studio");
+        setTimeout(() => window.dispatchEvent(new CustomEvent("nesa:toolcall", { detail })), 150);
+      }
       if (detail.name === "getDashboardMetrics") {
         const callId = detail.id || detail.callId || `call_${Date.now()}`;
         try {
           const token = localStorage.getItem("token");
           const res = await fetch(`${VITE_API_URL}/dashboard/stats`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-          const json = await res.json();
-          const metrics = json?.data || { totalGenerations: 0, totalTokens: 0, totalAssets: 0 };
+          const json = await res.json(), metrics = json?.data || { totalGenerations: 0, totalTokens: 0, totalAssets: 0 };
           window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(callId, "getDashboardMetrics", metrics) }));
         } catch {
           window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(callId, "getDashboardMetrics", { status: "error" }) }));
@@ -64,7 +68,7 @@ function DashboardLayoutContent() {
       window.removeEventListener("nesa:toolcall", handleToolCall);
       window.removeEventListener("auth:logout", handleLogout);
     };
-  }, [navigate, endCall]);
+  }, [navigate, endCall, location.pathname]);
 
   useEffect(() => {
     const pushTelemetry = () => {
@@ -132,8 +136,7 @@ function DashboardLayoutContent() {
     return mb < 1 ? `${(bytes / 1024).toFixed(0)} KB` : mb < 100 ? `${mb.toFixed(1)} MB` : `${mb.toFixed(0)} MB`;
   };
 
-  const limitBytes = 500 * 1024 * 1024;
-  const percentUsed = Math.min(100, Math.max(0, (platformBytes / limitBytes) * 100));
+  const limitBytes = 500 * 1024 * 1024, percentUsed = Math.min(100, Math.max(0, (platformBytes / limitBytes) * 100));
   const usageDisplay = `${formatStorage(platformBytes)} / 500 MB`;
 
   return (
@@ -150,8 +153,5 @@ function DashboardLayoutContent() {
   );
 }
 
-export const DashboardLayout = () => (
-  <NesaCallProvider><DashboardLayoutContent /></NesaCallProvider>
-);
-
+export const DashboardLayout = () => <NesaCallProvider><DashboardLayoutContent /></NesaCallProvider>;
 export default DashboardLayout;
