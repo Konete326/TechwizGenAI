@@ -44,7 +44,7 @@ function DashboardLayoutContent() {
       if (detail.name === "navigatePage" && route) navigate(route);
       if (detail.name === "closeModal") window.dispatchEvent(new CustomEvent("nesa:modal:close"));
       if (detail.name === "executeLogout") handleLogout();
-      if (detail.name === "disconnectCall" && endCall) endCall();
+      if (detail.name === "disconnectCall" && endCall) setTimeout(() => endCall(), 1400);
       if (detail.name === "submitStudioPrompt" && !location.pathname.startsWith("/studio")) {
         navigate("/studio");
         setTimeout(() => window.dispatchEvent(new CustomEvent("nesa:toolcall", { detail })), 150);

@@ -19,7 +19,7 @@ export function Studio() {
   const [activePersona, setActivePersona] = useState("general"), [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState(""), [attachedImages, setAttachedImages] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false), [activeArtifact, setActiveArtifact] = useState(null);
-  const abortControllerRef = useRef(null);
+  const abortControllerRef = useRef(null), queuedPromptRef = useRef(null);
 
   const {
     sessions, setSessions, activeSessionId, setActiveSessionId,
@@ -58,9 +58,7 @@ export function Studio() {
   };
 
   const handleSendMessage = async (payloadOrText, imageToSend) => {
-    let textToSend = inputPrompt;
-    let imagesToUpload = Array.isArray(imageToSend) ? imageToSend : (imageToSend ? [imageToSend] : attachedImages);
-    let docsToUpload = [];
+    let textToSend = inputPrompt, imagesToUpload = Array.isArray(imageToSend) ? imageToSend : (imageToSend ? [imageToSend] : attachedImages), docsToUpload = [];
 
     if (payloadOrText && typeof payloadOrText === "object") {
       textToSend = payloadOrText.text !== undefined ? payloadOrText.text : inputPrompt;
@@ -87,8 +85,7 @@ export function Studio() {
 
     const currSess = sessions.find((s) => s.id === targetSessionId);
     if (!currSess || currSess.title === "New Chat") {
-      const words = promptText.split(/\s+/).slice(0, 4).join(" ");
-      const autoTitle = words ? words.charAt(0).toUpperCase() + words.slice(1) : "Document Chat";
+      const words = promptText.split(/\s+/).slice(0, 4).join(" "), autoTitle = words ? words.charAt(0).toUpperCase() + words.slice(1) : "Document Chat";
       setSessions((p) => p.map((s) => (s.id === targetSessionId ? { ...s, title: autoTitle } : s)));
     }
     await runStream(targetSessionId, promptText, imagesToUpload[0] || null, false, { images: imagesToUpload, documents: docsToUpload });
@@ -96,37 +93,39 @@ export function Studio() {
 
   const handleRegenerate = async () => {
     if (isStreaming || !activeSessionId) return;
-    setMessages((prev) => (prev[prev.length - 1]?.role === "model" ? prev.slice(0, -1) : prev));
+    setMessages((p) => (p[p.length - 1]?.role === "model" ? p.slice(0, -1) : p));
     await runStream(activeSessionId, "", null, true);
   };
   const handleEditMessage = (id, text, att) => {
-    setInputPrompt(text || "");
-    if (att) setAttachedImages(Array.isArray(att) ? att : [att]);
+    setInputPrompt(text || ""); if (att) setAttachedImages(Array.isArray(att) ? att : [att]);
     setMessages((p) => { const idx = p.findIndex((m) => m.id === id); return idx === -1 ? p : p.slice(0, idx); });
   };
 
   useEffect(() => {
+    if (!isStreaming && queuedPromptRef.current) {
+      const q = queuedPromptRef.current; queuedPromptRef.current = null; handleSendMessage(q);
+    }
     const handleToolCall = (e) => {
       const d = e?.detail || {};
       if (d.name === "submitStudioPrompt") {
         const p = d.args?.prompt || d.prompt, auto = d.args?.autoSubmit !== undefined ? d.args.autoSubmit : (d.autoSubmit !== undefined ? d.autoSubmit : true);
         if (!p) return;
         if (!location.pathname.startsWith("/studio")) navigate("/studio");
-        if (auto) handleSendMessage(p);
-        else setInputPrompt(p);
+        if (isStreaming) { if (auto) queuedPromptRef.current = p; else setInputPrompt(p); return; }
+        if (auto) handleSendMessage(p); else setInputPrompt(p);
       }
     };
+    const handleCancel = () => { queuedPromptRef.current = null; };
     window.addEventListener("nesa:toolcall", handleToolCall);
-    return () => window.removeEventListener("nesa:toolcall", handleToolCall);
-  }, [location.pathname, navigate]);
+    window.addEventListener("nesa:cancel_queued_prompt", handleCancel);
+    return () => { window.removeEventListener("nesa:toolcall", handleToolCall); window.removeEventListener("nesa:cancel_queued_prompt", handleCancel); };
+  }, [location.pathname, navigate, isStreaming]);
 
   return (
     <div className="flex h-full w-full bg-surface-base text-text-primary overflow-hidden select-none pt-2 sm:pt-3">
       <ChatSidebar
-        isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)}
-        sessions={sessions} activeSessionId={activeSessionId}
-        onSelectSession={setActiveSessionId} onNewChat={() => createSession(activePersona)}
-        onDeleteSession={deleteSession} onRenameSession={renameSession}
+        isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} sessions={sessions} activeSessionId={activeSessionId}
+        onSelectSession={setActiveSessionId} onNewChat={() => createSession(activePersona)} onDeleteSession={deleteSession} onRenameSession={renameSession}
       />
       <main className="flex-1 flex flex-col h-full min-w-0 relative bg-surface/20 overflow-hidden">
         <div className="h-12 border-b border-border px-4 flex items-center justify-between bg-surface-card/60 backdrop-blur shrink-0">

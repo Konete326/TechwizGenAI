@@ -105,7 +105,7 @@ export function VisualSpotlight() {
 
   return (
     <>
-      {isBlurActive && <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-md transition-opacity duration-500 pointer-events-none" />}
+      {isBlurActive && <div className="fixed inset-0 z-40 bg-transparent backdrop-blur-[3px] pointer-events-none transition-all duration-500" />}
       {targetRect && (
         <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
           <svg className="fixed inset-0 w-full h-full pointer-events-none z-50">
@@ -119,7 +119,7 @@ export function VisualSpotlight() {
             </path>
           </svg>
           <div
-            className="absolute pointer-events-none bg-transparent ring-4 ring-blue-500 shadow-[0_0_25px_rgba(59,130,246,0.6)] rounded-lg transition-all duration-200"
+            className="absolute z-50 pointer-events-none backdrop-blur-none bg-transparent ring-4 ring-blue-500 shadow-[0_0_25px_rgba(59,130,246,0.6)] rounded-lg transition-all duration-200"
             style={{
               top: `${Math.max(0, targetRect.top - 6)}px`, left: `${Math.max(0, targetRect.left - 6)}px`,
               width: `${targetRect.width + 12}px`, height: `${targetRect.height + 12}px`
