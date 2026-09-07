@@ -127,7 +127,7 @@ export function NesaCallInterface({
   return (
     <>
       {isMinimized ? (
-        <div onClick={onToggleMinimize} className="fixed bottom-4 right-4 z-50 w-44 h-24 rounded-2xl overflow-hidden shadow-2xl border border-white/20 md:hidden bg-zinc-950 cursor-pointer active:scale-95 transition-transform">
+        <div id="nesa-call-widget" onClick={onToggleMinimize} className="fixed bottom-4 right-4 z-50 w-44 h-24 rounded-2xl overflow-hidden shadow-2xl border border-white/20 md:hidden bg-zinc-950 cursor-pointer active:scale-95 transition-transform">
           <NesaCallVideos isSpeaking={isSpeaking} />
           <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/85 via-transparent to-transparent flex items-end justify-between p-2 z-10 pointer-events-none">
             <div className="flex items-center gap-1.5">
@@ -163,7 +163,7 @@ export function NesaCallInterface({
         position={currentPos}
         onDrag={(e, d) => onPositionChange && onPositionChange({ x: d.x, y: d.y })}
       >
-        <div ref={nodeRef} className="fixed top-0 left-0 z-50 hidden md:block">
+        <div id="nesa-call-widget" ref={nodeRef} className="fixed top-0 left-0 z-50 hidden md:block">
           {isMinimized ? (
             <NesaCallMinimized durationText={durationText} isSpeaking={isSpeaking} isListening={isListening} onMaximize={onToggleMinimize} onEndCall={onEndCall} />
           ) : (

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, UploadSimple, FileText, CheckCircle } from "@phosphor-icons/react";
+import { X, UploadSimple, FileText, CheckCircle, SignOut } from "@phosphor-icons/react";
 import { VITE_API_URL } from "@/config/env";
 import { Loader } from "@/components/ui/Loader";
 
@@ -20,9 +20,10 @@ export function DynamicModalHost() {
       }
       if (detail.name !== "openDynamicModal") return;
       const args = detail.args || detail;
-      setActiveType(args.modalType || "upload_asset");
-      setTitle(args.title || (args.modalType === "translation" ? "Translation" : args.modalType === "input_prompt" ? "Input Prompt" : args.modalType === "text_note" ? "Note" : "Upload Asset"));
-      setContent(args.content || "");
+      const mType = args.modalType || "upload_asset";
+      setActiveType(mType);
+      setTitle(args.title || (mType === "logout_confirm" ? "Confirm Logout" : mType === "translation" ? "Translation" : mType === "input_prompt" ? "Input Prompt" : mType === "text_note" ? "Note" : "Upload Asset"));
+      setContent(args.content || (mType === "logout_confirm" ? "Logging out will immediately disconnect Nesa and end your active voice session." : ""));
       setInputPlaceholder(args.inputPlaceholder || "Type your response...");
       setInputVal(""); setCopied(false); setFile(null); setError(""); setIsSuccess(false); setIsSubmitting(false); setIsOpen(true);
     };
@@ -75,8 +76,8 @@ export function DynamicModalHost() {
       <div className="bg-surface-card border border-border rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
         <div className="p-4 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-accent/15 border border-accent/30 flex items-center justify-center text-accent">
-              {activeType === "upload_asset" ? <UploadSimple size={16} weight="bold" /> : <FileText size={16} weight="bold" />}
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeType === "logout_confirm" ? "bg-rose-500/15 border border-rose-500/30 text-rose-500" : "bg-accent/15 border border-accent/30 text-accent"}`}>
+              {activeType === "upload_asset" ? <UploadSimple size={16} weight="bold" /> : activeType === "logout_confirm" ? <SignOut size={16} weight="bold" /> : <FileText size={16} weight="bold" />}
             </div>
             <div>
               <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
@@ -91,7 +92,21 @@ export function DynamicModalHost() {
         <div className="p-5 space-y-4">
           {error && <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs">{error}</div>}
 
-          {(activeType === "text_note" || activeType === "translation") ? (
+          {activeType === "logout_confirm" ? (
+            <div className="space-y-4">
+              <p className="text-xs text-text-muted leading-relaxed">
+                {content || "Logging out will immediately disconnect Nesa and end your active voice session."}
+              </p>
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button type="button" onClick={close} className="px-3.5 py-1.5 rounded-lg border border-border text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer">
+                  Cancel
+                </button>
+                <button type="button" onClick={() => { window.dispatchEvent(new CustomEvent("auth:logout")); close(); }} className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer">
+                  Yes, Log Out
+                </button>
+              </div>
+            </div>
+          ) : (activeType === "text_note" || activeType === "translation") ? (
             <div className="space-y-4">
               <div className="p-3.5 rounded-xl bg-surface/50 border border-border text-xs text-text-primary leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto">
                 {content || "No details provided."}

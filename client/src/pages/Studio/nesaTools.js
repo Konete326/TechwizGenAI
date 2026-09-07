@@ -83,6 +83,14 @@ export const NESA_TOOL_DECLARATIONS = [
         }
       }
     }
+  },
+  {
+    name: "executeLogout",
+    description: "Terminates user session, clears auth tokens, and redirects to login page. Only invoke AFTER user explicitly confirms the logout warning.",
+    parameters: {
+      type: "OBJECT",
+      properties: {}
+    }
   }
 ];
 

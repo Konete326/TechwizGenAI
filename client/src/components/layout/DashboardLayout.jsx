@@ -25,23 +25,35 @@ function PersistentNesaCallHost() {
 }
 
 function DashboardLayoutContent() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { sendContextTurn, isCallActive } = useNesaCallContext();
+  const location = useLocation(), navigate = useNavigate();
+  const { sendContextTurn, isCallActive, endCall } = useNesaCallContext();
   const isStudio = location.pathname.startsWith("/studio");
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false), [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
+    const handleLogout = () => {
+      if (endCall) endCall();
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("techwiz_custom_api_key");
+      navigate("/login");
+    };
+
     const handleToolCall = (e) => {
       const detail = e?.detail || {};
       const route = detail.args?.route || detail.route;
       if (detail.name === "navigatePage" && route) navigate(route);
       if (detail.name === "closeModal") window.dispatchEvent(new CustomEvent("nesa:modal:close"));
+      if (detail.name === "executeLogout") handleLogout();
     };
+
     window.addEventListener("nesa:toolcall", handleToolCall);
-    return () => window.removeEventListener("nesa:toolcall", handleToolCall);
-  }, [navigate]);
+    window.addEventListener("auth:logout", handleLogout);
+    return () => {
+      window.removeEventListener("nesa:toolcall", handleToolCall);
+      window.removeEventListener("auth:logout", handleLogout);
+    };
+  }, [navigate, endCall]);
 
   useEffect(() => {
     const pushTelemetry = () => {
@@ -69,9 +81,7 @@ function DashboardLayoutContent() {
       try {
         const token = localStorage.getItem("token");
         if (token) {
-          const res = await fetch(`${VITE_API_URL}/assets`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          const res = await fetch(`${VITE_API_URL}/assets`, { headers: { Authorization: `Bearer ${token}` } });
           if (res.ok) {
             const data = await res.json();
             if (data.success && Array.isArray(data.data)) {
@@ -90,7 +100,6 @@ function DashboardLayoutContent() {
     };
 
     fetchStorage();
-
     const handleStorageUpdate = (e) => {
       if (e?.detail?.bytes !== undefined) setPlatformBytes(Number(e.detail.bytes));
       else {
@@ -101,7 +110,6 @@ function DashboardLayoutContent() {
 
     window.addEventListener("storage_updated", handleStorageUpdate);
     window.addEventListener("storage", handleStorageUpdate);
-
     return () => {
       window.removeEventListener("storage_updated", handleStorageUpdate);
       window.removeEventListener("storage", handleStorageUpdate);
@@ -121,24 +129,17 @@ function DashboardLayoutContent() {
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-background text-text-primary font-sans transition-colors duration-150">
       <DashboardSidebar
-        isCollapsed={isCollapsed}
-        setIsCollapsed={setIsCollapsed}
-        isDrawerOpen={isDrawerOpen}
-        onCloseDrawer={() => setIsDrawerOpen(false)}
-        usageDisplay={usageDisplay}
-        percentUsed={percentUsed}
+        isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} isDrawerOpen={isDrawerOpen}
+        onCloseDrawer={() => setIsDrawerOpen(false)} usageDisplay={usageDisplay} percentUsed={percentUsed}
       />
-
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         <DashboardHeader onOpenDrawer={() => setIsDrawerOpen(true)} />
-
         <main className={`flex-1 w-full relative ${isStudio ? "overflow-hidden p-0" : "overflow-y-auto overflow-x-hidden p-6"}`}>
           <ErrorBoundary>
             <Outlet />
           </ErrorBoundary>
         </main>
       </div>
-
       <VisualSpotlight />
       <DynamicModalHost />
       <PersistentNesaCallHost />
@@ -149,9 +150,7 @@ function DashboardLayoutContent() {
 }
 
 export const DashboardLayout = () => (
-  <NesaCallProvider>
-    <DashboardLayoutContent />
-  </NesaCallProvider>
+  <NesaCallProvider><DashboardLayoutContent /></NesaCallProvider>
 );
 
 export default DashboardLayout;
