@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import Draggable from "react-draggable";
-import { Phone, PhoneCall, Waveform, Minus, X } from "@phosphor-icons/react";
+import { Phone, Waveform, Minus, X } from "@phosphor-icons/react";
 import { NesaCallMinimized } from "./NesaCallMinimized";
 import { NesaCallVideos } from "./NesaCallVideos";
 import { playRingingTone } from "./audioUtils";
@@ -9,7 +9,7 @@ export function NesaCallInterface({
   isActive = false, callPhase = "ended", isMinimized = false,
   onToggleMinimize, onEndCall, nesaState = "idle",
   isListening = false, transcript = "", connectionError = null, onRetry,
-  forceReply
+  forceReply, position, onPositionChange, widgetSide = "right", onReposition
 }) {
   const [duration, setDuration] = useState(0), [showRinging, setShowRinging] = useState(callPhase === "ringing");
   const [isFadingRinging, setIsFadingRinging] = useState(false), nodeRef = useRef(null);
@@ -33,10 +33,41 @@ export function NesaCallInterface({
     setShowRinging(false); setIsFadingRinging(false); setDuration(0);
   }, [callPhase]);
 
+  useEffect(() => {
+    const handleCollision = (e) => {
+      const detail = e?.detail || {};
+      if (detail.name !== "spotlightElement") return;
+      const targetKey = detail.args?.targetKey || detail.targetKey;
+      if (!targetKey) return;
+
+      setTimeout(() => {
+        const targetEl = document.querySelector(`[data-nesa-target="${targetKey}"], #${targetKey}`);
+        if (!targetEl || !nodeRef.current) return;
+
+        const t = targetEl.getBoundingClientRect();
+        const w = nodeRef.current.getBoundingClientRect();
+
+        if (window.innerWidth < 768) {
+          if (onToggleMinimize && !isMinimized) onToggleMinimize();
+          return;
+        }
+
+        const isColliding = !(t.right < w.left || t.left > w.right || t.bottom < w.top || t.top > w.bottom);
+        if (isColliding && onReposition) {
+          onReposition(widgetSide === "right" ? "left" : "right");
+        }
+      }, 100);
+    };
+
+    window.addEventListener("nesa:toolcall", handleCollision);
+    return () => window.removeEventListener("nesa:toolcall", handleCollision);
+  }, [widgetSide, onReposition, onToggleMinimize, isMinimized]);
+
   if (!isActive && callPhase === "ended") return null;
 
   const formatDuration = (sec) => `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
   const isSpeaking = nesaState === "speaking", isRinging = callPhase === "ringing", durationText = formatDuration(duration);
+  const currentPos = position || { x: typeof window !== "undefined" ? Math.max(20, window.innerWidth - 370) : 800, y: typeof window !== "undefined" ? Math.max(20, window.innerHeight - 560) : 200 };
 
   const renderRinging = () => (
     <div className={`absolute inset-0 z-20 flex flex-col items-center justify-center bg-zinc-950/90 backdrop-blur-md text-zinc-100 p-6 select-none transition-all duration-700 ease-out ${isFadingRinging ? "opacity-0 scale-105 pointer-events-none" : "opacity-100 scale-100"}`}>
@@ -72,9 +103,7 @@ export function NesaCallInterface({
           </div>
         </div>
       )}
-
       <div className="relative z-10 flex-1" />
-
       <div className="relative z-10 w-full px-4 pb-4 md:pb-3 pt-1 flex flex-col items-center gap-2 bg-gradient-to-t from-zinc-950/95 via-zinc-950/75 to-transparent">
         {!isRinging && (
           <div className="flex items-center justify-center transition-opacity duration-700">
@@ -84,7 +113,6 @@ export function NesaCallInterface({
             </div>
           </div>
         )}
-
         <div className="w-full flex items-center justify-between px-1">
           <div className="w-16 flex justify-start">
             {callPhase === "connected" && forceReply && (
@@ -114,8 +142,14 @@ export function NesaCallInterface({
         {renderCallBody()}
       </div>
 
-      <Draggable nodeRef={nodeRef} handle=".call-drag-handle" bounds="body">
-        <div ref={nodeRef} className="fixed bottom-6 right-6 z-50 hidden md:block">
+      <Draggable
+        nodeRef={nodeRef}
+        handle=".call-drag-handle"
+        bounds="body"
+        position={currentPos}
+        onDrag={(e, d) => onPositionChange && onPositionChange({ x: d.x, y: d.y })}
+      >
+        <div ref={nodeRef} className="fixed top-0 left-0 z-50 hidden md:block">
           {isMinimized ? (
             <NesaCallMinimized durationText={durationText} isSpeaking={isSpeaking} isListening={isListening} onMaximize={onToggleMinimize} onEndCall={onEndCall} />
           ) : (
@@ -131,7 +165,6 @@ export function NesaCallInterface({
                   <button type="button" onClick={onEndCall} className="p-1 rounded hover:bg-rose-900/50 text-zinc-400 hover:text-rose-400 transition-colors cursor-pointer" title="End Call" aria-label="End call"><X size={13} weight="bold" /></button>
                 </div>
               </div>
-
               {renderCallBody()}
             </div>
           )}

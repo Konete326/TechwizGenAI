@@ -8,9 +8,43 @@ export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
   const [isMinimized, setIsMinimized] = useState(false);
   const [debouncedSpeaking, setDebouncedSpeaking] = useState(false);
   const [lastExecutedTool, setLastExecutedTool] = useState(null);
+
+  const getRightPosition = useCallback(() => ({
+    x: typeof window !== "undefined" ? Math.max(20, window.innerWidth - 370) : 800,
+    y: typeof window !== "undefined" ? Math.max(20, window.innerHeight - 560) : 200
+  }), []);
+
+  const [widgetPosition, setWidgetPosition] = useState(getRightPosition);
+  const [widgetSide, setWidgetSide] = useState("right");
   const isCallActiveRef = useRef(false);
   const ringTimerRef = useRef(null);
   const debounceTimerRef = useRef(null);
+
+  const reposition = useCallback((targetSide) => {
+    if (targetSide === "minimize") {
+      setIsMinimized(true);
+      return;
+    }
+    if (targetSide === "left") {
+      setWidgetPosition({ x: 30, y: 120 });
+      setWidgetSide("left");
+    } else {
+      setWidgetPosition(getRightPosition());
+      setWidgetSide("right");
+    }
+  }, [getRightPosition]);
+
+  useEffect(() => {
+    const handleToolCall = (e) => {
+      const detail = e?.detail || {};
+      if (detail.name === "repositionWidget") {
+        const pos = detail.args?.position || detail.position;
+        if (pos) reposition(pos);
+      }
+    };
+    window.addEventListener("nesa:toolcall", handleToolCall);
+    return () => window.removeEventListener("nesa:toolcall", handleToolCall);
+  }, [reposition]);
 
   const handleLiveToolCall = useCallback((call) => {
     setLastExecutedTool(call);
@@ -112,7 +146,11 @@ export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
     endCall,
     onStreamComplete: () => {},
     forceReply,
-    lastExecutedTool
+    lastExecutedTool,
+    widgetPosition,
+    setWidgetPosition,
+    widgetSide,
+    reposition
   };
 }
 

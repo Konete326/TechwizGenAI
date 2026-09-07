@@ -104,7 +104,7 @@ export function Studio() {
     await runStream(targetSessionId, promptText, imagesToUpload[0] || null, false, { images: imagesToUpload, documents: docsToUpload });
   };
 
-  const { isCallActive, callPhase, isMinimized, toggleMinimize, nesaState, isListening: isNesaListening, transcript: nesaTranscript, startCall, endCall, onStreamComplete, connectionError, forceReply } = useNesaCall({ onSendMessage: handleSendMessage, isStreaming, onMicDenied: (m) => toast.error(m || "Microphone access is required") });
+  const { isCallActive, callPhase, isMinimized, toggleMinimize, nesaState, isListening: isNesaListening, transcript: nesaTranscript, startCall, endCall, onStreamComplete, connectionError, forceReply, widgetPosition, setWidgetPosition, widgetSide, reposition } = useNesaCall({ onSendMessage: handleSendMessage, isStreaming, onMicDenied: (m) => toast.error(m || "Microphone access is required") });
   onStreamCompleteRef.current = onStreamComplete;
 
   const handleRegenerate = async () => {
@@ -184,6 +184,8 @@ export function Studio() {
         onToggleMinimize={toggleMinimize} onEndCall={endCall} nesaState={nesaState}
         isListening={isNesaListening} transcript={nesaTranscript}
         connectionError={connectionError} onRetry={startCall} forceReply={forceReply}
+        position={widgetPosition} onPositionChange={setWidgetPosition}
+        widgetSide={widgetSide} onReposition={reposition}
       />
     </div>
   );
