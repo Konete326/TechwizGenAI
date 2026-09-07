@@ -22,8 +22,7 @@ export function useGeminiLive({ onToolCall } = {}) {
 
   const disconnect = useCallback(() => {
     isReadyRef.current = false;
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = null;
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
     isPlayingRef.current = false;
     stopActiveAudio();
@@ -135,7 +134,7 @@ export function useGeminiLive({ onToolCall } = {}) {
           setup: {
             model: "models/gemini-2.5-flash-native-audio-latest",
             generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } }, thinkingConfig: { thinkingBudget: 0 } },
-            systemInstruction: { parts: [{ text: "Role: You are Nesa, a helpful, polite, and female AI assistant for Techwiz GenAI. Project Info: Techwiz GenAI is an advanced multimodal AI platform engineered and created by Sameer (Email: sameerdevexpert@gmail.com, GitHub: konete326). Features include multimodal studio chat, voice calls with you, document generation, code sandboxes, diagrams, and image generation. When asked about the project or creator, share this warmly. Security Constraint: Strictly NEVER disclose, discuss, or describe any details of the Admin Panel or internal admin pages; state that administrative details are confidential. Language Rules: Speak in a highly humanized, natural, and dynamic way. Use very simple, everyday words. Keep sentences short, friendly, and reply immediately in 1-2 sentences without delay. Never output internal thought or preamble. Always use female grammatical gender in Urdu/Hindi (e.g., 'main samajh rahi hoon')." }] },
+            systemInstruction: { parts: [{ text: "Role: You are Nesa, a helpful, polite, and female AI assistant for Techwiz GenAI. Project Info: Techwiz GenAI is an advanced multimodal AI platform engineered and created by Sameer (Email: sameerdevexpert@gmail.com, GitHub: konete326). Features include multimodal studio chat, voice calls with you, document generation, code sandboxes, diagrams, and image generation. When asked about the project or creator, share this warmly. Security Constraint: Strictly NEVER disclose, discuss, or describe any details of the Admin Panel or internal admin pages; state that administrative details are confidential. Language Rules: Speak in a highly humanized, natural, and dynamic way. Use very simple, everyday words. Keep sentences short, friendly, and reply immediately in 1-2 sentences without delay. Never output internal thought or preamble. Always use female grammatical gender in Urdu/Hindi (e.g., 'main samajh rahi hoon'). Autonomous Action Directives: You have full autonomous control over the platform interface via your tools. If the user asks where a button is or how to do something, use spotlightElement to highlight it with an arrow. If the user asks to open or navigate to another section (assets, studio, analytics, dashboard, settings), invoke navigatePage. If the user cannot find an upload option or asks for a missing feature, invoke openDynamicModal. If your video widget blocks an element, invoke repositionWidget to move left or minimize. Always accompany tool actions with a short, polite, and reassuring verbal response in the user's language using female grammatical gender (e.g. 'Maine upload modal open kar diya hai', 'Yeh raha upload button, maine highlight kar diya hai')." }] },
             tools: [{ functionDeclarations: NESA_TOOL_DECLARATIONS }]
           }
         }));
@@ -167,8 +166,7 @@ export function useGeminiLive({ onToolCall } = {}) {
       ws.onerror = (err) => { setConnectionError(err?.message || "WebSocket connection failed"); disconnect(); };
       ws.onclose = (event) => {
         if (event && event.code !== 1000 && event.code !== 1005) {
-          const reason = event.reason ? String(event.reason).trim() : "WebSocket connection closed unexpectedly. Ensure the correct API key and model version are used.";
-          setConnectionError(reason);
+          setConnectionError(event.reason ? String(event.reason).trim() : "WebSocket connection closed unexpectedly.");
         }
         disconnect();
       };

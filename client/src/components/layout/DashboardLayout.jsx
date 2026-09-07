@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { VITE_API_URL } from "@/config/env";
 import { DashboardHeader } from "./DashboardHeader";
 import { DashboardSidebar } from "./DashboardSidebar";
@@ -11,9 +11,22 @@ import { DynamicModalHost } from "@/components/common/DynamicModalHost";
 
 export const DashboardLayout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const isStudio = location.pathname.startsWith("/studio");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    const handleToolCall = (e) => {
+      const detail = e?.detail || {};
+      const route = detail.args?.route || detail.route;
+      if (detail.name === "navigatePage" && route) {
+        navigate(route);
+      }
+    };
+    window.addEventListener("nesa:toolcall", handleToolCall);
+    return () => window.removeEventListener("nesa:toolcall", handleToolCall);
+  }, [navigate]);
 
   const [platformBytes, setPlatformBytes] = useState(() => {
     try {
