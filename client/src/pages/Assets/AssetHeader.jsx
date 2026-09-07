@@ -30,6 +30,7 @@ export function AssetHeader({ totalCount, onOpenUpload, isAdmin }) {
 
       <button
         type="button"
+        data-nesa-target="upload_btn"
         onClick={onOpenUpload}
         className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-[var(--radius-sm)] bg-accent hover:bg-accent-hover text-white text-xs font-semibold shadow-sm transition-colors btn-tactile w-fit"
       >

@@ -35,6 +35,7 @@ export function ChatSidebar({ isOpen, onClose, sessions, activeSessionId, onSele
         <div className="p-3 border-b border-border flex items-center gap-2">
           <button
             type="button"
+            data-nesa-target="new_chat"
             onClick={() => { onNewChat(); if (window.innerWidth < 768) onClose(); }}
             disabled={isLoading}
             className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-[var(--radius-sm)] bg-accent hover:bg-accent-hover text-white text-xs font-semibold shadow-sm transition-colors btn-tactile cursor-pointer disabled:opacity-50"

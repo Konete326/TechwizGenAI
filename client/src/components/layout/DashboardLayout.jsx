@@ -6,6 +6,7 @@ import { DashboardSidebar } from "./DashboardSidebar";
 import { InstallPrompt } from "@/components/ui/InstallPrompt";
 import { ApiFallbackModal } from "@/components/ui/ApiFallbackModal";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { VisualSpotlight } from "@/components/common/VisualSpotlight";
 
 export const DashboardLayout = () => {
   const location = useLocation();
@@ -101,6 +102,7 @@ export const DashboardLayout = () => {
         </main>
       </div>
 
+      <VisualSpotlight />
       <InstallPrompt />
       <ApiFallbackModal />
     </div>

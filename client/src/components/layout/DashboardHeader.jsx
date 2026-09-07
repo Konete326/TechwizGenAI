@@ -47,6 +47,7 @@ export function DashboardHeader({ onOpenDrawer }) {
         <div className="flex items-center gap-2">
           <button
             type="button"
+            data-nesa-target="theme_toggle"
             onClick={toggleTheme}
             className="p-2 rounded-[var(--radius-sm)] text-text-muted hover:text-text-primary hover:bg-surface border border-border transition-colors cursor-pointer"
             aria-label="Toggle theme"
@@ -72,6 +73,7 @@ export function DashboardHeader({ onOpenDrawer }) {
           <NotificationBell />
           <button
             type="button"
+            data-nesa-target="theme_toggle"
             onClick={toggleTheme}
             className="p-2 rounded-[var(--radius-sm)] text-text-muted hover:text-text-primary hover:bg-surface border border-border transition-colors cursor-pointer"
             aria-label="Toggle theme"
