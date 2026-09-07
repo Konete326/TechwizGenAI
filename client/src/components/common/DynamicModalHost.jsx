@@ -9,18 +9,16 @@ export function DynamicModalHost() {
   const [inputPlaceholder, setInputPlaceholder] = useState(""), [inputVal, setInputVal] = useState("");
   const [copied, setCopied] = useState(false), [file, setFile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false), [isSuccess, setIsSuccess] = useState(false);
-  const [error, setError] = useState(""), fileInputRef = useRef(null);
+  const [error, setError] = useState(""), fileInputRef = useRef(null), copyTimeoutRef = useRef(null);
 
   useEffect(() => {
     const handleToolCall = (e) => {
       const detail = e?.detail || {};
       if (detail.name === "closeModal") {
-        setIsOpen(false); setFile(null); setError(""); setIsSuccess(false); setIsSubmitting(false);
-        return;
+        setIsOpen(false); setFile(null); setError(""); setIsSuccess(false); setIsSubmitting(false); return;
       }
       if (detail.name !== "openDynamicModal") return;
-      const args = detail.args || detail;
-      const mType = args.modalType || "upload_asset";
+      const args = detail.args || detail, mType = args.modalType || "upload_asset";
       setActiveType(mType);
       setTitle(args.title || (mType === "logout_confirm" ? "Confirm Logout" : mType === "translation" ? "Translation" : mType === "input_prompt" ? "Input Prompt" : mType === "text_note" ? "Note" : "Upload Asset"));
       setContent(args.content || (mType === "logout_confirm" ? "Logging out will immediately disconnect Nesa and end your active voice session." : ""));
@@ -33,13 +31,27 @@ export function DynamicModalHost() {
 
   const close = () => {
     if (isSubmitting) return;
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
     setIsOpen(false); setFile(null); setError(""); setIsSuccess(false); setCopied(false); setInputVal("");
   };
 
-  const handleFileDrop = (e) => {
-    e.preventDefault();
-    if (e.dataTransfer?.files?.[0]) setFile(e.dataTransfer.files[0]);
+  const handleCopyText = async () => {
+    const t = content || "";
+    let ok = false;
+    try { if (navigator?.clipboard?.writeText) { await navigator.clipboard.writeText(t); ok = true; } } catch {}
+    if (!ok && typeof document !== "undefined") {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = t; ta.style.position = "fixed"; ta.style.left = "-9999px"; ta.setAttribute("readonly", "");
+        document.body.appendChild(ta); ta.select(); ok = document.execCommand("copy"); document.body.removeChild(ta);
+      } catch {}
+    }
+    setCopied(true);
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
   };
+
+  const handleFileDrop = (e) => { e.preventDefault(); if (e.dataTransfer?.files?.[0]) setFile(e.dataTransfer.files[0]); };
 
   const handleUpload = async () => {
     if (!file) { setError("Please select a file to upload"); return; }
@@ -54,6 +66,7 @@ export function DynamicModalHost() {
       if (res.ok && data.success) {
         setIsSuccess(true);
         window.dispatchEvent(new CustomEvent("asset:uploaded", { detail: data.data }));
+        window.dispatchEvent(new CustomEvent("asset_uploaded", { detail: data.data }));
         window.dispatchEvent(new CustomEvent("storage_updated"));
         setTimeout(() => close(), 1200);
       } else setError(data.message || "Failed to upload asset");
@@ -79,42 +92,26 @@ export function DynamicModalHost() {
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeType === "logout_confirm" ? "bg-rose-500/15 border border-rose-500/30 text-rose-500" : "bg-accent/15 border border-accent/30 text-accent"}`}>
               {activeType === "upload_asset" ? <UploadSimple size={16} weight="bold" /> : activeType === "logout_confirm" ? <SignOut size={16} weight="bold" /> : <FileText size={16} weight="bold" />}
             </div>
-            <div>
-              <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
-              <p className="text-[11px] text-text-muted">Nesa Dynamic Runtime Modal</p>
-            </div>
+            <div><h3 className="text-sm font-semibold text-text-primary">{title}</h3><p className="text-[11px] text-text-muted">Nesa Dynamic Runtime Modal</p></div>
           </div>
-          <button type="button" onClick={close} className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer" title="Close" aria-label="Close modal">
-            <X size={16} />
-          </button>
+          <button type="button" onClick={close} className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer" title="Close" aria-label="Close modal"><X size={16} /></button>
         </div>
 
         <div className="p-5 space-y-4">
           {error && <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs">{error}</div>}
-
           {activeType === "logout_confirm" ? (
             <div className="space-y-4">
-              <p className="text-xs text-text-muted leading-relaxed">
-                {content || "Logging out will immediately disconnect Nesa and end your active voice session."}
-              </p>
+              <p className="text-xs text-text-muted leading-relaxed">{content || "Logging out will immediately disconnect Nesa and end your active voice session."}</p>
               <div className="flex items-center justify-end gap-2 pt-1">
-                <button type="button" onClick={close} className="px-3.5 py-1.5 rounded-lg border border-border text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer">
-                  Cancel
-                </button>
-                <button type="button" onClick={() => { window.dispatchEvent(new CustomEvent("auth:logout")); close(); }} className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer">
-                  Yes, Log Out
-                </button>
+                <button type="button" onClick={close} className="px-3.5 py-1.5 rounded-lg border border-border text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer">Cancel</button>
+                <button type="button" onClick={() => { window.dispatchEvent(new CustomEvent("auth:logout")); close(); }} className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer">Yes, Log Out</button>
               </div>
             </div>
           ) : (activeType === "text_note" || activeType === "translation") ? (
             <div className="space-y-4">
-              <div className="p-3.5 rounded-xl bg-surface/50 border border-border text-xs text-text-primary leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto">
-                {content || "No details provided."}
-              </div>
+              <div className="p-3.5 rounded-xl bg-surface/50 border border-border text-xs text-text-primary leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto">{content || "No details provided."}</div>
               <div className="flex items-center justify-end gap-2 pt-1">
-                <button type="button" onClick={() => { if (content) { navigator.clipboard?.writeText(content); setCopied(true); setTimeout(() => setCopied(false), 1500); } }} className="px-3.5 py-1.5 rounded-lg border border-border text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer">
-                  {copied ? "Copied" : "Copy Text"}
-                </button>
+                <button type="button" onClick={handleCopyText} className="px-3.5 py-1.5 rounded-lg border border-border text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer">{copied ? "Copied!" : "Copy Text"}</button>
                 <button type="button" onClick={close} className="px-4 py-1.5 rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer">Understood</button>
               </div>
             </div>
@@ -129,9 +126,7 @@ export function DynamicModalHost() {
             </form>
           ) : isSuccess ? (
             <div className="py-6 flex flex-col items-center justify-center gap-2 text-center">
-              <CheckCircle size={36} className="text-emerald-500 animate-bounce" weight="fill" />
-              <p className="text-sm font-semibold text-text-primary">Asset Uploaded Successfully</p>
-              <p className="text-xs text-text-muted">Closing dialog...</p>
+              <CheckCircle size={36} className="text-emerald-500 animate-bounce" weight="fill" /><p className="text-sm font-semibold text-text-primary">Asset Uploaded Successfully</p><p className="text-xs text-text-muted">Closing dialog...</p>
             </div>
           ) : (
             <>

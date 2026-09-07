@@ -53,7 +53,7 @@ export const NESA_TOOL_DECLARATIONS = [
       properties: {
         modalType: {
           type: "STRING",
-          description: "upload_asset, text_note, translation, input_prompt"
+          description: "upload_asset, text_note, translation, input_prompt, logout_confirm"
         },
         title: {
           type: "STRING",

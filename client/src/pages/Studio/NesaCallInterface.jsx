@@ -127,7 +127,7 @@ export function NesaCallInterface({
   return (
     <>
       {isMinimized ? (
-        <div id="nesa-call-widget" onClick={onToggleMinimize} className="fixed bottom-4 right-4 z-50 w-44 h-24 rounded-2xl overflow-hidden shadow-2xl border border-white/20 md:hidden bg-zinc-950 cursor-pointer active:scale-95 transition-transform">
+        <div id="nesa-call-widget-mobile" onClick={onToggleMinimize} className="fixed bottom-4 right-4 z-50 w-44 h-24 rounded-2xl overflow-hidden shadow-2xl border border-white/20 md:hidden bg-zinc-950 cursor-pointer active:scale-95 transition-transform">
           <NesaCallVideos isSpeaking={isSpeaking} />
           <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/85 via-transparent to-transparent flex items-end justify-between p-2 z-10 pointer-events-none">
             <div className="flex items-center gap-1.5">

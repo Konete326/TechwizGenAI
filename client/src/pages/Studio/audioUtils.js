@@ -14,8 +14,9 @@ export function base64EncodeAudio(float32Array) {
 
 export function base64DecodeAudio(base64String) {
   const binary = atob(base64String);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
+  const len = binary.length - (binary.length % 2);
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
     bytes[i] = binary.charCodeAt(i);
   }
   const int16Array = new Int16Array(bytes.buffer);

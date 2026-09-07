@@ -58,6 +58,7 @@ export function UserNavDropdown() {
   }, [isOpen]);
 
   const handleLogout = () => {
+    window.dispatchEvent(new CustomEvent("auth:logout"));
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("platform_usage_bytes");
@@ -71,6 +72,7 @@ export function UserNavDropdown() {
     <div className="relative" ref={dropdownRef}>
       <button
         type="button"
+        data-nesa-target="user_menu"
         onClick={() => setIsOpen((prev) => !prev)}
         className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent font-semibold text-xs hover:border-accent hover:shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all cursor-pointer overflow-hidden"
         aria-label="User account menu"
@@ -133,6 +135,7 @@ export function UserNavDropdown() {
           <div className="pt-1 border-t border-border">
             <button
               type="button"
+              data-nesa-target="logout_btn"
               onClick={() => {
                 setIsOpen(false);
                 setIsLogoutModalOpen(true);

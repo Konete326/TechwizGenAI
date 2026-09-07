@@ -111,6 +111,7 @@ export function AssetCard({ asset, onPreview, onDelete, isAdmin }) {
 
           <button
             type="button"
+            data-nesa-target="delete_asset"
             onClick={(e) => {
               e.stopPropagation();
               onDelete(asset);

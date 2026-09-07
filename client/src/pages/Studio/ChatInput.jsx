@@ -110,6 +110,7 @@ export function ChatInput({
 
           <button
             type="button"
+            data-nesa-target="chat_mic"
             onClick={toggleListening}
             className={`p-2 rounded transition-colors cursor-pointer shrink-0 ${
               isListening ? "animate-pulse text-red-500 bg-red-500/20 border border-red-500/40" : "text-text-muted hover:text-text-primary hover:bg-surface-elevated"
@@ -122,6 +123,7 @@ export function ChatInput({
 
           <textarea
             ref={textareaRef}
+            data-nesa-target="chat_input"
             rows={1}
             value={inputPrompt}
             onChange={(e) => setInputPrompt(e.target.value)}
@@ -144,6 +146,7 @@ export function ChatInput({
           ) : (
             <button
               type="submit"
+              data-nesa-target="chat_send"
               disabled={!inputPrompt.trim() && !hasAttachment}
               className="p-2 rounded-[var(--radius-sm)] bg-accent hover:bg-accent-hover text-white transition-colors btn-tactile cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0 flex items-center justify-center shadow-sm"
               title="Send message"
