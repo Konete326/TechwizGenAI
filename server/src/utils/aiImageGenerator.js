@@ -1,8 +1,7 @@
-import { GoogleGenAI } from "@google/genai";
+import nvidiaImageService from "../services/nvidiaImageService.js";
 import { cloudinary } from "../config/cloudinary.js";
 import { Asset } from "../models/Asset.js";
 import { ChatMessage } from "../models/ChatMessage.js";
-import { env } from "../config/env.js";
 
 async function fetchProImageBuffer(cleanDesc) {
   const encoded = encodeURIComponent(cleanDesc);
@@ -20,29 +19,24 @@ async function fetchProImageBuffer(cleanDesc) {
   throw new Error("Pro image generation failed");
 }
 
-export async function generateAndSaveAiImage(promptDesc, userId, customApiKey) {
+export async function generateAndSaveAiImage(promptDesc, userId) {
   const cleanDesc = (promptDesc || "").trim() || "Creative AI Artwork";
   let buffer = null;
 
-  const apiKey = customApiKey || env.GEMINI_API_KEY;
-  if (apiKey) {
-    try {
-      const ai = new GoogleGenAI({ apiKey });
-      for (const m of ["gemini-3-pro-image", "gemini-3-pro-image-preview", "gemini-2.5-flash-image"]) {
-        try {
-          const resp = await ai.models.generateContent({ model: m, contents: cleanDesc });
-          const parts = resp?.candidates?.[0]?.content?.parts || [];
-          for (const p of parts) {
-            if (p.inlineData?.data) {
-              buffer = Buffer.from(p.inlineData.data, "base64");
-              break;
-            }
-          }
-          if (buffer) break;
-        } catch {}
+  try {
+    const nimResult = await nvidiaImageService.generate(cleanDesc);
+    const rawUrl = nimResult?.url || nimResult?.imageUrl;
+    if (rawUrl && rawUrl.startsWith("data:image/")) {
+      const base64Data = rawUrl.split(",")[1];
+      buffer = Buffer.from(base64Data, "base64");
+    } else if (rawUrl && rawUrl.startsWith("http")) {
+      const resp = await fetch(rawUrl);
+      if (resp.ok) {
+        const ab = await resp.arrayBuffer();
+        buffer = Buffer.from(ab);
       }
-    } catch {}
-  }
+    }
+  } catch {}
 
   if (!buffer) {
     buffer = await fetchProImageBuffer(cleanDesc);
@@ -72,7 +66,7 @@ export async function generateAndSaveAiImage(promptDesc, userId, customApiKey) {
   return secureUrl;
 }
 
-export async function processAiImageRequest({ imageReqBuffer, customProvider, targetModel, cleanPrompt, userId, session, res, customApiKey }) {
+export async function processAiImageRequest({ imageReqBuffer, customProvider, targetModel, cleanPrompt, userId, session, res }) {
   if (customProvider || targetModel === "gemini-1.5-flash-8b") {
     res.write(`data: ${JSON.stringify({ error: "IMAGE_NOT_SUPPORTED" })}\n\n`);
     return res.end();
@@ -80,7 +74,7 @@ export async function processAiImageRequest({ imageReqBuffer, customProvider, ta
   try {
     const descMatch = imageReqBuffer.match(/\[IMAGE_REQ:\s*([^\]]+)\]/i);
     const promptDesc = descMatch ? descMatch[1].trim() : cleanPrompt;
-    const secureUrl = await generateAndSaveAiImage(promptDesc, userId, customApiKey);
+    const secureUrl = await generateAndSaveAiImage(promptDesc, userId);
     const markdownResult = `![Generated Image](${secureUrl})`;
     await ChatMessage.create({ sessionId: session._id, role: "model", text: markdownResult });
     session.updatedAt = new Date();

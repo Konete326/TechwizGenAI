@@ -8,10 +8,7 @@ import { NesaCallProvider, useNesaCallContext } from "@/context/NesaCallContext"
 import { NesaCallInterface } from "@/pages/Studio/NesaCallInterface";
 import { formatToolResponse } from "@/pages/Studio/nesaTools";
 
-const PersistentNesaCallHost = () => {
-  const c = useNesaCallContext();
-  return <NesaCallInterface isActive={c.isCallActive} callPhase={c.callPhase} isMinimized={c.isMinimized} onToggleMinimize={c.toggleMinimize} onEndCall={c.endCall} nesaState={c.nesaState} isListening={c.isListening} transcript={c.transcript} connectionError={c.connectionError} onRetry={c.startCall} forceReply={(cp) => c.forceReply(cp)} position={c.widgetPosition} onPositionChange={c.setWidgetPosition} widgetSide={c.widgetSide} dockCorner={c.dockCorner} onReposition={c.reposition} />;
-};
+const PersistentNesaCallHost = () => { const c = useNesaCallContext(); return <NesaCallInterface isActive={c.isCallActive} callPhase={c.callPhase} isMinimized={c.isMinimized} onToggleMinimize={c.toggleMinimize} onEndCall={c.endCall} nesaState={c.nesaState} isListening={c.isListening} transcript={c.transcript} connectionError={c.connectionError} onRetry={c.startCall} forceReply={(cp) => c.forceReply(cp)} position={c.widgetPosition} onPositionChange={c.setWidgetPosition} widgetSide={c.widgetSide} dockCorner={c.dockCorner} onReposition={c.reposition} />; };
 
 function DashboardLayoutContent() {
   const location = useLocation(), navigate = useNavigate();
@@ -34,9 +31,7 @@ function DashboardLayoutContent() {
       if (d.name === "disconnectCall" && endCall) setTimeout(() => endCall(), 1400);
       if (d.name === "controlSidebar") {
         const act = (d.args?.action || d.action || "open").toLowerCase();
-        if (act === "open") { setIsCollapsed(false); setIsDrawerOpen(true); }
-        else if (act === "close") { setIsCollapsed(true); setIsDrawerOpen(false); }
-        else { setIsCollapsed((p) => !p); setIsDrawerOpen((p) => !p); }
+        if (act === "open") { setIsCollapsed(false); setIsDrawerOpen(true); } else if (act === "close") { setIsCollapsed(true); setIsDrawerOpen(false); } else { setIsCollapsed((p) => !p); setIsDrawerOpen((p) => !p); }
         window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "controlSidebar", { success: true, action: act }) }));
       }
       if (d.name === "toggleWorkspaceControl") {
@@ -91,6 +86,18 @@ function DashboardLayoutContent() {
           const token = localStorage.getItem("token"), res = await fetch(VITE_API_URL + "/dashboard/stats", { headers: token ? { Authorization: "Bearer " + token } : {} }), json = await res.json();
           window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "getDashboardMetrics", json?.data || { totalGenerations: 0, totalTokens: 0, totalAssets: 0 }) }));
         } catch { window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "getDashboardMetrics", { status: "error" }) })); }
+      }
+      if (d.name === "generateImage") {
+        try {
+          const token = localStorage.getItem("token"), prompt = d.args?.prompt || d.prompt || "";
+          if (!location.pathname.startsWith("/studio")) navigate("/studio");
+          const res = await fetch(VITE_API_URL + "/ai/generate-image", { method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) }, body: JSON.stringify({ prompt }) });
+          const json = await res.json();
+          if (res.ok && json.success) {
+            window.dispatchEvent(new CustomEvent("studio:image_generated", { detail: { ...json, prompt } }));
+            window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "generateImage", { status: "success", imageUrl: json.imageUrl }) }));
+          } else window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "generateImage", { status: "error" }) }));
+        } catch { window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "generateImage", { status: "error" }) })); }
       }
     };
 

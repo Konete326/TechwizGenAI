@@ -30,6 +30,11 @@ if (backendKeys.length === 0) {
   throw new Error("Missing Gemini API keys in environment");
 }
 
+export const nvidiaKeys = [
+  process.env.NVIDIA_API_KEY_1,
+  process.env.NVIDIA_API_KEY_2
+].filter(Boolean);
+
 export const env = {
   PORT: process.env.PORT,
   SERVER_URL: process.env.SERVER_URL,
@@ -42,7 +47,8 @@ export const env = {
   FALLBACK_BACKEND_MODEL: "gemini-3.7-flash",
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
-  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
+  NVIDIA_KEYS: nvidiaKeys
 };
 
 export default env;

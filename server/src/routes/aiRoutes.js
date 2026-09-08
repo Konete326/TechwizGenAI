@@ -14,7 +14,23 @@ import {
 } from "../controllers/aiController.js";
 import { verifyToken } from "../middleware/auth.js";
 
+import nvidiaImageService from "../services/nvidiaImageService.js";
+
 const router = Router();
+
+router.post("/generate-image", async (req, res, next) => {
+  try {
+    const prompt = req.body?.prompt || req.query?.prompt || "";
+    const result = await nvidiaImageService.generate(prompt);
+    return res.status(200).json({
+      success: true,
+      imageUrl: result.url || result.imageUrl,
+      model: result.model
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
 
 router.use(verifyToken);
 

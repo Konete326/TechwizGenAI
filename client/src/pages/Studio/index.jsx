@@ -117,10 +117,9 @@ export function Studio() {
     };
     const handleDel = (e) => handleDeleteSession(e?.detail?.sessionId || e?.detail?.args?.sessionId);
     const handleCancel = () => { queuedPromptRef.current = null; };
-    window.addEventListener("nesa:toolcall", handleToolCall);
-    window.addEventListener("nesa:cancel_queued_prompt", handleCancel);
-    window.addEventListener("nesa:delete_session", handleDel);
-    return () => { window.removeEventListener("nesa:toolcall", handleToolCall); window.removeEventListener("nesa:cancel_queued_prompt", handleCancel); window.removeEventListener("nesa:delete_session", handleDel); };
+    const handleImg = (e) => { const dt = e?.detail; if (dt?.imageUrl) setMessages((p) => [...p, { id: "img-" + Date.now(), role: "model", text: "![" + (dt.prompt || "Generated Image") + "](" + dt.imageUrl + ")\n*Generated via " + (dt.model || "NVIDIA NIM") + "*", createdAt: new Date().toISOString() }]); };
+    window.addEventListener("nesa:toolcall", handleToolCall); window.addEventListener("nesa:cancel_queued_prompt", handleCancel); window.addEventListener("nesa:delete_session", handleDel); window.addEventListener("studio:image_generated", handleImg);
+    return () => { window.removeEventListener("nesa:toolcall", handleToolCall); window.removeEventListener("nesa:cancel_queued_prompt", handleCancel); window.removeEventListener("nesa:delete_session", handleDel); window.removeEventListener("studio:image_generated", handleImg); };
   }, [location.pathname, navigate, isStreaming, activeSessionId, sessions]);
 
   return (

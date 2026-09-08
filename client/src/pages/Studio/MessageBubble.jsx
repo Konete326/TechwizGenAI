@@ -31,7 +31,7 @@ export const MessageBubble = memo(function MessageBubble({ message, onEdit, onRe
   const [copied, setCopied] = useState(false);
   const isUser = message.role === "user";
   const artifactMatch = /\[ARTIFACT:\s*([a-zA-Z0-9]+)\s*\|\s*([^\]]+)\]/i.exec(message.text || "");
-  const markdownImgMatch = /!\[.*?\]\((https?:\/\/[^\s)]+)\)/i.exec(message.text || "");
+  const markdownImgMatch = /!\[.*?\]\(([^\s)]+)\)/i.exec(message.text || "");
 
   const isAttachmentDeleted = Boolean(message.attachmentDeleted || message.attachmentName?.includes("[Attachment was deleted") || message.text?.includes("[Attachment was deleted"));
   const deletedNotice = message.attachmentName?.includes("administrator") || message.text?.includes("administrator") ? "Attachment was deleted by administrator" : "Attachment was deleted";

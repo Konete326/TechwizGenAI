@@ -108,6 +108,11 @@ export const NESA_TOOL_DECLARATIONS = [
     name: "exportCallSummary",
     description: "Generates an executive PDF summary of the call or conversation and provides a download link.",
     parameters: { type: "OBJECT", properties: { title: { type: "STRING", description: "Title of report" } } }
+  },
+  {
+    name: "generateImage",
+    description: "Generates an image via external visual engine. Provide a prompt describing the image.",
+    parameters: { type: "OBJECT", properties: { prompt: { type: "STRING", description: "Detailed description of the image to generate" } }, required: ["prompt"] }
   }
 ];
 
