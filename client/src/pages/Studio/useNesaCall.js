@@ -17,6 +17,7 @@ export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
 
   const [widgetPosition, setWidgetPosition] = useState(getRightPosition);
   const [widgetSide, setWidgetSide] = useState("bottom-right");
+  const [dockCorner, setDockCorner] = useState("bottom-right");
   const isCallActiveRef = useRef(false);
   const ringTimerRef = useRef(null);
   const debounceTimerRef = useRef(null);
@@ -24,18 +25,24 @@ export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
   const reposition = useCallback((target) => {
     if (target === "minimize") { setIsMinimized(true); return; }
     if (target === "maximize") { setIsMinimized(false); return; }
+    let corner = target;
+    if (corner === "top") corner = "top-right";
+    else if (corner === "bottom") corner = "bottom-right";
+    else if (corner === "left") corner = "bottom-left";
+    else if (corner === "right") corner = "bottom-right";
+
     const w = typeof window !== "undefined" ? window.innerWidth : 1200;
     const h = typeof window !== "undefined" ? window.innerHeight : 800;
-    if (target === "top-left") {
-      setWidgetPosition({ x: 20, y: 80 }); setWidgetSide("top-left");
-    } else if (target === "top-right") {
-      setWidgetPosition({ x: Math.max(20, w - 360), y: 80 }); setWidgetSide("top-right");
-    } else if (target === "bottom-left" || target === "left") {
-      setWidgetPosition({ x: 20, y: Math.max(20, h - 540) }); setWidgetSide("bottom-left");
-    } else {
-      setWidgetPosition({ x: Math.max(20, w - 360), y: Math.max(20, h - 540) }); setWidgetSide("bottom-right");
+
+    if (["top-left", "top-right", "bottom-left", "bottom-right"].includes(corner)) {
+      setDockCorner(corner);
+      setWidgetSide(corner);
+      if (corner === "top-left") setWidgetPosition({ x: 20, y: 80 });
+      else if (corner === "top-right") setWidgetPosition({ x: Math.max(20, w - 360), y: 80 });
+      else if (corner === "bottom-left") setWidgetPosition({ x: 20, y: Math.max(20, h - 540) });
+      else if (corner === "bottom-right") setWidgetPosition({ x: Math.max(20, w - 360), y: Math.max(20, h - 540) });
     }
-    setIsMinimized(false);
+    if (typeof window !== "undefined" && window.innerWidth >= 768) setIsMinimized(false);
   }, []);
 
   useEffect(() => {
@@ -52,7 +59,6 @@ export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
 
   const handleLiveToolCall = useCallback((call) => {
     setLastExecutedTool(call);
-    console.log("Nesa tool dispatched:", call?.name, call?.args);
     if (onToolCall) onToolCall(call);
   }, [onToolCall]);
 
@@ -62,35 +68,22 @@ export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
 
   useEffect(() => {
     if (isSpeaking) {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-        debounceTimerRef.current = null;
-      }
+      if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
       setDebouncedSpeaking(true);
     } else {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = setTimeout(() => {
-        setDebouncedSpeaking(false);
-      }, 450);
+      debounceTimerRef.current = setTimeout(() => setDebouncedSpeaking(false), 450);
     }
-    return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    };
+    return () => { if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current); };
   }, [isSpeaking]);
 
   const clearRingTimer = () => {
-    if (ringTimerRef.current) {
-      clearTimeout(ringTimerRef.current);
-      ringTimerRef.current = null;
-    }
+    if (ringTimerRef.current) { clearTimeout(ringTimerRef.current); ringTimerRef.current = null; }
   };
 
   const endCall = useCallback(() => {
     clearRingTimer();
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = null;
-    }
+    if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
     setDebouncedSpeaking(false);
     isCallActiveRef.current = false;
     disconnect();
@@ -105,7 +98,6 @@ export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
       if (onMicDenied) onMicDenied(micCheck.error);
       return false;
     }
-
     clearRingTimer();
     disconnect();
     setIsMinimized(false);
@@ -120,9 +112,7 @@ export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
     return true;
   }, [connect, disconnect, onMicDenied]);
 
-  const toggleMinimize = useCallback(() => {
-    setIsMinimized((prev) => !prev);
-  }, []);
+  const toggleMinimize = useCallback(() => setIsMinimized((prev) => !prev), []);
 
   useEffect(() => {
     return () => {
@@ -164,6 +154,7 @@ export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
     widgetPosition,
     setWidgetPosition,
     widgetSide,
+    dockCorner,
     reposition
   };
 }

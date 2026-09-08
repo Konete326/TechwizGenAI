@@ -4,12 +4,13 @@ import { Phone, Waveform, Minus, X } from "@phosphor-icons/react";
 import { NesaCallMinimized } from "./NesaCallMinimized";
 import { NesaCallVideos } from "./NesaCallVideos";
 import { playRingingTone } from "./audioUtils";
+const cornerClasses = { "top-left": "top-4 left-4", "top-right": "top-4 right-4", "bottom-left": "bottom-4 left-4", "bottom-right": "bottom-4 right-4" };
 
 export function NesaCallInterface({
   isActive = false, callPhase = "ended", isMinimized = false,
   onToggleMinimize, onEndCall, nesaState = "idle",
   isListening = false, transcript = "", connectionError = null, onRetry,
-  forceReply, position, onPositionChange, widgetSide = "right", onReposition
+  forceReply, position, onPositionChange, widgetSide = "right", dockCorner = "bottom-right", onReposition
 }) {
   const [duration, setDuration] = useState(0), [showRinging, setShowRinging] = useState(callPhase === "ringing");
   const [isFadingRinging, setIsFadingRinging] = useState(false), nodeRef = useRef(null);
@@ -127,7 +128,7 @@ export function NesaCallInterface({
   return (
     <>
       {isMinimized ? (
-        <div id="nesa-call-widget-mobile" onClick={onToggleMinimize} className="fixed bottom-4 right-4 z-50 w-44 h-24 rounded-2xl overflow-hidden shadow-2xl border border-white/20 md:hidden bg-zinc-950 cursor-pointer active:scale-95 transition-transform">
+        <div id="nesa-call-widget-mobile" onClick={onToggleMinimize} className={`fixed z-50 w-44 h-24 rounded-2xl overflow-hidden shadow-2xl border border-white/20 transition-all duration-300 md:hidden bg-zinc-950 cursor-pointer active:scale-95 ${cornerClasses[dockCorner] || "bottom-4 right-4"}`}>
           <NesaCallVideos isSpeaking={isSpeaking} />
           <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/85 via-transparent to-transparent flex items-end justify-between p-2 z-10 pointer-events-none">
             <div className="flex items-center gap-1.5">
