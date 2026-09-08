@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
-import { geminiClient } from "../config/gemini.js";
+import { geminiClient, getNextBackendKey, createGenAiClient } from "../config/gemini.js";
+import { env } from "../config/env.js";
 import { User } from "../models/User.js";
 import { ChatMessage } from "../models/ChatMessage.js";
 import { getPersonaInstruction } from "../config/aiPersonas.js";
@@ -9,19 +10,42 @@ export const getAiClient = (customApiKey) => {
 };
 
 export const createModelStream = async ({ client, model, contents, systemInstruction, customApiKey, persona }) => {
-  const primaryModel = model || "gemini-3.8-flash";
+  const primaryModel = model || env.PRIMARY_BACKEND_MODEL || "gemini-3.8-flash";
   const personaSuffix = persona ? ` ${getPersonaInstruction(persona)}` : "";
   const finalInstruction = `${systemInstruction || ""}${personaSuffix}`.trim();
-  try {
-    return await client.models.generateContentStream({ model: primaryModel, contents, config: { systemInstruction: finalInstruction } });
-  } catch (apiErr) {
-    if (customApiKey) throw apiErr;
+  const config = {
+    systemInstruction: finalInstruction,
+    thinkingConfig: { thinkingBudget: 0 }
+  };
+
+  if (customApiKey) {
+    return await client.models.generateContentStream({ model: primaryModel, contents, config });
+  }
+
+  const keys = env.GEMINI_BACKEND_KEYS || [env.GEMINI_API_KEY];
+  let lastErr = null;
+
+  for (let attempt = 0; attempt < keys.length; attempt++) {
+    const key = attempt === 0 ? undefined : getNextBackendKey();
+    const activeClient = key ? createGenAiClient(key) : client;
     try {
-      return await client.models.generateContentStream({ model: "gemini-3.8-flash", contents, config: { systemInstruction: finalInstruction } });
-    } catch {
-      return await client.models.generateContentStream({ model: "gemini-3.7-flash", contents, config: { systemInstruction: finalInstruction } });
+      return await activeClient.models.generateContentStream({ model: primaryModel, contents, config });
+    } catch (err) {
+      lastErr = err;
+      const status = err?.status || err?.statusCode || (err?.message && err.message.includes("429") ? 429 : 0);
+      const isQuota = status === 429 || (err?.message && (err.message.includes("RESOURCE_EXHAUSTED") || err.message.includes("quota") || err.message.includes("rate")));
+      if (isQuota && keys.length > 1) {
+        continue;
+      }
+      try {
+        return await activeClient.models.generateContentStream({ model: env.FALLBACK_BACKEND_MODEL || "gemini-3.7-flash", contents, config });
+      } catch (fallbackErr) {
+        lastErr = fallbackErr;
+      }
     }
   }
+
+  throw lastErr;
 };
 
 export const consumeStreamAndTrackUsage = async ({ responseStream, promptText, userId, sessionId, res }) => {
