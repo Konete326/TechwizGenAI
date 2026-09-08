@@ -30,6 +30,7 @@ export function PersonaSelector({ selectedPersona = "general", onSelectPersona, 
     <>
       <button
         type="button"
+        data-nesa-target="persona_selector"
         disabled={disabled}
         onClick={() => setOpen(true)}
         className="flex items-center justify-center h-8 w-8 sm:w-auto sm:h-auto gap-1.5 px-2 py-1.5 sm:px-2.5 rounded-lg border border-border bg-surface hover:bg-surface-elevated text-text-primary text-xs font-medium transition-all disabled:opacity-50 cursor-pointer shadow-xs shrink-0"

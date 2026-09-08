@@ -9,19 +9,22 @@ const ROUTE_MAP = {
 const getWidgetRect = () => {
   const w1 = document.getElementById("nesa-call-widget"), w2 = document.getElementById("nesa-call-widget-mobile");
   const r1 = w1 ? w1.getBoundingClientRect() : null, r2 = w2 ? w2.getBoundingClientRect() : null;
-  if (r1 && r1.width > 0) return r1;
-  if (r2 && r2.width > 0) return r2;
-  return r1 || r2 || null;
+  if (r1 && r1.width > 0 && r1.height > 0) return r1;
+  if (r2 && r2.width > 0 && r2.height > 0) return r2;
+  const fl = typeof window !== "undefined" ? window.innerWidth - 80 : 720;
+  const ft = typeof window !== "undefined" ? window.innerHeight - 80 : 520;
+  return { left: fl, top: ft, width: 60, height: 60, right: fl + 60, bottom: ft + 60 };
 };
 
 export function VisualSpotlight() {
   const [targetRect, setTargetRect] = useState(null), [sourceRect, setSourceRect] = useState(null);
   const [isBlurActive, setIsBlurActive] = useState(false), [label, setLabel] = useState("");
-  const targetRef = useRef(null), dismissTimerRef = useRef(null), blurTimerRef = useRef(null);
+  const targetRef = useRef(null), dismissTimerRef = useRef(null), blurTimerRef = useRef(null), pollTimerRef = useRef(null);
 
   const dismiss = useCallback(() => {
     if (dismissTimerRef.current) { clearTimeout(dismissTimerRef.current); dismissTimerRef.current = null; }
     if (blurTimerRef.current) { clearTimeout(blurTimerRef.current); blurTimerRef.current = null; }
+    if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null; }
     targetRef.current = null; setTargetRect(null); setSourceRect(null); setIsBlurActive(false); setLabel("");
   }, []);
 
@@ -47,33 +50,68 @@ export function VisualSpotlight() {
         window.dispatchEvent(new CustomEvent("nesa:toolcall", { detail: { name: "navigatePage", args: { route: targetRoute } } }));
       }
 
-      setTimeout(() => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      const cid = detail.id || detail.callId || `call_${Date.now()}`;
+      const startTime = Date.now();
+
+      pollTimerRef.current = setInterval(() => {
         const candidates = Array.from(document.querySelectorAll(`[data-nesa-target="${targetKey}"], #${targetKey}, [name="${targetKey}"]`));
-        const target = candidates.find((el) => el.offsetParent !== null || el.getBoundingClientRect().width > 0) || candidates[0];
-        if (!target) return;
+        const target = candidates.find((el) => {
+          const r = el.getBoundingClientRect();
+          return (r.width > 0 || r.height > 0) && el.offsetParent !== null;
+        }) || candidates.find((el) => {
+          const r = el.getBoundingClientRect();
+          return r.width > 0 || r.height > 0;
+        });
 
-        targetRef.current = target;
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
-        setTargetRect(target.getBoundingClientRect());
-        setSourceRect(getWidgetRect());
-        setLabel(textLabel);
-        setIsBlurActive(true);
+        if (target) {
+          clearInterval(pollTimerRef.current);
+          pollTimerRef.current = null;
+          targetRef.current = target;
+          target.scrollIntoView({ behavior: "smooth", block: "center" });
+          setTimeout(() => {
+            setTargetRect(target.getBoundingClientRect());
+            setSourceRect(getWidgetRect());
+            setLabel(textLabel);
+            setIsBlurActive(true);
+            if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
+            blurTimerRef.current = setTimeout(() => setIsBlurActive(false), 2000);
+            if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+            dismissTimerRef.current = setTimeout(dismiss, 8000);
+            setTimeout(updatePositions, 350);
+            window.dispatchEvent(new CustomEvent("nesa:toolresponse", {
+              detail: {
+                id: cid,
+                name: "spotlightElement",
+                response: { output: { status: "success", highlighted: targetKey } }
+              }
+            }));
+          }, 150);
+          return;
+        }
 
-        if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
-        blurTimerRef.current = setTimeout(() => setIsBlurActive(false), 2000);
-        if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-        dismissTimerRef.current = setTimeout(dismiss, 8000);
-        setTimeout(updatePositions, 350);
-      }, shouldNavigate ? 400 : 0);
+        if (Date.now() - startTime >= 1200) {
+          clearInterval(pollTimerRef.current);
+          pollTimerRef.current = null;
+          window.dispatchEvent(new CustomEvent("nesa:toolresponse", {
+            detail: {
+              id: cid,
+              name: "spotlightElement",
+              response: { output: { status: "error", error: "Target element not found in DOM" } }
+            }
+          }));
+        }
+      }, 50);
     };
 
     window.addEventListener("nesa:toolcall", handleToolCall);
-    window.addEventListener("scroll", updatePositions, { passive: true });
+    window.addEventListener("scroll", updatePositions, { capture: true, passive: true });
     window.addEventListener("resize", updatePositions, { passive: true });
     return () => {
       window.removeEventListener("nesa:toolcall", handleToolCall);
-      window.removeEventListener("scroll", updatePositions);
+      window.removeEventListener("scroll", updatePositions, { capture: true });
       window.removeEventListener("resize", updatePositions);
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
       if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
       if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
     };

@@ -15,6 +15,7 @@ export function AssetSearchFilter({
         <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
         <input
           type="text"
+          data-nesa-target="asset_search"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search assets by regex or title..."
@@ -32,7 +33,7 @@ export function AssetSearchFilter({
         )}
       </div>
 
-      <div className="flex items-center gap-1.5 overflow-x-auto">
+      <div data-nesa-target="asset_filter" className="flex items-center gap-1.5 overflow-x-auto">
         {formats.map((fmt) => (
           <button
             key={fmt}

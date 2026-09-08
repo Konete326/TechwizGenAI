@@ -7,7 +7,33 @@ export const NESA_TOOL_DECLARATIONS = [
   {
     name: "spotlightElement",
     description: "Highlight or spotlight an on-screen UI element with guidance text.",
-    parameters: { type: "OBJECT", properties: { targetKey: { type: "STRING", description: "Identifier for target element" }, label: { type: "STRING", description: "Short guidance text" } }, required: ["targetKey"] }
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        targetKey: {
+          type: "STRING",
+          enum: [
+            "upload_btn",
+            "delete_asset",
+            "asset_search",
+            "asset_filter",
+            "chat_input",
+            "chat_send",
+            "chat_mic",
+            "chat_history_btn",
+            "model_selector",
+            "persona_selector",
+            "new_chat",
+            "theme_toggle",
+            "user_menu",
+            "logout_btn"
+          ],
+          description: "Exact target key to highlight with visual laser beam and ring."
+        },
+        label: { type: "STRING", description: "Short guidance text" }
+      },
+      required: ["targetKey"]
+    }
   },
   {
     name: "repositionWidget",

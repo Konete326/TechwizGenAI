@@ -76,6 +76,7 @@ export function ModelSelector({ selectedModel, onSelectModel }) {
     <>
       <button
         type="button"
+        data-nesa-target="model_selector"
         onClick={() => setIsOpen(true)}
         className="flex items-center justify-center h-8 w-8 sm:w-auto sm:h-auto gap-1.5 sm:gap-2 px-2 py-1.5 sm:px-3 rounded-lg bg-surface hover:bg-surface-elevated border border-border hover:border-accent/40 text-text-primary text-xs font-medium transition-all shadow-xs cursor-pointer shrink-0"
         aria-expanded={isOpen}

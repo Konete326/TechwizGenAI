@@ -101,6 +101,7 @@ export function Studio() {
         if (!location.pathname.startsWith("/studio")) navigate("/studio");
         if (isStreaming) { if (auto) queuedPromptRef.current = p; else setInputPrompt(p); return; }
         if (auto) handleSendMessage(p); else setInputPrompt(p);
+        window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(d.id || d.callId || `call_${Date.now()}`, "submitStudioPrompt", { success: true }) }));
       }
       if (d.name === "switchSession") {
         const q = (d.args?.query || d.query || "").toLowerCase().trim();
@@ -131,7 +132,7 @@ export function Studio() {
           <div className="flex items-center gap-2.5 truncate pr-2">
             {!isSidebarOpen && (
               <button
-                type="button" onClick={() => setIsSidebarOpen(true)} title="Show History" aria-label="Open chat history"
+                type="button" data-nesa-target="chat_history_btn" onClick={() => setIsSidebarOpen(true)} title="Show History" aria-label="Open chat history"
                 className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-[var(--radius-sm)] border border-border bg-surface text-text-muted hover:text-text-primary hover:border-accent text-xs font-semibold transition-colors cursor-pointer shrink-0"
               >
                 <ClockCounterClockwise size={14} weight="bold" /><span className="hidden sm:inline">History</span>

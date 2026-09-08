@@ -38,7 +38,12 @@ function DashboardLayoutContent() {
     const handleToolCall = async (e) => {
       const d = e?.detail || {}, route = d.args?.route || d.route, cid = d.id || d.callId || `call_${Date.now()}`;
       if (window.innerWidth < 768 && d.name !== "repositionWidget" && reposition) reposition("minimize");
-      if (d.name === "navigatePage" && route) navigate(route);
+      if (d.name === "navigatePage" && route) {
+        navigate(route);
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "navigatePage", { success: true, route }) }));
+        }, 120);
+      }
       if (d.name === "closeModal") window.dispatchEvent(new CustomEvent("nesa:modal:close"));
       if (d.name === "executeLogout") handleLogout();
       if (d.name === "disconnectCall" && endCall) setTimeout(() => endCall(), 1400);
