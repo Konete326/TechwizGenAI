@@ -94,8 +94,9 @@ function DashboardLayoutContent() {
           const res = await fetch(VITE_API_URL + "/ai/generate-image", { method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) }, body: JSON.stringify({ prompt }) });
           const json = await res.json();
           if (res.ok && json.success) {
+            window.dispatchEvent(new CustomEvent("asset_uploaded"));
             window.dispatchEvent(new CustomEvent("studio:image_generated", { detail: { ...json, prompt } }));
-            window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "generateImage", { status: "success", imageUrl: json.imageUrl }) }));
+            window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "generateImage", { status: "success", url: json.imageUrl, imageUrl: json.imageUrl }) }));
           } else window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "generateImage", { status: "error" }) }));
         } catch { window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "generateImage", { status: "error" }) })); }
       }
@@ -154,5 +155,4 @@ function DashboardLayoutContent() {
   );
 }
 
-export const DashboardLayout = () => <NesaCallProvider><DashboardLayoutContent /></NesaCallProvider>;
-export default DashboardLayout;
+export const DashboardLayout = () => <NesaCallProvider><DashboardLayoutContent /></NesaCallProvider>; export default DashboardLayout;

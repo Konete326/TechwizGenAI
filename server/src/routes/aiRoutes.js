@@ -1,4 +1,10 @@
 import { Router } from "express";
+import jwt from "jsonwebtoken";
+import { env } from "../config/env.js";
+import { User } from "../models/User.js";
+import { Asset } from "../models/Asset.js";
+import { cloudinary } from "../config/cloudinary.js";
+import nvidiaImageService from "../services/nvidiaImageService.js";
 import {
   createSession,
   getSessions,
@@ -14,18 +20,51 @@ import {
 } from "../controllers/aiController.js";
 import { verifyToken } from "../middleware/auth.js";
 
-import nvidiaImageService from "../services/nvidiaImageService.js";
-
 const router = Router();
 
-router.post("/generate-image", async (req, res, next) => {
+const optionalAuth = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    try {
+      const decoded = jwt.verify(authHeader.split(" ")[1], env.JWT_SECRET);
+      req.user = await User.findById(decoded.id).select("-password");
+    } catch {}
+  }
+  next();
+};
+
+router.post("/generate-image", optionalAuth, async (req, res, next) => {
   try {
     const prompt = req.body?.prompt || req.query?.prompt || "";
     const result = await nvidiaImageService.generate(prompt);
+    let finalUrl = result.url || result.imageUrl;
+
+    if (finalUrl && finalUrl.startsWith("data:image/")) {
+      try {
+        const uploadRes = await cloudinary.uploader.upload(finalUrl, {
+          folder: "generated_assets",
+          resource_type: "image"
+        });
+        if (uploadRes?.secure_url) {
+          finalUrl = uploadRes.secure_url;
+          if (req.user?._id) {
+            await Asset.create({
+              userId: req.user._id,
+              title: prompt.slice(0, 100).trim() || "Generated Image",
+              url: finalUrl,
+              publicId: uploadRes.public_id,
+              format: uploadRes.format || "jpg",
+              bytes: uploadRes.bytes || 0
+            }).catch(() => {});
+          }
+        }
+      } catch {}
+    }
+
     return res.status(200).json({
       success: true,
-      imageUrl: result.url || result.imageUrl,
-      model: result.model
+      imageUrl: finalUrl,
+      model: result.model || "flux.2-klein-4b"
     });
   } catch (err) {
     return next(err);
