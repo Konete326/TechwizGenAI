@@ -30,7 +30,7 @@ export function InstallPrompt() {
   if (!deferredPrompt || dismissed) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 max-w-sm w-full p-4 rounded-[var(--radius-md)] bg-surface-card border border-border shadow-2xl animate-in slide-in-from-bottom-5 duration-200 flex items-center justify-between gap-3">
+    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 md:left-auto md:right-6 md:translate-x-0 z-50 w-auto max-w-[calc(100vw-2rem)] md:max-w-sm mx-auto px-4 py-3 rounded-2xl bg-surface-card border border-border shadow-2xl animate-in slide-in-from-bottom-5 duration-200 flex items-center justify-between gap-3">
       <div className="flex items-center gap-3 min-w-0">
         <img src={logoImg} alt="Techwiz GenAI" className="w-8 h-8 object-contain shrink-0" />
         <div className="min-w-0">

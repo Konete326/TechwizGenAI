@@ -94,14 +94,14 @@ export function Studio() {
       const q = queuedPromptRef.current; queuedPromptRef.current = null; handleSendMessage(q);
     }
     const handleToolCall = (e) => {
-      const d = e?.detail || {};
+      const d = e?.detail || {}, cid = d.id || d.callId || `call_${Date.now()}`;
       if (d.name === "submitStudioPrompt") {
         const p = d.args?.prompt || d.prompt, auto = d.args?.autoSubmit !== undefined ? d.args.autoSubmit : (d.autoSubmit !== undefined ? d.autoSubmit : true);
-        if (!p) return;
+        if (!p) { window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "submitStudioPrompt", { status: "error" }) })); return; }
         if (!location.pathname.startsWith("/studio")) navigate("/studio");
-        if (isStreaming) { if (auto) queuedPromptRef.current = p; else setInputPrompt(p); return; }
-        if (auto) handleSendMessage(p); else setInputPrompt(p);
-        window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(d.id || d.callId || `call_${Date.now()}`, "submitStudioPrompt", { success: true }) }));
+        if (isStreaming) { if (auto) queuedPromptRef.current = p; else setInputPrompt(p); }
+        else { if (auto) handleSendMessage(p); else setInputPrompt(p); }
+        window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "submitStudioPrompt", { success: true, queued: isStreaming }) }));
       }
       if (d.name === "switchSession") {
         const q = (d.args?.query || d.query || "").toLowerCase().trim();
@@ -109,7 +109,9 @@ export function Studio() {
         if (matched) {
           if (!location.pathname.startsWith("/studio")) navigate("/studio");
           setActiveSessionId(matched.id || matched._id);
-          window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(d.id || d.callId || `call_${Date.now()}`, "switchSession", { success: true, title: matched.title }) }));
+          window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "switchSession", { success: true, title: matched.title }) }));
+        } else {
+          window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "switchSession", { status: "not_found" }) }));
         }
       }
     };

@@ -13,17 +13,18 @@ export function useGeminiLive({ onToolCall } = {}) {
   const [isConnected, setIsConnected] = useState(false), [isSpeaking, setIsSpeaking] = useState(false);
   const [transcript, setTranscript] = useState(""), [connectionError, setConnectionError] = useState("");
   const wsRef = useRef(null), inputAudioCtxRef = useRef(null), outputAudioCtxRef = useRef(null), micStreamRef = useRef(null);
-  const processorRef = useRef(null), nextPlayTimeRef = useRef(0), activeSourcesRef = useRef([]), timerRef = useRef(null), isReadyRef = useRef(false), isPlayingRef = useRef(false), debounceTimerRef = useRef(null), isCallActiveRef = useRef(false);
-  const keyIndexRef = useRef(0), durationRef = useRef(0), durationTimerRef = useRef(null), warned55Ref = useRef(false);
+  const processorRef = useRef(null), nextPlayTimeRef = useRef(0), activeSourcesRef = useRef([]), timerRef = useRef(null), isReadyRef = useRef(false), isPlayingRef = useRef(false), isSpeakingRef = useRef(false), debounceTimerRef = useRef(null), isCallActiveRef = useRef(false);
+  const keyIndexRef = useRef(0), durationRef = useRef(0), durationTimerRef = useRef(null), warned55Ref = useRef(false), pendingToolCallsRef = useRef(new Map());
 
   const stopActiveAudio = useCallback(() => {
     if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
-    isPlayingRef.current = false; activeSourcesRef.current.forEach((src) => { try { src.stop(); } catch {} });
+    isPlayingRef.current = false; isSpeakingRef.current = false; activeSourcesRef.current.forEach((src) => { try { src.stop(); } catch {} });
     activeSourcesRef.current = []; nextPlayTimeRef.current = 0; setIsSpeaking(false);
   }, []);
 
   const disconnect = useCallback((keepDuration = false) => {
-    isCallActiveRef.current = false; isReadyRef.current = false; isPlayingRef.current = false;
+    isCallActiveRef.current = false; isReadyRef.current = false; isPlayingRef.current = false; isSpeakingRef.current = false;
+    pendingToolCallsRef.current.forEach((t) => clearTimeout(t)); pendingToolCallsRef.current.clear();
     if (!keepDuration) { durationRef.current = 0; warned55Ref.current = false; if (durationTimerRef.current) { clearInterval(durationTimerRef.current); durationTimerRef.current = null; } }
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
@@ -40,7 +41,7 @@ export function useGeminiLive({ onToolCall } = {}) {
     if (!outputAudioCtxRef.current || !float32Array?.length) return;
     const ctx = outputAudioCtxRef.current; if (ctx.state === "suspended") ctx.resume();
     if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
-    isPlayingRef.current = true; setIsSpeaking(true);
+    isPlayingRef.current = true; isSpeakingRef.current = true; setIsSpeaking(true);
     const buffer = ctx.createBuffer(1, float32Array.length, 24000); buffer.copyToChannel(float32Array, 0);
     const source = ctx.createBufferSource(); source.buffer = buffer; source.connect(ctx.destination);
     if (nextPlayTimeRef.current < ctx.currentTime) nextPlayTimeRef.current = ctx.currentTime + 0.02;
@@ -48,7 +49,7 @@ export function useGeminiLive({ onToolCall } = {}) {
     source.start(startTime); nextPlayTimeRef.current = startTime + buffer.duration; activeSourcesRef.current.push(source);
     source.onended = () => {
       activeSourcesRef.current = activeSourcesRef.current.filter((s) => s !== source);
-      if (activeSourcesRef.current.length === 0) { isPlayingRef.current = false; nextPlayTimeRef.current = 0; setIsSpeaking(false); if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; } }
+      if (activeSourcesRef.current.length === 0) { isPlayingRef.current = false; nextPlayTimeRef.current = 0; isSpeakingRef.current = false; setIsSpeaking(false); if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; } }
     };
   }, []);
 
@@ -68,17 +69,27 @@ export function useGeminiLive({ onToolCall } = {}) {
         for (const call of calls) {
           if (onToolCall) onToolCall(call);
           window.dispatchEvent(new CustomEvent("nesa:toolcall", { detail: call }));
-          const asyncTools = ["spotlightElement", "navigatePage", "deleteAsset", "exportCallSummary", "getDashboardMetrics", "deleteSession", "previewAsset", "switchSession", "submitStudioPrompt", "controlSidebar"];
+          const asyncTools = ["spotlightElement", "navigatePage", "deleteAsset", "exportCallSummary", "getDashboardMetrics", "deleteSession", "previewAsset", "switchSession", "submitStudioPrompt", "controlSidebar", "toggleWorkspaceControl"];
+          const callId = call.id || call.callId || ("call_" + Date.now());
           if (!asyncTools.includes(call.name)) {
-            const callId = call.id || call.callId || ("call_" + Date.now());
             const resp = formatToolResponse(callId, call.name, { status: "success", executed: call.name });
             if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify(resp));
+          } else {
+            if (pendingToolCallsRef.current.has(callId)) clearTimeout(pendingToolCallsRef.current.get(callId));
+            const timer = setTimeout(() => {
+              if (pendingToolCallsRef.current.has(callId)) {
+                pendingToolCallsRef.current.delete(callId);
+                if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify(formatToolResponse(callId, call.name, { status: "completed", tool: call.name })));
+              }
+            }, 1500);
+            pendingToolCallsRef.current.set(callId, timer);
           }
         }
         return;
       }
       const sc = data.serverContent || data.server_content;
       if (sc?.interrupted) { stopActiveAudio(); return; }
+      if (sc?.turnComplete || sc?.turn_complete) { nextPlayTimeRef.current = 0; }
       const parts = (sc?.modelTurn || sc?.model_turn)?.parts || [];
       for (const part of parts) {
         if (part.text) setTranscript((prev) => (prev ? prev + " " + part.text : part.text));
@@ -91,7 +102,9 @@ export function useGeminiLive({ onToolCall } = {}) {
   useEffect(() => {
     const handleToolResponse = (e) => {
       if (wsRef.current?.readyState !== WebSocket.OPEN || !e?.detail) return;
-      const d = e.detail, payload = d.toolResponse ? d : (d.id && d.name ? formatToolResponse(d.id, d.name, d.response?.output || d.response || d.output || { status: "success" }) : null);
+      const d = e.detail, callId = d.id || d.callId || d.toolResponse?.functionResponses?.[0]?.id;
+      if (callId && pendingToolCallsRef.current.has(callId)) { clearTimeout(pendingToolCallsRef.current.get(callId)); pendingToolCallsRef.current.delete(callId); }
+      const payload = d.toolResponse ? d : (d.id && d.name ? formatToolResponse(d.id, d.name, d.response?.output || d.response || d.output || { status: "success" }) : null);
       if (payload) wsRef.current.send(JSON.stringify(payload));
     };
     window.addEventListener("nesa:toolresponse", handleToolResponse);
@@ -113,13 +126,7 @@ export function useGeminiLive({ onToolCall } = {}) {
       micStreamRef.current = stream;
       const track = stream.getAudioTracks()[0];
       if (track) {
-        const onMicLost = () => {
-          if (isCallActiveRef.current) {
-            window.dispatchEvent(new CustomEvent("nesa:mic_lost"));
-            if (processorRef.current) { try { processorRef.current.disconnect(); } catch {} processorRef.current = null; }
-            if (micStreamRef.current) { micStreamRef.current.getTracks().forEach((t) => t.stop()); micStreamRef.current = null; }
-          }
-        };
+        const onMicLost = () => { if (isCallActiveRef.current) { window.dispatchEvent(new CustomEvent("nesa:mic_lost")); if (processorRef.current) { try { processorRef.current.disconnect(); } catch {} processorRef.current = null; } if (micStreamRef.current) { micStreamRef.current.getTracks().forEach((t) => t.stop()); micStreamRef.current = null; } } };
         track.onended = onMicLost; track.onmute = onMicLost;
       }
       const inputCtx = new AudioCtx({ sampleRate: 16000 });
@@ -135,10 +142,7 @@ export function useGeminiLive({ onToolCall } = {}) {
             if (!isCallActiveRef.current) return;
             durationRef.current += 1;
             const s = durationRef.current;
-            if (s === 3300 && !warned55Ref.current) {
-              warned55Ref.current = true;
-              if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text: "Notice: Call duration approaching 1-hour limit." }] }], turnComplete: false } }));
-            }
+            if (s === 3300 && !warned55Ref.current) { warned55Ref.current = true; if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text: "Notice: Call duration approaching 1-hour limit." }] }], turnComplete: true } })); }
             if (s >= 3600) {
               if (durationTimerRef.current) { clearInterval(durationTimerRef.current); durationTimerRef.current = null; }
               try { const u = new SpeechSynthesisUtterance("Call duration reached 1-hour limit. Disconnecting session."); u.rate = 1.05; window.speechSynthesis.speak(u); } catch {}
@@ -152,8 +156,12 @@ export function useGeminiLive({ onToolCall } = {}) {
         const sourceNode = inputCtx.createMediaStreamSource(stream), processor = inputCtx.createScriptProcessor(2048, 1, 1);
         processorRef.current = processor;
         processor.onaudioprocess = (e) => {
-          if (ws.readyState !== WebSocket.OPEN || !isReadyRef.current) return;
-          const float32 = e.inputBuffer.getChannelData(0), normalized = new Float32Array(float32.length);
+          if (ws.readyState !== WebSocket.OPEN || !isReadyRef.current || isPlayingRef.current || isSpeakingRef.current) return;
+          const float32 = e.inputBuffer.getChannelData(0);
+          let peak = 0;
+          for (let i = 0; i < float32.length; i++) { const a = Math.abs(float32[i]); if (a > peak) peak = a; }
+          if (peak < 0.01) return;
+          const normalized = new Float32Array(float32.length);
           for (let i = 0; i < float32.length; i++) normalized[i] = Math.abs(float32[i]) < 0.008 ? 0 : Math.max(-1, Math.min(1, float32[i]));
           ws.send(JSON.stringify({ realtimeInput: { mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64EncodeAudio(normalized) }] } }));
         };
@@ -163,9 +171,8 @@ export function useGeminiLive({ onToolCall } = {}) {
       ws.onmessage = handleServerMessage;
       ws.onerror = (err) => { setConnectionError(err?.message || "WebSocket connection failed"); disconnect(); };
       ws.onclose = (event) => {
-        setIsConnected(false);
-        const reason = (event?.reason || "").toLowerCase();
-        const isRateLimit = event?.code === 4429 || event?.code === 1011 || reason.includes("429") || reason.includes("quota") || reason.includes("rate") || reason.includes("exhausted");
+        setIsConnected(false); isSpeakingRef.current = false;
+        const reason = (event?.reason || "").toLowerCase(), isRateLimit = event?.code === 4429 || event?.code === 1011 || reason.includes("429") || reason.includes("quota") || reason.includes("rate") || reason.includes("exhausted");
         if (isRateLimit && isCallActiveRef.current) {
           const k = getVoiceKeys();
           keyIndexRef.current = (keyIndexRef.current + 1) % k.length;
@@ -176,12 +183,12 @@ export function useGeminiLive({ onToolCall } = {}) {
         if (event && event.code !== 1000 && event.code !== 1005) setConnectionError(event.reason ? String(event.reason).trim() : "WebSocket connection closed unexpectedly.");
         disconnect();
       };
-      timerRef.current = setInterval(() => { if (audioContext && activeSourcesRef.current.length === 0 && audioContext.currentTime >= nextPlayTimeRef.current) { isPlayingRef.current = false; nextPlayTimeRef.current = 0; setIsSpeaking(false); } }, 100);
+      timerRef.current = setInterval(() => { if (audioContext && activeSourcesRef.current.length === 0 && audioContext.currentTime >= nextPlayTimeRef.current) { isPlayingRef.current = false; isSpeakingRef.current = false; nextPlayTimeRef.current = 0; setIsSpeaking(false); } }, 100);
     } catch (err) { setConnectionError(err?.message || "Failed to initialize audio or microphone"); disconnect(); }
   }, [disconnect, handleServerMessage]);
 
   const forceReply = useCallback((text = "Hello Nesa") => { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: true } })); }, []);
-  const sendContextTurn = useCallback((text) => { if (wsRef.current?.readyState === WebSocket.OPEN && text) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: false } })); }, []);
+  const sendContextTurn = useCallback((text) => { if (wsRef.current?.readyState === WebSocket.OPEN && text) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: true } })); }, []);
   useEffect(() => () => disconnect(), [disconnect]);
 
   return { isConnected, isSpeaking, transcript, connectionError, connect, disconnect, forceReply, sendContextTurn };

@@ -15,10 +15,9 @@ const PersistentNesaCallHost = () => {
 
 function DashboardLayoutContent() {
   const location = useLocation(), navigate = useNavigate();
-  const { sendContextTurn, isCallActive, endCall, startCall, isSpeaking, reposition } = useNesaCallContext();
+  const { sendContextTurn, isCallActive, endCall, startCall, reposition } = useNesaCallContext();
   const isStudio = location.pathname.startsWith("/studio");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false), [isCollapsed, setIsCollapsed] = useState(false), [micErrorNotice, setMicErrorNotice] = useState(false), [limitNotice, setLimitNotice] = useState(false);
-  const resizeTimerRef = useRef(null);
 
   useEffect(() => {
     const handleLogout = () => { if (endCall) endCall(); localStorage.removeItem("token"); localStorage.removeItem("user"); localStorage.removeItem("techwiz_custom_api_key"); navigate("/login"); };
@@ -55,8 +54,9 @@ function DashboardLayoutContent() {
             let tid = d.args?.assetId || d.assetId, tt = (d.args?.title || d.title || "").toLowerCase();
             if (!tid || tt) { const res = await fetch(VITE_API_URL + "/assets", { headers: { Authorization: "Bearer " + token } }), json = await res.json(), m = tt ? (json?.data || []).find((a) => (a.title || "").toLowerCase().includes(tt)) : json?.data?.[0]; if (m?.id) tid = m.id; }
             if (tid) { await fetch(VITE_API_URL + "/assets/" + tid, { method: "DELETE", headers: { Authorization: "Bearer " + token } }); window.dispatchEvent(new CustomEvent("asset_uploaded")); window.dispatchEvent(new CustomEvent("storage_updated")); window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "deleteAsset", { success: true }) })); }
-          }
-        } catch {}
+            else window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "deleteAsset", { status: "not_found" }) }));
+          } else window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "deleteAsset", { status: "unauthorized" }) }));
+        } catch { window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "deleteAsset", { status: "error" }) })); }
       }
       if (d.name === "previewAsset") {
         if (!location.pathname.startsWith("/assets")) navigate("/assets");
@@ -66,8 +66,9 @@ function DashboardLayoutContent() {
             const q = (d.args?.query || d.query || "").toLowerCase(), res = await fetch(VITE_API_URL + "/assets", { headers: { Authorization: "Bearer " + token } }), json = await res.json(), list = json?.data || [];
             const match = q ? (list.find((a) => (a.title || "").toLowerCase().includes(q) || (a.format || "").toLowerCase().includes(q)) || list[0]) : list[0];
             if (match) { setTimeout(() => window.dispatchEvent(new CustomEvent("asset:preview", { detail: match })), 150); window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "previewAsset", { success: true, title: match.title }) })); }
-          }
-        } catch {}
+            else window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "previewAsset", { status: "not_found" }) }));
+          } else window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "previewAsset", { status: "unauthorized" }) }));
+        } catch { window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "previewAsset", { status: "error" }) })); }
       }
       if (d.name === "exportCallSummary") {
         try {
@@ -83,6 +84,7 @@ function DashboardLayoutContent() {
           }
         } catch { window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "exportCallSummary", { status: "error" }) })); }
       }
+      if (d.name === "switchSession" && !location.pathname.startsWith("/studio")) { navigate("/studio"); setTimeout(() => window.dispatchEvent(new CustomEvent("nesa:toolcall", { detail: d })), 180); }
       if (d.name === "submitStudioPrompt" && !location.pathname.startsWith("/studio")) { navigate("/studio"); setTimeout(() => window.dispatchEvent(new CustomEvent("nesa:toolcall", { detail: d })), 150); }
       if (d.name === "getDashboardMetrics") {
         try {
@@ -97,12 +99,8 @@ function DashboardLayoutContent() {
   }, [navigate, endCall, location.pathname, reposition]);
 
   useEffect(() => {
-    const pushTelemetry = () => { if (!isSpeaking && isCallActive && sendContextTurn) sendContextTurn("Current Screen: " + location.pathname + ", Viewport: " + (window.innerWidth < 768 ? "Mobile" : "Desktop") + " (" + window.innerWidth + "px)"); };
-    pushTelemetry();
-    const handleResize = () => { if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current); resizeTimerRef.current = setTimeout(pushTelemetry, 300); };
-    window.addEventListener("resize", handleResize);
-    return () => { window.removeEventListener("resize", handleResize); if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current); };
-  }, [location.pathname, isCallActive, isSpeaking, sendContextTurn]);
+    if (isCallActive && sendContextTurn) sendContextTurn("Current Screen: " + location.pathname + ", Viewport: " + (window.innerWidth < 768 ? "Mobile" : "Desktop") + " (" + window.innerWidth + "px)");
+  }, [location.pathname, isCallActive, sendContextTurn]);
 
   const [platformBytes, setPlatformBytes] = useState(() => { try { const raw = localStorage.getItem("platform_usage_bytes"); return raw ? Number(raw) : 0; } catch { return 0; } });
 
@@ -131,17 +129,17 @@ function DashboardLayoutContent() {
         <main className={`flex-1 w-full relative ${isStudio ? "overflow-hidden p-0" : "overflow-y-auto overflow-x-hidden p-6"}`}><ErrorBoundary><Outlet /></ErrorBoundary></main>
       </div>
       {micErrorNotice && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 bg-red-600/90 text-white text-xs font-medium rounded-full shadow-lg backdrop-blur border border-red-500/30">
-          <span>Mic access lost. Call ended.</span>
-          <button onClick={() => { setMicErrorNotice(false); if (startCall) startCall(); }} className="px-2.5 py-0.5 bg-white text-red-600 rounded-full font-semibold hover:bg-red-50 transition-colors">Reconnect Call</button>
-          <button onClick={() => setMicErrorNotice(false)} className="text-white/80 hover:text-white ml-1">×</button>
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 max-w-[calc(100vw-2rem)] w-fit mx-auto px-4 py-2.5 rounded-2xl bg-red-600/90 text-white text-xs font-medium shadow-lg backdrop-blur border border-red-500/30">
+          <span className="truncate">Mic access lost. Call ended.</span>
+          <button onClick={() => { setMicErrorNotice(false); if (startCall) startCall(); }} className="px-2.5 py-0.5 bg-white text-red-600 rounded-full font-semibold hover:bg-red-50 transition-colors shrink-0">Reconnect Call</button>
+          <button onClick={() => setMicErrorNotice(false)} className="text-white/80 hover:text-white ml-1 shrink-0">×</button>
         </div>
       )}
       {limitNotice && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 bg-amber-600/90 text-white text-xs font-medium rounded-full shadow-lg backdrop-blur border border-amber-500/30">
-          <span>1-hour call limit reached.</span>
-          <button onClick={() => { setLimitNotice(false); if (startCall) startCall(); }} className="px-2.5 py-0.5 bg-white text-amber-600 rounded-full font-semibold hover:bg-amber-50 transition-colors">Reconnect</button>
-          <button onClick={() => setLimitNotice(false)} className="text-white/80 hover:text-white ml-1">×</button>
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 max-w-[calc(100vw-2rem)] w-fit mx-auto px-4 py-2.5 rounded-2xl bg-amber-600/90 text-white text-xs font-medium shadow-lg backdrop-blur border border-amber-500/30">
+          <span className="truncate">1-hour call limit reached.</span>
+          <button onClick={() => { setLimitNotice(false); if (startCall) startCall(); }} className="px-2.5 py-0.5 bg-white text-amber-600 rounded-full font-semibold hover:bg-amber-50 transition-colors shrink-0">Reconnect</button>
+          <button onClick={() => setLimitNotice(false)} className="text-white/80 hover:text-white ml-1 shrink-0">×</button>
         </div>
       )}
       <VisualSpotlight /><DynamicModalHost /><PersistentNesaCallHost /><InstallPrompt /><ApiFallbackModal />

@@ -44,7 +44,7 @@ export function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 rounded-[var(--radius-md)] bg-surface-card border border-border shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-[var(--radius-md)] bg-surface-card border border-border shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
           <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border bg-surface/50">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-text-primary">Notifications</span>
