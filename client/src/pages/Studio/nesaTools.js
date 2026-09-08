@@ -13,26 +13,26 @@ export const NESA_TOOL_DECLARATIONS = [
         targetKey: {
           type: "STRING",
           enum: [
-            "upload_btn",
-            "delete_asset",
-            "asset_search",
-            "asset_filter",
-            "chat_input",
-            "chat_send",
-            "chat_mic",
-            "chat_history_btn",
-            "model_selector",
-            "persona_selector",
-            "new_chat",
-            "theme_toggle",
-            "user_menu",
-            "logout_btn"
+            "upload_btn", "delete_asset", "asset_search", "asset_filter",
+            "chat_input", "chat_send", "chat_mic", "chat_history_btn",
+            "model_selector", "persona_selector", "new_chat", "theme_toggle",
+            "user_menu", "logout_btn", "sidebar_toggle", "nav_dashboard",
+            "nav_studio", "nav_assets", "nav_analytics", "nav_settings", "nav_profile"
           ],
           description: "Exact target key to highlight with visual laser beam and ring."
         },
         label: { type: "STRING", description: "Short guidance text" }
       },
       required: ["targetKey"]
+    }
+  },
+  {
+    name: "controlSidebar",
+    description: "Controls the application sidebar state. Open, close, or toggle the sidebar drawer on mobile and desktop.",
+    parameters: {
+      type: "OBJECT",
+      properties: { action: { type: "STRING", enum: ["open", "close", "toggle"], description: "open, close, or toggle" } },
+      required: ["action"]
     }
   },
   {

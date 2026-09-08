@@ -19,9 +19,10 @@ const getWidgetRect = () => {
 export function VisualSpotlight() {
   const [targetRect, setTargetRect] = useState(null), [sourceRect, setSourceRect] = useState(null);
   const [isBlurActive, setIsBlurActive] = useState(false), [label, setLabel] = useState("");
-  const targetRef = useRef(null), dismissTimerRef = useRef(null), blurTimerRef = useRef(null), pollTimerRef = useRef(null);
+  const targetRef = useRef(null), dismissTimerRef = useRef(null), blurTimerRef = useRef(null), pollTimerRef = useRef(null), delayTimerRef = useRef(null);
 
   const dismiss = useCallback(() => {
+    if (delayTimerRef.current) { clearTimeout(delayTimerRef.current); delayTimerRef.current = null; }
     if (dismissTimerRef.current) { clearTimeout(dismissTimerRef.current); dismissTimerRef.current = null; }
     if (blurTimerRef.current) { clearTimeout(blurTimerRef.current); blurTimerRef.current = null; }
     if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null; }
@@ -44,64 +45,56 @@ export function VisualSpotlight() {
       const textLabel = args.label || "Highlighted Feature";
       if (!targetKey) return;
 
+      const isNavTarget = targetKey.startsWith("nav_") || targetKey === "nav_settings";
+      if (isNavTarget) window.dispatchEvent(new CustomEvent("app:sidebar:open"));
+
       const targetRoute = ROUTE_MAP[targetKey], currentPath = window.location.pathname;
-      const shouldNavigate = Boolean(targetRoute && currentPath !== targetRoute);
-      if (shouldNavigate) {
+      if (targetRoute && currentPath !== targetRoute) {
         window.dispatchEvent(new CustomEvent("nesa:toolcall", { detail: { name: "navigatePage", args: { route: targetRoute } } }));
       }
 
+      if (delayTimerRef.current) clearTimeout(delayTimerRef.current);
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
       const cid = detail.id || detail.callId || `call_${Date.now()}`;
-      const startTime = Date.now();
 
-      pollTimerRef.current = setInterval(() => {
-        const candidates = Array.from(document.querySelectorAll(`[data-nesa-target="${targetKey}"], #${targetKey}, [name="${targetKey}"]`));
-        const target = candidates.find((el) => {
-          const r = el.getBoundingClientRect();
-          return (r.width > 0 || r.height > 0) && el.offsetParent !== null;
-        }) || candidates.find((el) => {
-          const r = el.getBoundingClientRect();
-          return r.width > 0 || r.height > 0;
-        });
+      delayTimerRef.current = setTimeout(() => {
+        const startTime = Date.now();
+        pollTimerRef.current = setInterval(() => {
+          const candidates = Array.from(document.querySelectorAll(`[data-nesa-target="${targetKey}"], #${targetKey}, [name="${targetKey}"]`));
+          const target = candidates.find((el) => {
+            const r = el.getBoundingClientRect();
+            return (r.width > 0 || r.height > 0) && el.offsetParent !== null;
+          }) || candidates.find((el) => {
+            const r = el.getBoundingClientRect();
+            return r.width > 0 || r.height > 0;
+          });
 
-        if (target) {
-          clearInterval(pollTimerRef.current);
-          pollTimerRef.current = null;
-          targetRef.current = target;
-          target.scrollIntoView({ behavior: "smooth", block: "center" });
-          setTimeout(() => {
-            setTargetRect(target.getBoundingClientRect());
-            setSourceRect(getWidgetRect());
-            setLabel(textLabel);
-            setIsBlurActive(true);
-            if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
-            blurTimerRef.current = setTimeout(() => setIsBlurActive(false), 2000);
-            if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-            dismissTimerRef.current = setTimeout(dismiss, 8000);
-            setTimeout(updatePositions, 350);
+          if (target) {
+            clearInterval(pollTimerRef.current); pollTimerRef.current = null; targetRef.current = target;
+            target.scrollIntoView({ behavior: "smooth", block: "center" });
+            setTimeout(() => {
+              setTargetRect(target.getBoundingClientRect()); setSourceRect(getWidgetRect());
+              setLabel(textLabel); setIsBlurActive(true);
+              if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
+              blurTimerRef.current = setTimeout(() => setIsBlurActive(false), 2000);
+              if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+              dismissTimerRef.current = setTimeout(dismiss, 8000);
+              setTimeout(updatePositions, 350);
+              window.dispatchEvent(new CustomEvent("nesa:toolresponse", {
+                detail: { id: cid, name: "spotlightElement", response: { output: { status: "success", highlighted: targetKey } } }
+              }));
+            }, 150);
+            return;
+          }
+
+          if (Date.now() - startTime >= 1200) {
+            clearInterval(pollTimerRef.current); pollTimerRef.current = null;
             window.dispatchEvent(new CustomEvent("nesa:toolresponse", {
-              detail: {
-                id: cid,
-                name: "spotlightElement",
-                response: { output: { status: "success", highlighted: targetKey } }
-              }
+              detail: { id: cid, name: "spotlightElement", response: { output: { status: "error", error: "Target element not found in DOM" } } }
             }));
-          }, 150);
-          return;
-        }
-
-        if (Date.now() - startTime >= 1200) {
-          clearInterval(pollTimerRef.current);
-          pollTimerRef.current = null;
-          window.dispatchEvent(new CustomEvent("nesa:toolresponse", {
-            detail: {
-              id: cid,
-              name: "spotlightElement",
-              response: { output: { status: "error", error: "Target element not found in DOM" } }
-            }
-          }));
-        }
-      }, 50);
+          }
+        }, 50);
+      }, isNavTarget ? 250 : 0);
     };
 
     window.addEventListener("nesa:toolcall", handleToolCall);
@@ -111,6 +104,7 @@ export function VisualSpotlight() {
       window.removeEventListener("nesa:toolcall", handleToolCall);
       window.removeEventListener("scroll", updatePositions, { capture: true });
       window.removeEventListener("resize", updatePositions);
+      if (delayTimerRef.current) clearTimeout(delayTimerRef.current);
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
       if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
       if (blurTimerRef.current) clearTimeout(blurTimerRef.current);

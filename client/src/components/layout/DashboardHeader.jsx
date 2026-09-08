@@ -33,6 +33,7 @@ export function DashboardHeader({ onOpenDrawer }) {
         <div className="flex items-center gap-2">
           <button
             type="button"
+            data-nesa-target="sidebar_toggle"
             onClick={onOpenDrawer}
             className="p-2 rounded-[var(--radius-sm)] text-text-muted hover:text-text-primary hover:bg-surface btn-tactile cursor-pointer"
             aria-label="Toggle navigation"

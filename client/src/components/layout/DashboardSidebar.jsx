@@ -1,43 +1,21 @@
 import { Link, NavLink } from "react-router-dom";
-import {
-  House,
-  Sparkle,
-  ImageSquare,
-  ChartLineUp,
-  Gear,
-  Users,
-  User,
-  X,
-  SidebarSimple,
-  HardDrive
-} from "@phosphor-icons/react";
+import { House, Sparkle, ImageSquare, ChartLineUp, Gear, Users, User, X, SidebarSimple, HardDrive } from "@phosphor-icons/react";
 import logoImg from "@/assets/logo.png";
 
-export function DashboardSidebar({
-  isCollapsed,
-  setIsCollapsed,
-  isDrawerOpen,
-  onCloseDrawer,
-  usageDisplay,
-  percentUsed
-}) {
+export function DashboardSidebar({ isCollapsed, setIsCollapsed, isDrawerOpen, onCloseDrawer, usageDisplay, percentUsed }) {
   const user = (() => {
-    try {
-      return JSON.parse(localStorage.getItem("user") || "{}");
-    } catch {
-      return {};
-    }
+    try { return JSON.parse(localStorage.getItem("user") || "{}"); } catch { return {}; }
   })();
   const isAdmin = user?.role === "admin";
 
   const navItems = [
-    { label: "Dashboard", href: "/dashboard", icon: House },
-    { label: "Studio", href: "/studio", icon: Sparkle },
-    { label: "Assets", href: "/assets", icon: ImageSquare },
-    { label: "Analytics", href: "/analytics", icon: ChartLineUp },
-    ...(isAdmin ? [{ label: "Users", href: "/admin", icon: Users }] : []),
-    { label: "Profile", href: "/profile", icon: User },
-    { label: "Settings", href: "/settings", icon: Gear }
+    { label: "Dashboard", href: "/dashboard", icon: House, target: "nav_dashboard" },
+    { label: "Studio", href: "/studio", icon: Sparkle, target: "nav_studio" },
+    { label: "Assets", href: "/assets", icon: ImageSquare, target: "nav_assets" },
+    { label: "Analytics", href: "/analytics", icon: ChartLineUp, target: "nav_analytics" },
+    ...(isAdmin ? [{ label: "Users", href: "/admin", icon: Users, target: "nav_users" }] : []),
+    { label: "Profile", href: "/profile", icon: User, target: "nav_profile" },
+    { label: "Settings", href: "/settings", icon: Gear, target: "nav_settings" }
   ];
 
   return (
@@ -62,6 +40,7 @@ export function DashboardSidebar({
                     <NavLink
                       key={item.label}
                       to={item.href}
+                      data-nesa-target={item.target}
                       onClick={onCloseDrawer}
                       className={({ isActive }) =>
                         `group flex items-center gap-3 px-3 py-2 rounded-[var(--radius-md)] text-sm font-medium transition-colors btn-tactile ${
@@ -115,6 +94,7 @@ export function DashboardSidebar({
             </Link>
             <button
               type="button"
+              data-nesa-target="sidebar_toggle"
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="p-1 rounded-[var(--radius-sm)] text-text-muted hover:text-text-primary hover:bg-surface border border-transparent hover:border-border transition-colors cursor-pointer"
               title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -130,6 +110,7 @@ export function DashboardSidebar({
                 <NavLink
                   key={item.label}
                   to={item.href}
+                  data-nesa-target={item.target}
                   className={({ isActive }) =>
                     `group flex items-center transition-colors btn-tactile ${
                       isCollapsed
