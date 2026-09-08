@@ -3,43 +3,28 @@ import { cloudinary } from "../config/cloudinary.js";
 import { Asset } from "../models/Asset.js";
 import { ChatMessage } from "../models/ChatMessage.js";
 
-async function fetchProImageBuffer(cleanDesc) {
-  const encoded = encodeURIComponent(cleanDesc);
-  const models = ["flux-pro", "flux-realism", "flux"];
-  for (const m of models) {
-    try {
-      const url = `https://image.pollinations.ai/prompt/${encoded}?model=${m}&width=1024&height=1024&enhance=true&nologo=true`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const ab = await res.arrayBuffer();
-        if (ab.byteLength > 1000) return Buffer.from(ab);
-      }
-    } catch {}
-  }
-  throw new Error("Pro image generation failed");
-}
-
 export async function generateAndSaveAiImage(promptDesc, userId) {
   const cleanDesc = (promptDesc || "").trim() || "Creative AI Artwork";
-  let buffer = null;
+  const nimResult = await nvidiaImageService.generate(cleanDesc);
+  const rawUrl = nimResult?.url || nimResult?.imageUrl;
+  if (!rawUrl) {
+    throw new Error("NVIDIA NIM returned no image data");
+  }
 
-  try {
-    const nimResult = await nvidiaImageService.generate(cleanDesc);
-    const rawUrl = nimResult?.url || nimResult?.imageUrl;
-    if (rawUrl && rawUrl.startsWith("data:image/")) {
-      const base64Data = rawUrl.split(",")[1];
-      buffer = Buffer.from(base64Data, "base64");
-    } else if (rawUrl && rawUrl.startsWith("http")) {
-      const resp = await fetch(rawUrl);
-      if (resp.ok) {
-        const ab = await resp.arrayBuffer();
-        buffer = Buffer.from(ab);
-      }
+  let buffer = null;
+  if (rawUrl.startsWith("data:image/")) {
+    const base64Data = rawUrl.split(",")[1];
+    buffer = Buffer.from(base64Data, "base64");
+  } else if (rawUrl.startsWith("http")) {
+    const resp = await fetch(rawUrl);
+    if (resp.ok) {
+      const ab = await resp.arrayBuffer();
+      buffer = Buffer.from(ab);
     }
-  } catch {}
+  }
 
   if (!buffer) {
-    buffer = await fetchProImageBuffer(cleanDesc);
+    throw new Error("Failed to process generated image buffer");
   }
 
   const uploadResult = await new Promise((resolve, reject) => {
@@ -82,8 +67,10 @@ export async function processAiImageRequest({ imageReqBuffer, customProvider, ta
     res.write(`data: ${JSON.stringify({ text: markdownResult })}\n\n`);
     res.write("data: [DONE]\n\n");
     res.end();
-  } catch {
-    res.write(`data: ${JSON.stringify({ error: "IMAGE_NOT_SUPPORTED" })}\n\n`);
+  } catch (err) {
+    res.write(`data: ${JSON.stringify({ error: err?.message || "IMAGE_GENERATION_FAILED" })}\n\n`);
     res.end();
   }
 }
+
+export default { generateAndSaveAiImage, processAiImageRequest };
