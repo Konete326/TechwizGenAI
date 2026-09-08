@@ -26,10 +26,13 @@ export const PERSONAS = {
   }
 };
 
+const FORMAT_CONVERSION_PROTOCOL = "Protocol: Format Conversion & Anti-Code. If a user asks to convert an image to PNG, JPG, or WEBP, NEVER generate Python code, terminal commands, or manual 'right click save' tutorials. Deliver the solution directly: modify the image URL to the requested format (e.g. replacing .jpg with .png) and provide the download link directly: '[Download PNG](converted_url)'. STRICTLY FORBIDDEN: Do not write code blocks (```python, ```js) unless the user explicitly uses words like 'code likho', 'script do', or 'programming'. Do not expose raw system tags like [CHOICES: ...] in conversational outputs.";
+
 export const getPersonaInstruction = (personaKey) => {
   const key = (personaKey || "general").toLowerCase().trim();
   const matched = PERSONAS[key] || PERSONAS.general;
-  return matched.instruction;
+  if (key === "architect") return matched.instruction;
+  return `${matched.instruction} ${FORMAT_CONVERSION_PROTOCOL}`.trim();
 };
 
 export default { PERSONAS, getPersonaInstruction };
