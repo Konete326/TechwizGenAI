@@ -22,7 +22,7 @@ export function getFriendlyErrorMessage(error) {
 export async function streamCompletion({
   sessionId,
   prompt,
-  model = "gemini-3.8-flash",
+  model = "gemini-3.6-flash",
   imageBase64 = null,
   images = null,
   attachmentType = "none",

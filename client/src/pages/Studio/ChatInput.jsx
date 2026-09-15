@@ -11,7 +11,7 @@ export function ChatInput({
   onSubmit,
   isStreaming,
   onStop,
-  selectedModel = "gemini-3.8-flash",
+  selectedModel = "gemini-3.6-flash",
   attachedImages = [],
   setAttachedImages,
   attachedImage,

@@ -5,22 +5,10 @@ import { useToast } from "@/context/ToastContext";
 
 export const MODEL_TIERS = [
   {
-    id: "gemini-3.8-flash",
-    name: "Gemini 3.8 Flash",
-    tag: "Flagship Ultra",
-    desc: "State of the art multimodal reasoning, speed, and analytical depth."
-  },
-  {
-    id: "gemini-3.7-flash",
-    name: "Gemini 3.7 Flash",
-    tag: "Reasoning Pro",
-    desc: "Next-gen flagship reasoning and multi-modal intelligence."
-  },
-  {
     id: "gemini-3.6-flash",
     name: "Gemini 3.6 Flash",
-    tag: "Balanced Pro",
-    desc: "Optimized multi-modal reasoning and code generation."
+    tag: "Flagship Fast",
+    desc: "Optimized multimodal reasoning, ultra-fast latency, and code generation."
   },
   {
     id: "gemini-3.5-flash",
@@ -33,6 +21,18 @@ export const MODEL_TIERS = [
     name: "Gemini 3.5 Flash Lite",
     tag: "Ultra Fast",
     desc: "Sub-second response latency for instant, dynamic answers."
+  },
+  {
+    id: "gemini-3.8-flash",
+    name: "Gemini 3.8 Flash",
+    tag: "High Capacity",
+    desc: "State of the art multimodal reasoning and analytical depth."
+  },
+  {
+    id: "gemini-3.7-flash",
+    name: "Gemini 3.7 Flash",
+    tag: "Reasoning Pro",
+    desc: "Next-gen flagship reasoning and multi-modal intelligence."
   }
 ];
 
@@ -42,7 +42,9 @@ export function ModelSelector({ selectedModel, onSelectModel }) {
   const toast = useToast();
 
   const [activeModel, setActiveModel] = useState(() => {
-    return selectedModel || localStorage.getItem("selected_ai_model") || "gemini-3.8-flash";
+    const saved = localStorage.getItem("selected_ai_model");
+    if (!saved || saved === "gemini-3.8-flash" || saved === "gemini-3.7-flash") return selectedModel || "gemini-3.6-flash";
+    return selectedModel || saved;
   });
 
   useEffect(() => {

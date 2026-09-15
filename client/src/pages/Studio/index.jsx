@@ -11,7 +11,10 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 export function Studio() {
   const toast = useToast(), navigate = useNavigate(), location = useLocation();
   const { startCall, isCallActive } = useNesaCallContext();
-  const [inputPrompt, setInputPrompt] = useState(""), [selectedModel, setSelectedModel] = useState(() => localStorage.getItem("selected_ai_model") || "gemini-3.8-flash");
+  const [inputPrompt, setInputPrompt] = useState(""), [selectedModel, setSelectedModel] = useState(() => {
+    const s = localStorage.getItem("selected_ai_model");
+    return (s && s !== "gemini-3.8-flash" && s !== "gemini-3.7-flash") ? s : "gemini-3.6-flash";
+  });
   const [activePersona, setActivePersona] = useState("general"), [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState(""), [attachedImages, setAttachedImages] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false), [activeArtifact, setActiveArtifact] = useState(null), [isClearModalOpen, setIsClearModalOpen] = useState(false);
@@ -43,7 +46,12 @@ export function Studio() {
         setMessages((p) => [...p, { id: "ai-" + Date.now(), role: "model", text: accumulated, createdAt: new Date().toISOString() }]);
         fetchSessions();
       },
-      onError: (err) => { setIsStreaming(false); setStreamingText(""); toast.error(getFriendlyErrorMessage(err)); }
+      onError: (err) => {
+        setIsStreaming(false);
+        if (accumulated) setMessages((p) => [...p, { id: "ai-" + Date.now(), role: "model", text: accumulated, createdAt: new Date().toISOString() }]);
+        setStreamingText("");
+        toast.error(getFriendlyErrorMessage(err));
+      }
     });
   };
 
