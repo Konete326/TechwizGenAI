@@ -13,24 +13,42 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "logo.png"],
+      includeAssets: [
+        "favicon.ico",
+        "favicon.png",
+        "apple-touch-icon.png",
+        "pwa-192x192.png",
+        "pwa-512x512.png",
+        "maskable-icon-512x512.png",
+        "manifest.json",
+        "logo.png"
+      ],
       manifest: {
-        name: "Techwiz GenAI Platform",
+        name: "Techwiz GenAI Studio",
         short_name: "TechwizAI",
         description: "Production-grade Generative AI platform",
-        theme_color: "#09090b",
-        background_color: "#09090b",
+        start_url: "/",
         display: "standalone",
+        background_color: "#09090b",
+        theme_color: "#09090b",
         icons: [
           {
-            src: "logo.png",
+            src: "/pwa-192x192.png",
             sizes: "192x192",
-            type: "image/png"
+            type: "image/png",
+            purpose: "any"
           },
           {
-            src: "logo.png",
+            src: "/pwa-512x512.png",
             sizes: "512x512",
-            type: "image/png"
+            type: "image/png",
+            purpose: "any"
+          },
+          {
+            src: "/maskable-icon-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable"
           }
         ]
       },
