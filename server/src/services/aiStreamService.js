@@ -10,7 +10,7 @@ export const getAiClient = (customApiKey) => customApiKey ? new GoogleGenAI({ ap
 export const createModelStream = async ({ client, model, contents, systemInstruction, customApiKey, persona }) => {
   const primaryModel = model || env.PRIMARY_BACKEND_MODEL || "gemini-3.6-flash";
   const personaSuffix = persona ? ` ${getPersonaInstruction(persona)}` : "";
-  const config = { systemInstruction: `${systemInstruction || ""}${personaSuffix}`.trim(), thinkingConfig: { thinkingBudget: 0 } };
+  const config = { systemInstruction: `${systemInstruction || ""}${personaSuffix}`.trim() };
 
   if (customApiKey) {
     try { return await client.models.generateContentStream({ model: primaryModel, contents, config }); }
@@ -47,7 +47,7 @@ export const consumeStreamAndTrackUsage = async ({ responseStream, promptText, u
         tokens.completion = chunk.usageMetadata.candidatesTokenCount || tokens.completion;
         tokens.total = chunk.usageMetadata.totalTokenCount || tokens.total;
       }
-      const chunkText = chunk.text || "";
+      const chunkText = (typeof chunk.text === "function" ? chunk.text() : chunk.text) || "";
       if (!chunkText) continue;
 
       if (!isSpecialReq) {

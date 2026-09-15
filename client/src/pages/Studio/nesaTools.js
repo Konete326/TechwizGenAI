@@ -127,6 +127,18 @@ export const NESA_TOOL_DECLARATIONS = [
     name: "generateImage",
     description: "Generates an image via external visual engine. Provide a prompt describing the image.",
     parameters: { type: "OBJECT", properties: { prompt: { type: "STRING", description: "Detailed description of the image to generate" } }, required: ["prompt"] }
+  },
+  {
+    name: "queryDocument",
+    description: "Searches and answers questions from the user's uploaded documents, PDFs, manuals, and files in the Assets library.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        query: { type: "STRING", description: "The specific question or topic to search within the documents" },
+        documentTitle: { type: "STRING", description: "Optional name or keyword of the specific document to inspect" }
+      },
+      required: ["query"]
+    }
   }
 ];
 

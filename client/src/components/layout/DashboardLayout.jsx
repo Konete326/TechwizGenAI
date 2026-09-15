@@ -4,7 +4,7 @@ import { VITE_API_URL } from "@/config/env";
 import { DashboardHeader } from "./DashboardHeader"; import { DashboardSidebar } from "./DashboardSidebar"; import { InstallPrompt } from "@/components/ui/InstallPrompt"; import { ApiFallbackModal } from "@/components/ui/ApiFallbackModal"; import { ErrorBoundary } from "@/components/common/ErrorBoundary"; import { VisualSpotlight } from "@/components/common/VisualSpotlight"; import { DynamicModalHost } from "@/components/common/DynamicModalHost"; import { NesaCallProvider, useNesaCallContext } from "@/context/NesaCallContext"; import { NesaCallInterface } from "@/pages/Studio/NesaCallInterface"; import { formatToolResponse } from "@/pages/Studio/nesaTools";
 
 const PersistentNesaCallHost = () => { const c = useNesaCallContext(); return <NesaCallInterface isActive={c.isCallActive} callPhase={c.callPhase} isMinimized={c.isMinimized} onToggleMinimize={c.toggleMinimize} onEndCall={c.endCall} nesaState={c.nesaState} isListening={c.isListening} transcript={c.transcript} connectionError={c.connectionError} onRetry={c.startCall} forceReply={(cp) => c.forceReply(cp)} position={c.widgetPosition} onPositionChange={c.setWidgetPosition} widgetSide={c.widgetSide} dockCorner={c.dockCorner} onReposition={c.reposition} />; };
-const asyncTools = ["spotlightElement", "clickElement", "navigatePage", "fillFormField", "deleteAsset", "exportCallSummary", "getDashboardMetrics", "deleteSession", "previewAsset", "switchSession", "submitStudioPrompt", "controlSidebar", "toggleWorkspaceControl", "generateImage"];
+const asyncTools = ["spotlightElement", "clickElement", "navigatePage", "fillFormField", "deleteAsset", "exportCallSummary", "getDashboardMetrics", "deleteSession", "previewAsset", "switchSession", "submitStudioPrompt", "controlSidebar", "toggleWorkspaceControl", "generateImage", "queryDocument"];
 
 function DashboardLayoutContent() {
   const location = useLocation(), navigate = useNavigate(), { sendContextTurn, isCallActive, endCall, startCall, reposition } = useNesaCallContext(), isStudio = location.pathname.startsWith("/studio");
@@ -119,6 +119,18 @@ function DashboardLayoutContent() {
             window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "generateImage", { status: "success", url: json.imageUrl, imageUrl: json.imageUrl }) }));
           } else window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "generateImage", { status: "error" }) }));
         } catch { window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "generateImage", { status: "error" }) })); }
+      }
+      if (d.name === "queryDocument") {
+        try {
+          const token = localStorage.getItem("token"), qry = d.args?.query || d.query || "", docTitle = d.args?.documentTitle || d.documentTitle || "";
+          if (!token) { window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "queryDocument", { status: "unauthorized" }) })); return; }
+          const res = await fetch(VITE_API_URL + "/ai/query-document", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify({ query: qry, documentTitle: docTitle }) }), json = await res.json();
+          if (res.ok && json.success) {
+            window.dispatchEvent(new CustomEvent("studio:document_insight", { detail: json }));
+            if (json.assetId) setTimeout(() => window.dispatchEvent(new CustomEvent("asset:preview", { detail: { id: json.assetId, title: json.sourceTitle } })), 300);
+            window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "queryDocument", { status: "success", answer: json.answer, snippet: json.snippet, document: json.sourceTitle }) }));
+          } else window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "queryDocument", { status: "not_found", message: "No relevant document found" }) }));
+        } catch { window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "queryDocument", { status: "error", message: "No relevant document found" }) })); }
       }
     };
     window.addEventListener("nesa:toolcall", handleToolCall); window.addEventListener("auth:logout", handleLogout); window.addEventListener("nesa:mic_lost", handleMicLost); window.addEventListener("nesa:limit_reached", handleLimitReached); window.addEventListener("app:sidebar:open", handleSidebarOpen);

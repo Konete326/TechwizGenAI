@@ -5,6 +5,7 @@ import { User } from "../models/User.js";
 import { Asset } from "../models/Asset.js";
 import { cloudinary } from "../config/cloudinary.js";
 import nvidiaImageService from "../services/nvidiaImageService.js";
+import { queryDocumentContent } from "../services/documentRagService.js";
 import {
   createSession,
   getSessions,
@@ -82,5 +83,16 @@ router.patch("/sessions/:id", renameSession);
 router.post("/sessions/:id/stream", streamChat);
 router.post("/sessions/:id/regenerate", regenerateSession);
 router.delete("/messages/:messageId", deleteMessageBranch);
+
+router.post("/query-document", async (req, res, next) => {
+  try {
+    const { query, documentTitle, assetId } = req.body;
+    if (!query || !query.trim()) return res.status(400).json({ success: false, message: "Query is required" });
+    const result = await queryDocumentContent({ query: query.trim(), assetId, userId: req.user._id, documentTitle });
+    return res.status(200).json({ success: true, ...result });
+  } catch (err) {
+    return next(err);
+  }
+});
 
 export default router;
