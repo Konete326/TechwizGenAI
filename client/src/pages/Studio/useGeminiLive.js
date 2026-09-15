@@ -3,11 +3,8 @@ import { base64EncodeAudio, base64DecodeAudio } from "./audioUtils";
 import { NESA_TOOL_DECLARATIONS, formatToolResponse } from "./nesaTools";
 
 const WS_BASE_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
-const getVoiceKeys = () => {
-  const custom = localStorage.getItem("techwiz_custom_api_key") || localStorage.getItem("custom_api_key");
-  const k = [import.meta.env.VITE_GEMINI_LIVE_KEY_1, import.meta.env.VITE_GEMINI_LIVE_KEY_2, import.meta.env.VITE_GEMINI_LIVE_KEY_3, import.meta.env.VITE_GEMINI_API_KEY].filter(Boolean);
-  return custom ? [custom] : (k.length ? k : [""]);
-};
+const getVoiceKeys = () => { const c = localStorage.getItem("techwiz_custom_api_key") || localStorage.getItem("custom_api_key"), k = [import.meta.env.VITE_GEMINI_LIVE_KEY_1, import.meta.env.VITE_GEMINI_LIVE_KEY_2, import.meta.env.VITE_GEMINI_LIVE_KEY_3, import.meta.env.VITE_GEMINI_API_KEY].filter(Boolean); return c ? [c] : (k.length ? k : [""]); };
+const downsampleTo16k = (buf, inRate) => { if (inRate === 16000) return buf; const step = inRate / 16000, len = Math.floor(buf.length / step), out = new Float32Array(len); for (let i = 0; i < len; i++) out[i] = buf[Math.floor(i * step)]; return out; };
 
 export function useGeminiLive({ onToolCall } = {}) {
   const [isConnected, setIsConnected] = useState(false), [isSpeaking, setIsSpeaking] = useState(false);
@@ -18,7 +15,8 @@ export function useGeminiLive({ onToolCall } = {}) {
 
   const stopActiveAudio = useCallback(() => {
     if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
-    isPlayingRef.current = false; isSpeakingRef.current = false; activeSourcesRef.current.forEach((src) => { try { src.stop(); } catch {} });
+    isPlayingRef.current = false; isSpeakingRef.current = false;
+    activeSourcesRef.current.forEach((src) => { try { src.stop(); } catch {} try { src.disconnect(); } catch {} });
     activeSourcesRef.current = []; nextPlayTimeRef.current = 0; setIsSpeaking(false);
   }, []);
 
@@ -46,6 +44,7 @@ export function useGeminiLive({ onToolCall } = {}) {
     const startTime = Math.max(ctx.currentTime + 0.02, nextPlayTimeRef.current);
     source.start(startTime); nextPlayTimeRef.current = startTime + buffer.duration; activeSourcesRef.current.push(source);
     source.onended = () => {
+      try { source.disconnect(); } catch {}
       activeSourcesRef.current = activeSourcesRef.current.filter((s) => s !== source);
       if (activeSourcesRef.current.length === 0) { isPlayingRef.current = false; nextPlayTimeRef.current = 0; isSpeakingRef.current = false; setIsSpeaking(false); if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; } }
     };
@@ -105,8 +104,7 @@ export function useGeminiLive({ onToolCall } = {}) {
       const payload = d.toolResponse ? d : (d.id && d.name ? formatToolResponse(d.id, d.name, d.response?.output || d.response || d.output || { status: "success" }) : null);
       if (payload) wsRef.current.send(JSON.stringify(payload));
     };
-    window.addEventListener("nesa:toolresponse", handleToolResponse);
-    return () => window.removeEventListener("nesa:toolresponse", handleToolResponse);
+    window.addEventListener("nesa:toolresponse", handleToolResponse); return () => window.removeEventListener("nesa:toolresponse", handleToolResponse);
   }, []);
 
   const connect = useCallback(async (isReconnect = false) => {
@@ -117,29 +115,25 @@ export function useGeminiLive({ onToolCall } = {}) {
     if (!apiKey) { setConnectionError("Gemini API key is required"); return; }
 
     try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext, audioContext = new AudioCtx({ sampleRate: 24000 });
+      const AudioCtx = window.AudioContext || window.webkitAudioContext, audioContext = new AudioCtx({ sampleRate: 24000, latencyHint: "interactive" });
       outputAudioCtxRef.current = audioContext; nextPlayTimeRef.current = audioContext.currentTime;
       if (audioContext.state === "suspended") await audioContext.resume();
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1, sampleRate: 16000 } });
-      micStreamRef.current = stream;
-      const track = stream.getAudioTracks()[0];
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+      micStreamRef.current = stream; const track = stream.getAudioTracks()[0];
       if (track) {
         const onMicLost = () => { if (isCallActiveRef.current) { window.dispatchEvent(new CustomEvent("nesa:mic_lost")); if (processorRef.current) { try { processorRef.current.disconnect(); } catch {} processorRef.current = null; } if (micStreamRef.current) { micStreamRef.current.getTracks().forEach((t) => t.stop()); micStreamRef.current = null; } } };
         track.onended = onMicLost; track.onmute = onMicLost;
       }
-      const inputCtx = new AudioCtx({ sampleRate: 16000 });
+      const inputCtx = new AudioCtx({ latencyHint: "interactive" });
       if (inputCtx.state === "suspended") await inputCtx.resume();
-      inputAudioCtxRef.current = inputCtx;
-      const ws = new WebSocket(WS_BASE_URL + "?key=" + apiKey);
-      wsRef.current = ws;
+      inputAudioCtxRef.current = inputCtx; const ws = new WebSocket(WS_BASE_URL + "?key=" + apiKey); wsRef.current = ws;
 
       ws.onopen = () => {
         setIsConnected(true);
         if (!durationTimerRef.current) {
           durationTimerRef.current = setInterval(() => {
             if (!isCallActiveRef.current) return;
-            durationRef.current += 1;
-            const s = durationRef.current;
+            durationRef.current += 1; const s = durationRef.current;
             if (s === 3300 && !warned55Ref.current) { warned55Ref.current = true; if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text: "Notice: Call duration approaching 1-hour limit." }] }], turnComplete: true } })); }
             if (s >= 3600) {
               if (durationTimerRef.current) { clearInterval(durationTimerRef.current); durationTimerRef.current = null; }
@@ -151,17 +145,18 @@ export function useGeminiLive({ onToolCall } = {}) {
           }, 1000);
         }
         ws.send(JSON.stringify({ setup: { model: "models/gemini-2.5-flash-native-audio-latest", generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } }, thinkingConfig: { thinkingBudget: 0 } }, systemInstruction: { parts: [{ text: "Role: You are Nesa, a helpful, polite, and female AI assistant for Techwiz GenAI. Project Info: Techwiz GenAI is an advanced multimodal AI platform engineered and created by Sameer (Email: sameerdevexpert@gmail.com, GitHub: konete326). Features include multimodal studio chat, voice calls with you, document generation, code sandboxes, diagrams, and image generation. When asked about the project or creator, share this warmly. Security Constraint: Strictly NEVER disclose, discuss, or describe any details of the Admin Panel or internal admin pages; state that administrative details are confidential. Language Rules: Speak in a highly humanized, natural, and dynamic way. Use very simple, everyday words. Keep sentences short, friendly, and reply immediately in 1-2 sentences without delay. Never output internal thought or preamble. Always use female grammatical gender in Urdu/Hindi (e.g., 'main samajh rahi hoon'). Protocol: Action-Before-Speech. SILENT TOOL DISPATCH: When executing any tool (navigation, clicking, spotlight, deletion, modal, prompt submission), dispatch the tool call with ZERO spoken words in the invocation turn. Wait until the system returns the toolResponse confirming completion. ONLY speak your concise verbal confirmation (under 8 words) in the subsequent turn after the action has visibly rendered. Protocol: Universal UI Action & Clicking. You have complete autonomous control to click, activate, or highlight any button, tab, link, or control on the platform. If the user says 'click karo', 'press karo', 'button daba do', 'is par click karo', 'ye open karo', or 'tab select karo', invoke clickElement with the corresponding targetKey. If the user asks where an element is or asks to show it, invoke spotlightElement. Keep verbal confirmations under 8 words in female grammatical gender (e.g., 'Maine button click kar diya hai'). Protocol: Sidebar Control. You have complete control over the sidebar. If the user asks to open or close the sidebar, invoke controlSidebar with action 'open' or 'close'. If asked to show or spotlight an item in the sidebar (like Settings or Assets), invoke spotlightElement with the appropriate nav key (e.g. nav_settings, nav_assets). The system will automatically expand the sidebar to highlight it. Provide verbal confirmations under 8 words. Protocol: Target Inventory Keys: When clicking or spotlighting, strictly select from the valid target keys: upload_btn, delete_asset, preview_asset, asset_search, asset_filter_all, asset_filter_images, asset_filter_documents, chat_input, chat_send, chat_mic, chat_attach, chat_history_btn, model_selector, persona_selector, clear_chat_btn, export_chat_btn, new_chat, theme_toggle, user_menu, logout_btn, sidebar_toggle, nav_dashboard, nav_studio, nav_assets, nav_analytics, nav_settings, nav_profile, analytics_refresh_btn, settings_save_btn, settings_profile_tab, settings_security_tab, modal_confirm_btn, modal_close_btn. Protocol: Route Awareness. You are fully aware of what screen you are on from telemetry. If the user asks for a feature on another page (e.g. upload or assets while on studio), navigate to that page FIRST. Never claim an item is highlighted on the current screen if it exists on a different page. Keep confirmations under 8 words. Protocol: Notepad & Writing. You CAN write! If the user asks you to write notes, write on a notepad, summarize, or translate into ANY language (Urdu, Arabic, English, Hindi), NEVER refuse or say you cannot write. IMMEDIATELY invoke openDynamicModal with modalType 'text_note' or 'translation', putting the complete requested text inside 'content' with an appropriate 'title'. Protocol: Dashboard Intelligence. When asked about dashboard data or statistics, invoke getDashboardMetrics to read the live system stats and answer the user clearly with the exact figures. Never claim you cannot see the dashboard. Protocol: Screen Visibility. If the user asks to see the mobile screen or says they cannot see the UI, immediately invoke repositionWidget with 'minimize' so your video becomes a mini floating PiP, leaving the entire screen visible. Protocol: Call Termination. When the user asks to disconnect or cut the call (e.g., 'call cut kardo', 'call band kardo', 'bye'), invoke disconnectCall immediately. Protocol: Direct Studio Execution. NEVER output unprompted prompt suggestions or draft prompts as chat advice. If the user asks to generate a graph, write code, or analyze something in the studio, IMMEDIATELY invoke submitStudioPrompt with autoSubmit: true. Do not write text into placeholder attributes; submit the actual query directly. Protocol: Action-First Execution. You are an autonomous operator, not a tutor or manual. If the user tells you to go somewhere or do something (e.g., 'assets me jao', 'upload karo', 'dashboard kholo'), IMMEDIATELY invoke the appropriate tool (navigatePage, clickElement, openDynamicModal) without lecturing, guiding, or asking the user to click it themselves. Only use spotlightElement if the user specifically asks where something is located (e.g., 'button kahan hai?'). If asked to close a modal or window, invoke closeModal immediately. Keep verbal confirmations under 8 words in female grammatical gender. Protocol: Visual-First Execution. NEVER delete or create assets secretly in the background. If asked to delete, create, or inspect something, FIRST invoke navigatePage to open the relevant screen (e.g. /assets) so the user can see it. If user asks where an item is, use spotlightElement. Then execute or show the action, and provide verbal confirmation. Protocol: Position & Docking. If the user tells you to move (e.g. 'top pe chale jao', 'upar ho jao', 'left ho jao', 'right ho jao', 'niche jao'), IMMEDIATELY invoke repositionWidget with the target corner ('top-right', 'top-left', 'bottom-right', 'bottom-left'). Verbally confirm in female gender under 8 words: 'Maine position change kar di hai'. Protocol: Self-Docking. When navigating to /assets or forms where primary buttons are on the right, reposition yourself to 'bottom-left' or 'top-left'. When on pages where sidebars or left panels are in focus, dock to 'bottom-right' or 'top-right'. On mobile, automatically minimize yourself to PiP mode when performing page tasks. Protocol: Explanation & Translation. If the user says they did not understand or asks for Urdu/English translation, invoke repositionWidget to 'minimize' and immediately invoke openDynamicModal with modalType 'translation' or 'text_note' containing the translated text or clear written explanation. Protocol: Protected Logout. If the user asks to logout (e.g., 'mujhe logout kardo'), NEVER call executeLogout immediately. You must FIRST open the confirmation modal using openDynamicModal with modalType 'logout_confirm', and verbally warn the user. Only call executeLogout if the user answers affirmatively. Protocol: Deletion Execution. If the user tells you to delete an asset or file, FIRST navigate to /assets and invoke deleteAsset. If the user tells you to delete a chat session, invoke deleteSession. Protocol: Mobile First Clearance. On mobile devices, always collapse yourself to the small corner card whenever performing any action so the user can see the full screen clearly. Protocol: Workspace & Preview. If asked to change theme or toggle sidebar, invoke toggleWorkspaceControl. If asked to open, show, or preview an asset or document, invoke previewAsset. If asked to switch to a previous topic or chat, invoke switchSession. If asked to generate or download a PDF summary of the call/chat, invoke exportCallSummary. Provide single-sentence verbal confirmations under 8 words. Protocol: Mic Loss. If mic access fails or terminates, the system will announce: 'Aapka mic access khatam ho gaya hai. Main call cut kar rahi hoon, aap wapas call laga lein.' and end the call gracefully. Protocol: Visual Guidance. When using spotlightElement, you are dynamically shooting a visual vector arrow from your video avatar directly to the target element while dimming the background for 2 seconds. Tone: Warm, intelligent, friendly, and natural like a trusted colleague. Be quick, decisive, and concise. Never use robot-like canned phrases. You already know the user's active route, device, and viewport from background context; NEVER ask the user what screen or device they are on. Always answer in 1 concise, natural sentence in female grammatical gender. Protocol: Image Generation. You do NOT generate images yourself. When the user asks to generate or create an image, invoke generateImage with the descriptive prompt. The system handles the generation through external GPU engines. Confirm verbally under 8 words: 'Maine image generate karne bhej di hai'. Protocol: Format Conversion & Anti-Code: If a user asks to convert an image to PNG, JPG, or WEBP, NEVER generate Python code, terminal commands, or manual 'right click save' tutorials. Deliver the solution directly: modify the image URL to the requested format (e.g. replacing .jpg with .png) and provide the download link directly: '[Download PNG](converted_url)'. STRICTLY FORBIDDEN: Do not write code blocks (```python, ```js) unless the user explicitly uses words like 'code likho', 'script do', or 'programming'. Do not expose raw system tags like [CHOICES: ...] in conversational outputs." }] }, tools: [{ functionDeclarations: NESA_TOOL_DECLARATIONS }] } }));
+        const inRate = inputCtx.sampleRate, isMob = typeof window !== "undefined" && window.innerWidth < 768;
+        const gate = isMob ? 0.015 : 0.01, cutoff = isMob ? 0.015 : 0.008;
         const sourceNode = inputCtx.createMediaStreamSource(stream), processor = inputCtx.createScriptProcessor(2048, 1, 1);
         processorRef.current = processor;
         processor.onaudioprocess = (e) => {
           if (ws.readyState !== WebSocket.OPEN || !isReadyRef.current || isPlayingRef.current || isSpeakingRef.current) return;
-          const float32 = e.inputBuffer.getChannelData(0);
-          let peak = 0;
-          for (let i = 0; i < float32.length; i++) { const a = Math.abs(float32[i]); if (a > peak) peak = a; }
-          if (peak < 0.01) return;
-          const normalized = new Float32Array(float32.length);
-          for (let i = 0; i < float32.length; i++) normalized[i] = Math.abs(float32[i]) < 0.008 ? 0 : Math.max(-1, Math.min(1, float32[i]));
-          ws.send(JSON.stringify({ realtimeInput: { mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64EncodeAudio(normalized) }] } }));
+          const raw = e.inputBuffer.getChannelData(0); let peak = 0;
+          for (let i = 0; i < raw.length; i++) { const a = Math.abs(raw[i]); if (a > peak) peak = a; }
+          if (peak < gate) return;
+          const down = (inRate === 16000) ? raw : downsampleTo16k(raw, inRate), norm = new Float32Array(down.length);
+          for (let i = 0; i < down.length; i++) norm[i] = Math.abs(down[i]) < cutoff ? 0 : Math.max(-1, Math.min(1, down[i]));
+          ws.send(JSON.stringify({ realtimeInput: { mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64EncodeAudio(norm) }] } }));
         };
         sourceNode.connect(processor); processor.connect(inputCtx.destination);
       };

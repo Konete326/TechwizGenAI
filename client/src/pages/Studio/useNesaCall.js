@@ -123,6 +123,22 @@ export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
   }, [disconnect]);
 
   useEffect(() => {
+    let wakeLock = null;
+    const acquireLock = async () => {
+      if (isCallActive && typeof navigator !== "undefined" && "wakeLock" in navigator) {
+        try { wakeLock = await navigator.wakeLock.request("screen"); } catch {}
+      }
+    };
+    acquireLock();
+    const handleVisChange = () => { if (document.visibilityState === "visible") acquireLock(); };
+    document.addEventListener("visibilitychange", handleVisChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisChange);
+      if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+    };
+  }, [isCallActive]);
+
+  useEffect(() => {
     const handleContextEvent = (e) => {
       const text = e?.detail?.text || e?.detail;
       if (text && sendContextTurn) sendContextTurn(text);
