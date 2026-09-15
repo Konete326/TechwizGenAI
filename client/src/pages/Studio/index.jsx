@@ -6,6 +6,7 @@ import { streamCompletion, getFriendlyErrorMessage } from "@/utils/aiStream";
 import { ChatSidebar } from "./ChatSidebar"; import { ChatCanvas } from "./ChatCanvas"; import { ChatInput } from "./ChatInput";
 import { ModelSelector } from "./ModelSelector"; import { PersonaSelector } from "./PersonaSelector"; import { ArtifactPanel } from "./ArtifactPanel";
 import { useChatSessions } from "./useChatSessions"; import { formatToolResponse } from "./nesaTools";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 export function Studio() {
   const toast = useToast(), navigate = useNavigate(), location = useLocation();
@@ -13,7 +14,7 @@ export function Studio() {
   const [inputPrompt, setInputPrompt] = useState(""), [selectedModel, setSelectedModel] = useState(() => localStorage.getItem("selected_ai_model") || "gemini-3.8-flash");
   const [activePersona, setActivePersona] = useState("general"), [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState(""), [attachedImages, setAttachedImages] = useState([]);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false), [activeArtifact, setActiveArtifact] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false), [activeArtifact, setActiveArtifact] = useState(null), [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const abortControllerRef = useRef(null), queuedPromptRef = useRef(null);
 
   const { sessions, setSessions, activeSessionId, setActiveSessionId, messages, setMessages, isLoading, fetchSessions, createSession, deleteSession, renameSession, updateSessionPersona } = useChatSessions({ isStreaming });
@@ -137,7 +138,7 @@ export function Studio() {
             <span className={`font-semibold text-xs text-text-primary truncate ${!isSidebarOpen ? "border-l border-border pl-2.5" : ""}`}>{activeSession?.title || "New Chat"}</span>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <button type="button" data-nesa-target="clear_chat_btn" onClick={() => activeSessionId && handleDeleteSession(activeSessionId)} disabled={!activeSessionId || messages.length === 0} className="p-1.5 rounded-lg border border-border bg-surface hover:bg-surface-elevated text-text-muted hover:text-rose-400 text-xs transition-colors cursor-pointer disabled:opacity-40 shrink-0 flex items-center gap-1" title="Clear Conversation" aria-label="Clear Conversation"><Trash size={14} /><span className="hidden xl:inline">Clear</span></button>
+            <button type="button" data-nesa-target="clear_chat_btn" onClick={() => setIsClearModalOpen(true)} disabled={!activeSessionId || messages.length === 0} className="p-1.5 rounded-lg border border-border bg-surface hover:bg-surface-elevated text-text-muted hover:text-rose-400 text-xs transition-colors cursor-pointer disabled:opacity-40 shrink-0 flex items-center gap-1" title="Clear Conversation" aria-label="Clear Conversation"><Trash size={14} /><span className="hidden xl:inline">Clear</span></button>
             <button type="button" data-nesa-target="export_chat_btn" onClick={handleExportChat} disabled={messages.length === 0} className="p-1.5 rounded-lg border border-border bg-surface hover:bg-surface-elevated text-text-muted hover:text-text-primary text-xs transition-colors cursor-pointer disabled:opacity-40 shrink-0 flex items-center gap-1" title="Export Conversation" aria-label="Export Conversation"><DownloadSimple size={14} /><span className="hidden xl:inline">Export</span></button>
             <button
               type="button" onClick={startCall} disabled={isStreaming || isCallActive} title="Call Nesa" aria-label="Call Nesa"
@@ -167,6 +168,18 @@ export function Studio() {
           {activeArtifact && <ArtifactPanel artifact={activeArtifact} onClose={() => setActiveArtifact(null)} />}
         </div>
       </main>
+      <ConfirmModal
+        isOpen={isClearModalOpen}
+        onClose={() => setIsClearModalOpen(false)}
+        onConfirm={() => {
+          setIsClearModalOpen(false);
+          if (activeSessionId) handleDeleteSession(activeSessionId);
+        }}
+        title="Clear Conversation"
+        description="Are you sure you want to clear this conversation? All messages in this session will be permanently deleted."
+        confirmText="Clear"
+        isDestructive={true}
+      />
     </div>
   );
 }
