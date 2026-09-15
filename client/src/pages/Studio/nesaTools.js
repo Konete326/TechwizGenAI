@@ -5,7 +5,7 @@ export const NESA_TARGET_KEYS = [
   "clear_chat_btn", "export_chat_btn", "upload_btn", "delete_asset", "preview_asset",
   "asset_search", "asset_filter_all", "asset_filter_images", "asset_filter_documents",
   "analytics_refresh_btn", "settings_save_btn", "settings_profile_tab", "settings_security_tab",
-  "modal_confirm_btn", "modal_close_btn"
+  "modal_confirm_btn", "modal_close_btn", "field_name", "field_bio", "field_email", "field_title", "field_role"
 ];
 
 export const NESA_TOOL_DECLARATIONS = [
@@ -30,6 +30,18 @@ export const NESA_TOOL_DECLARATIONS = [
       type: "OBJECT",
       properties: { targetKey: { type: "STRING", enum: NESA_TARGET_KEYS, description: "Exact target identifier of the button or control to click." } },
       required: ["targetKey"]
+    }
+  },
+  {
+    name: "fillFormField",
+    description: "Fills or updates a text input, textarea, or form field on the current screen with a specified value.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        targetKey: { type: "STRING", description: "Target field identifier (e.g. field_name, field_bio, field_email, field_title)" },
+        value: { type: "STRING", description: "The text value to enter into the field" }
+      },
+      required: ["targetKey", "value"]
     }
   },
   {

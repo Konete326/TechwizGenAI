@@ -1,7 +1,15 @@
+import { useState } from "react";
 import { User, Calendar, Clock, SignOut } from "@phosphor-icons/react";
 import { Loader } from "@/components/ui/Loader";
 
-export function ProfileForm({ name, setName, email, createdAt, isSaving, onSubmit, onLogout }) {
+export function ProfileForm({ name, setName, email, createdAt, isSaving, onSubmit, onLogout, bio: propBio, setBio: propSetBio, title: propTitle, setTitle: propSetTitle }) {
+  const [localBio, setLocalBio] = useState("");
+  const [localTitle, setLocalTitle] = useState("");
+  const bio = propBio !== undefined ? propBio : localBio;
+  const setBio = propSetBio || setLocalBio;
+  const title = propTitle !== undefined ? propTitle : localTitle;
+  const setTitle = propSetTitle || setLocalTitle;
+
   return (
     <div className="md:col-span-2 relative p-6 rounded-[var(--radius-md)] bg-surface-card border border-border space-y-4">
       <div className="flex items-center gap-2 pb-2 border-b border-border">
@@ -14,6 +22,7 @@ export function ProfileForm({ name, setName, email, createdAt, isSaving, onSubmi
           <label className="text-text-muted text-[11px] block mb-1 font-medium">Display Name</label>
           <input
             type="text"
+            data-nesa-target="field_name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full h-8 px-3 rounded-[var(--radius-sm)] bg-surface border border-border text-text-primary focus:outline-none focus:border-accent font-medium text-xs"
@@ -23,9 +32,34 @@ export function ProfileForm({ name, setName, email, createdAt, isSaving, onSubmi
         </div>
 
         <div>
+          <label className="text-text-muted text-[11px] block mb-1 font-medium">Job Title / Role</label>
+          <input
+            type="text"
+            data-nesa-target="field_title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full h-8 px-3 rounded-[var(--radius-sm)] bg-surface border border-border text-text-primary focus:outline-none focus:border-accent font-medium text-xs"
+            placeholder="e.g. Senior Engineer"
+          />
+        </div>
+
+        <div>
+          <label className="text-text-muted text-[11px] block mb-1 font-medium">Bio</label>
+          <textarea
+            data-nesa-target="field_bio"
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            rows={3}
+            className="w-full p-2.5 rounded-[var(--radius-sm)] bg-surface border border-border text-text-primary focus:outline-none focus:border-accent font-medium text-xs resize-none"
+            placeholder="Tell us about yourself"
+          />
+        </div>
+
+        <div>
           <label className="text-text-muted text-[11px] block mb-1 font-medium">Email Address</label>
           <input
             type="email"
+            data-nesa-target="field_email"
             value={email}
             readOnly
             className="w-full h-8 px-3 rounded-[var(--radius-sm)] bg-surface/50 border border-border text-text-muted font-mono text-xs cursor-not-allowed"

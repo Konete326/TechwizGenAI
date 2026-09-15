@@ -10,6 +10,8 @@ export function ProfileSettings() {
     try { return JSON.parse(localStorage.getItem("user") || "{}"); } catch { return {}; }
   });
   const [name, setName] = useState(user?.name || "");
+  const [title, setTitle] = useState(user?.title || user?.role || "");
+  const [bio, setBio] = useState(user?.bio || "");
   const [profileImage, setProfileImage] = useState(user?.profileImage || "");
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -21,7 +23,7 @@ export function ProfileSettings() {
       .then((r) => r.json())
       .then((d) => {
         if (d.success && d.user) {
-          setUser(d.user); setName(d.user.name || ""); setProfileImage(d.user.profileImage || "");
+          setUser(d.user); setName(d.user.name || ""); setTitle(d.user.title || d.user.role || ""); setBio(d.user.bio || ""); setProfileImage(d.user.profileImage || "");
           localStorage.setItem("user", JSON.stringify(d.user));
         }
       }).catch(() => {});
@@ -62,11 +64,11 @@ export function ProfileSettings() {
       const res = await fetch(`${VITE_API_URL}/auth/profile`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: name.trim(), profileImage })
+        body: JSON.stringify({ name: name.trim(), profileImage, title, bio })
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        const updated = { ...user, name: name.trim(), profileImage };
+        const updated = { ...user, name: name.trim(), profileImage, title, bio };
         setUser(updated);
         localStorage.setItem("user", JSON.stringify(updated));
         window.dispatchEvent(new CustomEvent("profile_updated", { detail: updated }));
@@ -119,12 +121,22 @@ export function ProfileSettings() {
 
         <div className="space-y-1.5 max-w-md">
           <label className="text-xs font-medium text-text-primary">Full Name</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" maxLength={50} className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-xs text-text-primary focus:outline-hidden focus:border-accent" />
+          <input type="text" data-nesa-target="field_name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" maxLength={50} className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-xs text-text-primary focus:outline-hidden focus:border-accent" />
+        </div>
+
+        <div className="space-y-1.5 max-w-md">
+          <label className="text-xs font-medium text-text-primary">Job Title / Role</label>
+          <input type="text" data-nesa-target="field_title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Senior Engineer" maxLength={50} className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-xs text-text-primary focus:outline-hidden focus:border-accent" />
+        </div>
+
+        <div className="space-y-1.5 max-w-md">
+          <label className="text-xs font-medium text-text-primary">Bio</label>
+          <textarea data-nesa-target="field_bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell us about yourself" rows={3} className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-xs text-text-primary focus:outline-hidden focus:border-accent resize-none" />
         </div>
 
         <div className="space-y-1.5 max-w-md">
           <label className="text-xs font-medium text-text-muted">Account Email (Immutable)</label>
-          <input type="email" value={user?.email || ""} disabled className="w-full px-3 py-2 rounded-lg bg-surface/50 border border-border/60 text-xs text-text-muted cursor-not-allowed" />
+          <input type="email" data-nesa-target="field_email" value={user?.email || ""} disabled className="w-full px-3 py-2 rounded-lg bg-surface/50 border border-border/60 text-xs text-text-muted cursor-not-allowed" />
         </div>
 
         <button type="submit" data-nesa-target="settings_save_btn" disabled={isSaving || isUploading} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-50">
