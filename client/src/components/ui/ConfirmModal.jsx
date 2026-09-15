@@ -51,6 +51,7 @@ export function ConfirmModal({
           </div>
           <button
             type="button"
+            data-nesa-target="modal_close_btn"
             onClick={onClose}
             disabled={isLoading}
             className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
@@ -67,6 +68,7 @@ export function ConfirmModal({
         <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
           <button
             type="button"
+            data-nesa-target="modal_close_btn"
             onClick={onClose}
             disabled={isLoading}
             className="px-3.5 py-1.5 rounded-[var(--radius-sm)] border border-border hover:bg-surface text-xs font-medium text-text-primary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
@@ -75,6 +77,7 @@ export function ConfirmModal({
           </button>
           <button
             type="button"
+            data-nesa-target="modal_confirm_btn"
             onClick={onConfirm}
             disabled={isLoading}
             className={`flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold shadow-sm transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${

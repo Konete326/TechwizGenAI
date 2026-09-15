@@ -51,7 +51,14 @@ export function Assets() {
   const filteredAssets = useMemo(() => {
     let result = assets;
     if (selectedFormat !== "ALL") {
-      result = result.filter((a) => a.format?.toLowerCase() === selectedFormat.toLowerCase());
+      const imgExts = ["png", "jpg", "jpeg", "webp", "gif", "svg"];
+      if (selectedFormat === "IMAGES") {
+        result = result.filter((a) => imgExts.includes((a.format || "").toLowerCase()) || a.resourceType === "image");
+      } else if (selectedFormat === "DOCUMENTS") {
+        result = result.filter((a) => !imgExts.includes((a.format || "").toLowerCase()) && a.resourceType !== "image");
+      } else {
+        result = result.filter((a) => a.format?.toLowerCase() === selectedFormat.toLowerCase());
+      }
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();

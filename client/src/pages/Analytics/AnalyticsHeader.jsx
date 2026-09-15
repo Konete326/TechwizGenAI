@@ -52,6 +52,7 @@ export function AnalyticsHeader({
 
         <button
           type="button"
+          data-nesa-target="analytics_refresh_btn"
           onClick={onRefresh}
           disabled={loading}
           className="flex items-center gap-1.5 h-9 px-3 py-1.5 rounded-[var(--radius-sm)] bg-surface hover:bg-surface-elevated text-xs font-medium text-text-muted hover:text-text-primary border border-border transition-colors cursor-pointer disabled:opacity-50"

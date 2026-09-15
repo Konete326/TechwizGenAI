@@ -33,9 +33,12 @@ export function UserNavDropdown() {
     };
     window.addEventListener("profile_updated", handleProfileUpdate);
     window.addEventListener("storage", handleProfileUpdate);
+    const handleOpen = () => setIsOpen(true);
+    window.addEventListener("app:user_menu:open", handleOpen);
     return () => {
       window.removeEventListener("profile_updated", handleProfileUpdate);
       window.removeEventListener("storage", handleProfileUpdate);
+      window.removeEventListener("app:user_menu:open", handleOpen);
     };
   }, []);
 

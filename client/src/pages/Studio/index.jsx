@@ -1,17 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ClockCounterClockwise, PhoneCall } from "@phosphor-icons/react";
-import { useToast } from "@/context/ToastContext";
-import { useNesaCallContext } from "@/context/NesaCallContext";
+import { ClockCounterClockwise, PhoneCall, Trash, DownloadSimple } from "@phosphor-icons/react";
+import { useToast } from "@/context/ToastContext"; import { useNesaCallContext } from "@/context/NesaCallContext";
 import { streamCompletion, getFriendlyErrorMessage } from "@/utils/aiStream";
-import { ChatSidebar } from "./ChatSidebar";
-import { ChatCanvas } from "./ChatCanvas";
-import { ChatInput } from "./ChatInput";
-import { ModelSelector } from "./ModelSelector";
-import { PersonaSelector } from "./PersonaSelector";
-import { ArtifactPanel } from "./ArtifactPanel";
-import { useChatSessions } from "./useChatSessions";
-import { formatToolResponse } from "./nesaTools";
+import { ChatSidebar } from "./ChatSidebar"; import { ChatCanvas } from "./ChatCanvas"; import { ChatInput } from "./ChatInput";
+import { ModelSelector } from "./ModelSelector"; import { PersonaSelector } from "./PersonaSelector"; import { ArtifactPanel } from "./ArtifactPanel";
+import { useChatSessions } from "./useChatSessions"; import { formatToolResponse } from "./nesaTools";
 
 export function Studio() {
   const toast = useToast(), navigate = useNavigate(), location = useLocation();
@@ -87,6 +81,7 @@ export function Studio() {
 
   const handleRegenerate = async () => { if (!isStreaming && activeSessionId) { setMessages((p) => (p[p.length - 1]?.role === "model" ? p.slice(0, -1) : p)); await runStream(activeSessionId, "", null, true); } };
   const handleDeleteSession = (sid) => { const tid = sid || activeSessionId; if (tid) deleteSession(tid); };
+  const handleExportChat = () => { if (messages.length === 0) return; const txt = messages.map((m) => `${m.role.toUpperCase()}: ${m.text || ""}`).join("\n\n"), blob = new Blob([txt], { type: "text/plain" }), url = URL.createObjectURL(blob), a = document.createElement("a"); a.href = url; a.download = `${activeSession?.title || "chat"}.txt`; a.click(); URL.revokeObjectURL(url); toast.success("Chat exported successfully"); };
   const handleEditMessage = (id, text, att) => { setInputPrompt(text || ""); if (att) setAttachedImages(Array.isArray(att) ? att : [att]); setMessages((p) => { const idx = p.findIndex((m) => m.id === id); return idx === -1 ? p : p.slice(0, idx); }); };
 
   useEffect(() => {
@@ -142,6 +137,8 @@ export function Studio() {
             <span className={`font-semibold text-xs text-text-primary truncate ${!isSidebarOpen ? "border-l border-border pl-2.5" : ""}`}>{activeSession?.title || "New Chat"}</span>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <button type="button" data-nesa-target="clear_chat_btn" onClick={() => activeSessionId && handleDeleteSession(activeSessionId)} disabled={!activeSessionId || messages.length === 0} className="p-1.5 rounded-lg border border-border bg-surface hover:bg-surface-elevated text-text-muted hover:text-rose-400 text-xs transition-colors cursor-pointer disabled:opacity-40 shrink-0 flex items-center gap-1" title="Clear Conversation" aria-label="Clear Conversation"><Trash size={14} /><span className="hidden xl:inline">Clear</span></button>
+            <button type="button" data-nesa-target="export_chat_btn" onClick={handleExportChat} disabled={messages.length === 0} className="p-1.5 rounded-lg border border-border bg-surface hover:bg-surface-elevated text-text-muted hover:text-text-primary text-xs transition-colors cursor-pointer disabled:opacity-40 shrink-0 flex items-center gap-1" title="Export Conversation" aria-label="Export Conversation"><DownloadSimple size={14} /><span className="hidden xl:inline">Export</span></button>
             <button
               type="button" onClick={startCall} disabled={isStreaming || isCallActive} title="Call Nesa" aria-label="Call Nesa"
               className="flex items-center justify-center h-8 w-8 sm:w-auto sm:h-auto gap-1.5 px-2 py-1.5 sm:px-2.5 rounded-lg border border-accent/40 bg-accent/10 hover:bg-accent/20 text-accent text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 shrink-0"

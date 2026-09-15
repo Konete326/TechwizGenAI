@@ -94,7 +94,7 @@ export function DynamicModalHost() {
             </div>
             <div><h3 className="text-sm font-semibold text-text-primary">{title}</h3><p className="text-[11px] text-text-muted">Nesa Dynamic Runtime Modal</p></div>
           </div>
-          <button type="button" onClick={close} className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer" title="Close" aria-label="Close modal"><X size={16} /></button>
+          <button type="button" data-nesa-target="modal_close_btn" onClick={close} className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer" title="Close" aria-label="Close modal"><X size={16} /></button>
         </div>
 
         <div className="p-5 space-y-4">
@@ -103,8 +103,8 @@ export function DynamicModalHost() {
             <div className="space-y-4">
               <p className="text-xs text-text-muted leading-relaxed">{content || "Logging out will immediately disconnect Nesa and end your active voice session."}</p>
               <div className="flex items-center justify-end gap-2 pt-1">
-                <button type="button" onClick={close} className="px-3.5 py-1.5 rounded-lg border border-border text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer">Cancel</button>
-                <button type="button" onClick={() => { window.dispatchEvent(new CustomEvent("auth:logout")); close(); }} className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer">Yes, Log Out</button>
+                <button type="button" data-nesa-target="modal_close_btn" onClick={close} className="px-3.5 py-1.5 rounded-lg border border-border text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer">Cancel</button>
+                <button type="button" data-nesa-target="modal_confirm_btn" onClick={() => { window.dispatchEvent(new CustomEvent("auth:logout")); close(); }} className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer">Yes, Log Out</button>
               </div>
             </div>
           ) : (activeType === "text_note" || activeType === "translation") ? (
@@ -112,7 +112,7 @@ export function DynamicModalHost() {
               <div className="p-3.5 rounded-xl bg-surface/50 border border-border text-xs text-text-primary leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto">{content || "No details provided."}</div>
               <div className="flex items-center justify-end gap-2 pt-1">
                 <button type="button" onClick={handleCopyText} className="px-3.5 py-1.5 rounded-lg border border-border text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer">{copied ? "Copied!" : "Copy Text"}</button>
-                <button type="button" onClick={close} className="px-4 py-1.5 rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer">Understood</button>
+                <button type="button" data-nesa-target="modal_confirm_btn" onClick={close} className="px-4 py-1.5 rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer">Understood</button>
               </div>
             </div>
           ) : activeType === "input_prompt" ? (
@@ -120,8 +120,8 @@ export function DynamicModalHost() {
               {content && <p className="text-xs text-text-muted leading-relaxed">{content}</p>}
               <input type="text" value={inputVal} onChange={(e) => setInputVal(e.target.value)} placeholder={inputPlaceholder} autoFocus className="w-full px-3 py-2 rounded-lg bg-surface border border-border focus:border-accent outline-none text-xs text-text-primary" />
               <div className="flex items-center justify-end gap-2 pt-1">
-                <button type="button" onClick={close} className="px-3.5 py-1.5 rounded-lg border border-border text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer">Cancel</button>
-                <button type="submit" disabled={!inputVal.trim()} className="px-4 py-1.5 rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer disabled:opacity-50">Submit</button>
+                <button type="button" data-nesa-target="modal_close_btn" onClick={close} className="px-3.5 py-1.5 rounded-lg border border-border text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer">Cancel</button>
+                <button type="submit" data-nesa-target="modal_confirm_btn" disabled={!inputVal.trim()} className="px-4 py-1.5 rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer disabled:opacity-50">Submit</button>
               </div>
             </form>
           ) : isSuccess ? (
@@ -142,8 +142,8 @@ export function DynamicModalHost() {
                 </div>
               )}
               <div className="flex items-center justify-end gap-2 pt-2">
-                <button type="button" onClick={close} disabled={isSubmitting} className="px-3.5 py-1.5 rounded-lg border border-border text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer">Cancel</button>
-                <button type="button" onClick={handleUpload} disabled={!file || isSubmitting} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer disabled:opacity-50">
+                <button type="button" data-nesa-target="modal_close_btn" onClick={close} disabled={isSubmitting} className="px-3.5 py-1.5 rounded-lg border border-border text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer">Cancel</button>
+                <button type="button" data-nesa-target="modal_confirm_btn" onClick={handleUpload} disabled={!file || isSubmitting} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer disabled:opacity-50">
                   {isSubmitting && <Loader size={12} className="text-white" />}<span>{isSubmitting ? "Uploading..." : "Upload Now"}</span>
                 </button>
               </div>

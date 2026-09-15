@@ -1,3 +1,13 @@
+export const NESA_TARGET_KEYS = [
+  "nav_dashboard", "nav_studio", "nav_assets", "nav_analytics", "nav_settings", "nav_profile",
+  "sidebar_toggle", "theme_toggle", "user_menu", "logout_btn", "new_chat", "chat_input",
+  "chat_send", "chat_mic", "chat_attach", "chat_history_btn", "model_selector", "persona_selector",
+  "clear_chat_btn", "export_chat_btn", "upload_btn", "delete_asset", "preview_asset",
+  "asset_search", "asset_filter_all", "asset_filter_images", "asset_filter_documents",
+  "analytics_refresh_btn", "settings_save_btn", "settings_profile_tab", "settings_security_tab",
+  "modal_confirm_btn", "modal_close_btn"
+];
+
 export const NESA_TOOL_DECLARATIONS = [
   {
     name: "navigatePage",
@@ -9,31 +19,23 @@ export const NESA_TOOL_DECLARATIONS = [
     description: "Highlight or spotlight an on-screen UI element with guidance text.",
     parameters: {
       type: "OBJECT",
-      properties: {
-        targetKey: {
-          type: "STRING",
-          enum: [
-            "upload_btn", "delete_asset", "asset_search", "asset_filter",
-            "chat_input", "chat_send", "chat_mic", "chat_history_btn",
-            "model_selector", "persona_selector", "new_chat", "theme_toggle",
-            "user_menu", "logout_btn", "sidebar_toggle", "nav_dashboard",
-            "nav_studio", "nav_assets", "nav_analytics", "nav_settings", "nav_profile"
-          ],
-          description: "Exact target key to highlight with visual laser beam and ring."
-        },
-        label: { type: "STRING", description: "Short guidance text" }
-      },
+      properties: { targetKey: { type: "STRING", enum: NESA_TARGET_KEYS, description: "Exact target key to highlight." }, label: { type: "STRING", description: "Short guidance text" } },
+      required: ["targetKey"]
+    }
+  },
+  {
+    name: "clickElement",
+    description: "Clicks, activates, or triggers any button, tab, link, or interactive control on the current screen.",
+    parameters: {
+      type: "OBJECT",
+      properties: { targetKey: { type: "STRING", enum: NESA_TARGET_KEYS, description: "Exact target identifier of the button or control to click." } },
       required: ["targetKey"]
     }
   },
   {
     name: "controlSidebar",
     description: "Controls the application sidebar state. Open, close, or toggle the sidebar drawer on mobile and desktop.",
-    parameters: {
-      type: "OBJECT",
-      properties: { action: { type: "STRING", enum: ["open", "close", "toggle"], description: "open, close, or toggle" } },
-      required: ["action"]
-    }
+    parameters: { type: "OBJECT", properties: { action: { type: "STRING", enum: ["open", "close", "toggle"], description: "open, close, or toggle" } }, required: ["action"] }
   },
   {
     name: "repositionWidget",
@@ -48,7 +50,7 @@ export const NESA_TOOL_DECLARATIONS = [
       properties: {
         modalType: { type: "STRING", description: "upload_asset, text_note, translation, input_prompt, logout_confirm" },
         title: { type: "STRING", description: "Modal title" },
-        content: { type: "STRING", description: "Rich text explanation, Urdu translation, or prompt details" },
+        content: { type: "STRING", description: "Rich text explanation, translation, or prompt details" },
         inputPlaceholder: { type: "STRING", description: "Placeholder text for input field" }
       },
       required: ["modalType"]
@@ -71,7 +73,7 @@ export const NESA_TOOL_DECLARATIONS = [
   },
   {
     name: "disconnectCall",
-    description: "Terminates the active voice call session immediately when the user requests to end or cut the call (e.g. 'call cut kar do', 'bye', 'disconnect').",
+    description: "Terminates the active voice call session immediately when the user requests to end or cut the call.",
     parameters: { type: "OBJECT", properties: {} }
   },
   {
@@ -117,17 +119,7 @@ export const NESA_TOOL_DECLARATIONS = [
 ];
 
 export function formatToolResponse(id, name, result) {
-  return {
-    toolResponse: {
-      functionResponses: [
-        {
-          response: { output: result },
-          id,
-          name
-        }
-      ]
-    }
-  };
+  return { toolResponse: { functionResponses: [{ response: { output: result }, id, name }] } };
 }
 
-export default { NESA_TOOL_DECLARATIONS, formatToolResponse };
+export default { NESA_TARGET_KEYS, NESA_TOOL_DECLARATIONS, formatToolResponse };

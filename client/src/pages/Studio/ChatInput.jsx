@@ -98,6 +98,7 @@ export function ChatInput({
 
           <button
             type="button"
+            data-nesa-target="chat_attach"
             onClick={() => handleAttachmentClick(fileInputRef)}
             className={`p-2 rounded transition-colors cursor-pointer shrink-0 ${
               hasAttachment ? "text-accent bg-accent/15" : "text-text-muted hover:text-text-primary hover:bg-surface-elevated"

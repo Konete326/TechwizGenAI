@@ -50,6 +50,7 @@ export function AssetCard({ asset, onPreview, onDelete, isAdmin }) {
       <CornerBracket />
 
       <div
+        data-nesa-target="preview_asset"
         onClick={() => onPreview(asset)}
         className="relative h-40 bg-surface/50 overflow-hidden cursor-pointer flex items-center justify-center group/img"
       >

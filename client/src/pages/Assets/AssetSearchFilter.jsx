@@ -7,7 +7,14 @@ export function AssetSearchFilter({
   setSelectedFormat,
   totalResults
 }) {
-  const formats = ["ALL", "PNG", "JPG", "WEBP"];
+  const filterTabs = [
+    { id: "ALL", label: "ALL", target: "asset_filter_all" },
+    { id: "IMAGES", label: "Images", target: "asset_filter_images" },
+    { id: "DOCUMENTS", label: "Docs", target: "asset_filter_documents" },
+    { id: "PNG", label: "PNG" },
+    { id: "JPG", label: "JPG" },
+    { id: "WEBP", label: "WEBP" }
+  ];
 
   return (
     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-[var(--radius-md)] bg-surface-card border border-border">
@@ -34,18 +41,19 @@ export function AssetSearchFilter({
       </div>
 
       <div data-nesa-target="asset_filter" className="flex items-center gap-1.5 overflow-x-auto">
-        {formats.map((fmt) => (
+        {filterTabs.map((item) => (
           <button
-            key={fmt}
+            key={item.id}
             type="button"
-            onClick={() => setSelectedFormat(fmt)}
+            data-nesa-target={item.target}
+            onClick={() => setSelectedFormat(item.id)}
             className={`px-2.5 py-1.5 rounded-[var(--radius-sm)] text-[11px] font-mono font-medium transition-colors ${
-              selectedFormat === fmt
+              selectedFormat === item.id
                 ? "bg-accent text-white font-semibold"
                 : "bg-surface text-text-muted hover:text-text-primary border border-border"
             }`}
           >
-            {fmt}
+            {item.label}
           </button>
         ))}
         <span className="text-[11px] font-mono text-text-muted pl-2 whitespace-nowrap">

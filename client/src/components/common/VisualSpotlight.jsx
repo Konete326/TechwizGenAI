@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
 const ROUTE_MAP = {
-  upload_btn: "/assets", delete_asset: "/assets", asset_search: "/assets", asset_filter: "/assets",
-  new_chat: "/studio", chat_history_btn: "/studio", model_selector: "/studio",
-  persona_selector: "/studio", chat_input: "/studio", chat_send: "/studio", chat_mic: "/studio"
+  upload_btn: "/assets", delete_asset: "/assets", preview_asset: "/assets", asset_search: "/assets",
+  asset_filter_all: "/assets", asset_filter_images: "/assets", asset_filter_documents: "/assets", asset_filter: "/assets",
+  new_chat: "/studio", chat_history_btn: "/studio", model_selector: "/studio", persona_selector: "/studio",
+  chat_input: "/studio", chat_send: "/studio", chat_mic: "/studio", chat_attach: "/studio",
+  clear_chat_btn: "/studio", export_chat_btn: "/studio", analytics_refresh_btn: "/analytics",
+  settings_save_btn: "/settings", settings_profile_tab: "/settings", settings_security_tab: "/settings"
 };
 
 const getWidgetRect = () => {

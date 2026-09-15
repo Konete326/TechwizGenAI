@@ -1,14 +1,16 @@
 import { useState } from "react";
-import { Coins, Key } from "@phosphor-icons/react";
+import { Coins, Key, User } from "@phosphor-icons/react";
 import { BillingSettings } from "./BillingSettings";
 import { ApiSettings } from "./ApiSettings";
+import { ProfileSettings } from "./ProfileSettings";
 
 export function Settings() {
-  const [activeTab, setActiveTab] = useState("billing");
+  const [activeTab, setActiveTab] = useState("profile");
 
   const tabs = [
-    { id: "billing", label: "Billing & Storage", icon: Coins },
-    { id: "api", label: "API & Integrations", icon: Key }
+    { id: "profile", label: "Profile", icon: User, target: "settings_profile_tab" },
+    { id: "security", label: "Security & API", icon: Key, target: "settings_security_tab" },
+    { id: "billing", label: "Billing & Storage", icon: Coins, target: "settings_billing_tab" }
   ];
 
   return (
@@ -16,7 +18,7 @@ export function Settings() {
       <div className="pb-3 border-b border-border">
         <h2 className="text-xl font-bold tracking-tight text-text-primary">Global Settings</h2>
         <p className="text-xs text-text-muted mt-0.5">
-          Monitor storage & token quotas, and configure Bring-Your-Own-Key parameters.
+          Monitor storage and token quotas, update profile credentials, and configure API integrations.
         </p>
       </div>
 
@@ -29,6 +31,7 @@ export function Settings() {
               <button
                 key={tab.id}
                 type="button"
+                data-nesa-target={tab.target}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap text-left ${
                   isActive
@@ -44,8 +47,9 @@ export function Settings() {
         </div>
 
         <div className="flex-1 w-full min-w-0 bg-surface-card p-6 md:p-8 rounded-xl border border-border shadow-xs">
+          {activeTab === "profile" && <ProfileSettings />}
+          {activeTab === "security" && <ApiSettings />}
           {activeTab === "billing" && <BillingSettings />}
-          {activeTab === "api" && <ApiSettings />}
         </div>
       </div>
     </div>

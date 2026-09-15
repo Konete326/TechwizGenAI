@@ -53,6 +53,7 @@ export function ProfileForm({ name, setName, email, createdAt, isSaving, onSubmi
           </button>
           <button
             type="submit"
+            data-nesa-target="settings_save_btn"
             disabled={isSaving}
             className="flex items-center gap-1.5 px-4 py-1.5 rounded-[var(--radius-sm)] bg-accent hover:bg-accent-hover text-white text-xs font-semibold shadow-sm transition-colors btn-tactile cursor-pointer disabled:opacity-50"
           >

@@ -127,7 +127,7 @@ export function ProfileSettings() {
           <input type="email" value={user?.email || ""} disabled className="w-full px-3 py-2 rounded-lg bg-surface/50 border border-border/60 text-xs text-text-muted cursor-not-allowed" />
         </div>
 
-        <button type="submit" disabled={isSaving || isUploading} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-50">
+        <button type="submit" data-nesa-target="settings_save_btn" disabled={isSaving || isUploading} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-50">
           <Check size={14} weight="bold" />
           <span>{isSaving ? "Saving..." : "Save Changes"}</span>
         </button>
