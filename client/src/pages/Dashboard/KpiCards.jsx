@@ -1,112 +1,104 @@
-import { TrendUp, Sparkle, ChatCircleText, HardDrives, Users } from "@phosphor-icons/react";
-
-function CornerBracket() {
-  return (
-    <>
-      <span className="absolute top-1 left-1 w-1.5 h-1.5 border-t border-l border-border-corner pointer-events-none" />
-      <span className="absolute top-1 right-1 w-1.5 h-1.5 border-t border-r border-border-corner pointer-events-none" />
-      <span className="absolute bottom-1 left-1 w-1.5 h-1.5 border-b border-l border-border-corner pointer-events-none" />
-      <span className="absolute bottom-1 right-1 w-1.5 h-1.5 border-b border-r border-border-corner pointer-events-none" />
-    </>
-  );
-}
-
 export function KpiCards({ stats = {} }) {
-  const mbStorage = ((stats.totalStorageBytes || 0) / (1024 * 1024)).toFixed(2);
   const totalGens = stats.totalGenerations || 0;
   const activeSess = stats.activeSessions || 0;
-  const assetCount = stats.totalAssetCount || 0;
+  const mbStorage = ((stats.totalStorageBytes || 0) / (1024 * 1024)).toFixed(1);
   const isAdmin = Boolean(stats.isAdmin);
+  const fourthVal = isAdmin ? (stats.totalUsers || 0) : (stats.totalUsers || 0);
+  const fourthLabel = isAdmin ? "Platform Users" : "Tokens Used";
+  const fourthSub = isAdmin ? "Registered accounts" : "Prompt + completion tokens";
+
+  const bars5 = [40, 55, 70, 85, 100];
+  const bars5Rev = [100, 85, 70, 55, 40];
 
   const cards = [
     {
-      label: "AI Generations",
-      value: totalGens.toLocaleString(),
-      delta: "+100%",
-      sublabel: "Completed AI responses",
-      icon: Sparkle,
-      type: "sparkline"
+      id: "gen", icon: "sparkle", label: "AI Generations", value: totalGens.toLocaleString(),
+      delta: stats.genDelta || "+0%", trend: "up", sub: "Completed AI responses",
+      bars: bars5, color: "emerald"
     },
     {
-      label: "Active Sessions",
-      value: activeSess.toLocaleString(),
-      delta: "Live",
-      sublabel: "Conversational threads",
-      icon: ChatCircleText,
-      type: "bars"
+      id: "sess", icon: "chat", label: "Active Sessions", value: activeSess.toLocaleString(),
+      delta: "Live", trend: "up", sub: "Conversational threads",
+      bars: [30, 50, 45, 70, 60], color: "emerald"
     },
     {
-      label: "Cloud Storage",
-      value: `${mbStorage} MB`,
-      delta: `${assetCount} files`,
-      sublabel: `${stats.imageCount || 0} images, ${stats.documentCount || 0} docs`,
-      icon: HardDrives,
-      type: "progress"
+      id: "storage", icon: "storage", label: "Cloud Storage", value: `${mbStorage} MB`,
+      delta: `${stats.totalAssetCount || 0} files`, trend: "up", sub: `${stats.imageCount || 0} images - ${stats.documentCount || 0} docs`,
+      bars: [20, 35, 50, 65, 80], color: "emerald"
     },
     {
-      label: isAdmin ? "Platform Users" : "Tokens Consumed",
-      value: isAdmin ? (stats.totalUsers || 1).toLocaleString() : (stats.totalUsers || 0).toLocaleString(),
-      delta: isAdmin ? "Active" : "Telemetry",
-      sublabel: isAdmin ? "Registered user accounts" : "Prompt and completion tokens",
-      icon: Users,
-      type: "sparkline"
+      id: "users", icon: "users", label: fourthLabel, value: fourthVal.toLocaleString(),
+      delta: isAdmin ? "All Time" : "Telemetry", trend: "up", sub: fourthSub,
+      bars: bars5Rev, color: "emerald"
     }
   ];
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-      {cards.map((kpi) => {
-        const Icon = kpi.icon;
-        return (
-          <div
-            key={kpi.label}
-            className="relative p-4 rounded-[var(--radius-md)] bg-surface-card border border-border hover:border-accent/40 transition-colors space-y-3"
-          >
-            <CornerBracket />
-
-            <div className="flex items-center justify-between text-xs text-text-muted">
-              <div className="flex items-center gap-1.5">
-                <Icon size={14} className="text-accent" />
-                <span className="font-medium uppercase tracking-wider text-[10px]">{kpi.label}</span>
-              </div>
-              <span className="inline-flex items-center gap-0.5 font-mono text-[11px] font-semibold text-emerald-500">
-                <TrendUp size={11} weight="bold" />
-                <span>{kpi.delta}</span>
-              </span>
-            </div>
-
-            <div className="flex items-baseline justify-between">
-              <div className="text-2xl font-bold font-mono tracking-tight text-text-primary">
-                {kpi.value}
-              </div>
-
-              {kpi.type === "sparkline" && (
-                <svg className="w-16 h-6 text-emerald-500" viewBox="0 0 64 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M0 20 Q16 18 24 12 T48 10 T64 4" />
-                </svg>
-              )}
-
-              {kpi.type === "bars" && (
-                <div className="flex items-end gap-1 h-6">
-                  <div className="w-1.5 h-2 bg-accent/40 rounded-xs" />
-                  <div className="w-1.5 h-3 bg-accent/60 rounded-xs" />
-                  <div className="w-1.5 h-4 bg-accent/80 rounded-xs" />
-                  <div className="w-1.5 h-6 bg-accent rounded-xs" />
-                </div>
-              )}
-
-              {kpi.type === "progress" && (
-                <div className="w-16 h-2 bg-surface rounded-full overflow-hidden border border-border">
-                  <div className="h-full bg-accent rounded-full w-[70%]" />
-                </div>
-              )}
-            </div>
-
-            <div className="text-[11px] font-mono text-text-muted truncate">{kpi.sublabel}</div>
-          </div>
-        );
-      })}
+      {cards.map((kpi, idx) => (
+        <KpiCard key={kpi.id} kpi={kpi} delay={idx * 40} />
+      ))}
     </div>
+  );
+}
+
+function KpiCard({ kpi, delay }) {
+  return (
+    <article
+      className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-5 flex flex-col justify-between hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group cursor-default"
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <div>
+        <div className="flex items-center gap-1.5 text-[var(--text-muted)] text-[11px] font-medium mb-2">
+          <KpiIcon name={kpi.icon} />
+          <span>{kpi.label}</span>
+        </div>
+        <div className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+          {kpi.value}
+        </div>
+      </div>
+      <div className="flex items-end justify-between mt-4">
+        <div className="flex items-center gap-1 text-[11px] font-medium">
+          <span className="font-bold text-emerald-500">{kpi.delta}</span>
+          <span className="text-[var(--text-muted)] text-[10px]">{kpi.sub}</span>
+        </div>
+        <div className="flex items-end gap-[3px] h-6">
+          {kpi.bars.map((h, i) => (
+            <div
+              key={i}
+              className="w-1 rounded-t transition-all duration-200"
+              style={{
+                height: `${(h / 100) * 24}px`,
+                background: `rgba(var(--accent-rgb), ${0.3 + (h / 100) * 0.7})`
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function KpiIcon({ name }) {
+  if (name === "sparkle") return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z" strokeLinejoin="round" />
+    </svg>
+  );
+  if (name === "chat") return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+  if (name === "storage") return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+    </svg>
+  );
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
