@@ -53,9 +53,14 @@ export const login = async (req, res, next) => {
     if (user.status === "suspended") return res.status(403).json({ success: false, message: "Account has been suspended by an administrator" });
     const isMatch = await user.comparePassword(password);
     if (!isMatch) return res.status(401).json({ success: false, message: "Invalid email or password" });
+
+    if (user.twoFactorEnabled) {
+      const tempToken = jwt.sign({ id: user._id, require2FA: true }, env.JWT_SECRET, { expiresIn: "5m" });
+      return res.status(200).json({ success: true, require2FA: true, tempToken });
+    }
+
     user.lastLogin = new Date();
     await user.save({ validateModifiedOnly: true });
-
     await Notification.create({
       userId: user._id,
       title: "New Login Detected",
@@ -63,7 +68,6 @@ export const login = async (req, res, next) => {
       type: "info",
       href: "/profile"
     }).catch(() => {});
-
     const token = generateToken(user._id);
     return res.status(200).json({ success: true, token, user: sanitizeUser(user) });
   } catch (error) {

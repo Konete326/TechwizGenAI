@@ -45,6 +45,22 @@ const userSchema = new mongoose.Schema(
     totalTokensUsed: {
       type: Number,
       default: 0
+    },
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false
+    },
+    twoFactorSecret: {
+      type: String,
+      default: null
+    },
+    resetPasswordOtp: {
+      type: String,
+      default: null
+    },
+    resetPasswordExpires: {
+      type: Date,
+      default: null
     }
   },
   {
