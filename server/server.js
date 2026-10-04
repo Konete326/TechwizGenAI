@@ -14,6 +14,8 @@ import adminUserRoutes from "./src/routes/adminUserRoutes.js";
 import notificationRoutes from "./src/routes/notificationRoutes.js";
 import analyticsRoutes from "./src/routes/analyticsRoutes.js";
 import dashboardRoutes from "./src/routes/dashboardRoutes.js";
+import liveRoutes from "./src/routes/liveRoutes.js";
+import toolRoutes from "./src/routes/toolRoutes.js";
 import { seedAdmin } from "./src/config/seedAdmin.js";
 
 await connectDB();
@@ -72,6 +74,8 @@ app.use(["/api/admin", "/admin"], adminRoutes);
 app.use(["/api/notifications", "/notifications"], notificationRoutes);
 app.use(["/api/analytics", "/analytics"], analyticsRoutes);
 app.use(["/api/dashboard", "/dashboard"], dashboardRoutes);
+app.use(["/api/live", "/live"], liveRoutes);
+app.use(["/api/tools", "/tools"], toolRoutes);
 
 app.use(errorHandler);
 
