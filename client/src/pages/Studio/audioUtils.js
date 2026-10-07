@@ -1,3 +1,12 @@
+export function pcmToB64(ab) {
+  const view = new Uint8Array(ab);
+  let s = "";
+  for (let i = 0; i < view.byteLength; i += 8192) {
+    s += String.fromCharCode.apply(null, view.subarray(i, i + 8192));
+  }
+  return btoa(s);
+}
+
 export function base64EncodeAudio(float32Array) {
   const int16Array = new Int16Array(float32Array.length);
   for (let i = 0; i < float32Array.length; i++) {
@@ -33,7 +42,6 @@ export function playRingingTone() {
   const ctx = new AudioCtx();
   let isStopped = false;
   let timer = null;
-
   const playBurst = () => {
     if (isStopped || ctx.state === "closed") return;
     if (ctx.state === "suspended") ctx.resume();
@@ -41,31 +49,25 @@ export function playRingingTone() {
       const osc1 = ctx.createOscillator();
       const osc2 = ctx.createOscillator();
       const gain = ctx.createGain();
-
       osc1.type = "sine";
       osc2.type = "sine";
       osc1.frequency.setValueAtTime(440, ctx.currentTime);
       osc2.frequency.setValueAtTime(480, ctx.currentTime);
-
       gain.gain.setValueAtTime(0, ctx.currentTime);
       gain.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 0.05);
       gain.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 1.2);
       gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.3);
-
       osc1.connect(gain);
       osc2.connect(gain);
       gain.connect(ctx.destination);
-
       osc1.start(ctx.currentTime);
       osc2.start(ctx.currentTime);
       osc1.stop(ctx.currentTime + 1.3);
       osc2.stop(ctx.currentTime + 1.3);
     } catch {}
   };
-
   playBurst();
   timer = setInterval(playBurst, 2500);
-
   return () => {
     isStopped = true;
     if (timer) clearInterval(timer);
