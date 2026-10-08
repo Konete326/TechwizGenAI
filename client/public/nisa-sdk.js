@@ -102,37 +102,63 @@
       const allowedSelectors = 'button, a, input, select, textarea, h1, h2, h3, [role="button"], [tabindex]';
       const elements = document.querySelectorAll(allowedSelectors);
       const semanticMap = [];
+      let i = 0;
 
-      elements.forEach(el => {
-        const type = this._getType(el);
-        const text = this._getText(el);
+      // Asynchronously process the NodeList in chunks to prevent blocking the host site's main thread
+      const processChunk = (deadline) => {
+        const timeLimit = 10;
+        const startTime = performance && performance.now ? performance.now() : Date.now();
         
-        if (!text && type !== 'input') return;
+        while (i < elements.length) {
+          if (deadline && typeof deadline.timeRemaining === 'function') {
+            if (deadline.timeRemaining() <= 0) break;
+          } else if ((performance && performance.now ? performance.now() : Date.now()) - startTime >= timeLimit) {
+            break;
+          }
 
-        const path = this._getCssPath(el);
+          const el = elements[i];
+          const type = this._getType(el);
+          const text = this._getText(el);
 
-        if (this.blockedPaths.includes(path)) {
-          return;
+          if (text || type === 'input') {
+            const path = this._getCssPath(el);
+            if (!this.blockedPaths.includes(path)) {
+              semanticMap.push({
+                type: type,
+                text: text,
+                id: el.id || undefined,
+                path: path
+              });
+            }
+          }
+          i++;
         }
 
-        semanticMap.push({
-          type: type,
-          text: text,
-          id: el.id || undefined,
-          path: path
-        });
-      });
+        if (i < elements.length) {
+          if (typeof window !== 'undefined' && window.requestIdleCallback) {
+            window.requestIdleCallback(processChunk);
+          } else {
+            setTimeout(processChunk, 0);
+          }
+        } else {
+          console.log(`Nisa SDK Semantic Map generated (${semanticMap.length} elements).`);
 
-      console.log(`Nisa SDK Semantic Map generated (${semanticMap.length} elements).`);
-      
-      const payload = {
-        clientId: this.clientId,
-        url: window.location.href,
-        semanticMap: semanticMap,
-        timestamp: new Date().toISOString()
+          const payload = {
+            clientId: this.clientId,
+            url: window.location.href,
+            semanticMap: semanticMap,
+            timestamp: new Date().toISOString()
+          };
+
+          this._transmitData(payload);
+        }
       };
 
-      this._transmitData(payload);
+      if (typeof window !== 'undefined' && window.requestIdleCallback) {
+        window.requestIdleCallback(processChunk);
+      } else {
+        setTimeout(processChunk, 0);
+      }
     },
 
     _transmitData: function(payload) {
