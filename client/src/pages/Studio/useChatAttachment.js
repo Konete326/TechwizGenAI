@@ -13,7 +13,9 @@ async function uploadDocToAssets(file) {
     fd.append("file", file);
     fd.append("title", file.name);
     await fetch(`${VITE_API_URL}/assets`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd });
-  } catch {}
+  } catch (err) {
+    console.error("Auto upload failed:", err);
+  }
 }
 
 export function useChatAttachment({ attachedImages = [], setAttachedImages, attachedImage, setAttachedImage, selectedModel }) {

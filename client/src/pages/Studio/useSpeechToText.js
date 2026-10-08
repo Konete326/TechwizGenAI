@@ -9,7 +9,9 @@ export function useSpeechToText(onTranscript) {
   const stopListening = () => {
     try {
       recognitionRef.current?.stop();
-    } catch {}
+    } catch (err) {
+      console.error("Stop listening error:", err);
+    }
     setIsListening(false);
   };
 

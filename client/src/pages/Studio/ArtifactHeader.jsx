@@ -1,5 +1,4 @@
 import { DownloadSimple, X, PencilSimple, Check, ArrowCounterClockwise, ArrowSquareOut, FilePdf, FileCsv, FileXls, FileText, TreeStructure, Code, Play, Desktop, DeviceTablet, DeviceMobile, ArrowsClockwise } from "@phosphor-icons/react";
-
 export function ArtifactHeader({
   artifact, ext, isMermaid, isCodeArtifact, isEditable,
   activeTab, setActiveTab, viewport, setViewport, onReload,
@@ -14,7 +13,6 @@ export function ArtifactHeader({
     if (ext === "xlsx" || ext === "xls") return <FileXls size={16} weight="fill" className="text-green-500" />;
     return <FileText size={16} weight="fill" className="text-blue-500" />;
   };
-
   return (
     <div className="h-12 px-3 sm:px-4 border-b border-border bg-surface flex items-center justify-between shrink-0 gap-2">
       <div className="flex items-center gap-2 min-w-0">
@@ -47,7 +45,6 @@ export function ArtifactHeader({
           </div>
         )}
       </div>
-
       <div className="flex items-center gap-1.5 shrink-0">
         {isCodeArtifact && activeTab === "preview" && (
           <div className="hidden sm:flex items-center bg-zinc-900 rounded-lg p-0.5 border border-zinc-800 mr-1">
@@ -85,7 +82,6 @@ export function ArtifactHeader({
             </button>
           </div>
         )}
-
         {isEditable && (
           isEditing ? (
             <>
@@ -124,5 +120,4 @@ export function ArtifactHeader({
     </div>
   );
 }
-
 export default ArtifactHeader;

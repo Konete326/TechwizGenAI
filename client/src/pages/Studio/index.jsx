@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ClockCounterClockwise, PhoneCall, Trash, DownloadSimple } from "@phosphor-icons/react";
 import { useToast } from "@/context/ToastContext"; import { useNesaCallContext } from "@/context/NesaCallContext";
-import { streamCompletion, getFriendlyErrorMessage } from "@/utils/aiStream";
 import { ChatSidebar } from "./ChatSidebar"; import { ChatCanvas } from "./ChatCanvas"; import { ChatInput } from "./ChatInput";
 import { ModelSelector } from "./ModelSelector"; import { PersonaSelector } from "./PersonaSelector"; import { ArtifactPanel } from "./ArtifactPanel";
-import { useChatSessions } from "./useChatSessions"; import { formatToolResponse } from "./nesaTools";
+import { useChatSessions } from "./useChatSessions";
+import { useStudioStream } from "./useStudioStream";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 export function Studio() {
@@ -18,113 +18,29 @@ export function Studio() {
   const [activePersona, setActivePersona] = useState("general"), [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState(""), [attachedImages, setAttachedImages] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false), [activeArtifact, setActiveArtifact] = useState(null), [isClearModalOpen, setIsClearModalOpen] = useState(false);
-  const abortControllerRef = useRef(null), queuedPromptRef = useRef(null);
 
-  const { sessions, setSessions, activeSessionId, setActiveSessionId, messages, setMessages, isLoading, fetchSessions, createSession, deleteSession, renameSession, updateSessionPersona } = useChatSessions({ isStreaming });
+  const { sessions, setSessions, activeSessionId, setActiveSessionId, messages, setMessages, fetchSessions, createSession, deleteSession, renameSession, updateSessionPersona } = useChatSessions({ isStreaming });
   const activeSession = sessions.find((s) => s.id === activeSessionId);
 
-  useEffect(() => {
-    if (activeSession?.persona) setActivePersona(activeSession.persona);
-  }, [activeSession?.persona, activeSessionId]);
+
+
+  const [prevSessionId, setPrevSessionId] = useState(null);
+  if (activeSessionId !== prevSessionId) {
+    setPrevSessionId(activeSessionId);
+    if (activeSession?.persona && activeSession.persona !== activePersona) {
+      setActivePersona(activeSession.persona);
+    }
+  }
 
   const handleSelectPersona = (id) => { setActivePersona(id); if (activeSessionId) updateSessionPersona(activeSessionId, id); };
 
-  const runStream = async (targetSessionId, promptText, imageBase64, isRegenerate = false, docPayload = {}) => {
-    setIsStreaming(true); setStreamingText("");
-    const controller = new AbortController(); abortControllerRef.current = controller;
-    let accumulated = "";
-
-    await streamCompletion({
-      sessionId: targetSessionId, prompt: promptText, model: selectedModel, imageBase64,
-      images: docPayload.images || (imageBase64 ? [imageBase64] : null), documents: docPayload.documents || null,
-      attachmentType: docPayload.documents?.length > 0 ? "document" : (imageBase64 ? "image" : "none"),
-      attachmentName: docPayload.documents?.[0]?.name || null, attachmentData: docPayload.documents?.[0]?.data || null,
-      persona: activePersona, isRegenerate, signal: controller.signal,
-      onChunk: (c) => { accumulated += c; setStreamingText((p) => p + c); },
-      onComplete: () => {
-        setIsStreaming(false); setStreamingText("");
-        setMessages((p) => [...p, { id: "ai-" + Date.now(), role: "model", text: accumulated, createdAt: new Date().toISOString() }]);
-        fetchSessions();
-      },
-      onError: (err) => {
-        setIsStreaming(false);
-        if (accumulated) setMessages((p) => [...p, { id: "ai-" + Date.now(), role: "model", text: accumulated, createdAt: new Date().toISOString() }]);
-        setStreamingText("");
-        toast.error(getFriendlyErrorMessage(err));
-      }
-    });
-  };
-
-  const handleSendMessage = async (payloadOrText, imageToSend) => {
-    let textToSend = inputPrompt, imagesToUpload = Array.isArray(imageToSend) ? imageToSend : (imageToSend ? [imageToSend] : attachedImages), docsToUpload = [];
-
-    if (payloadOrText && typeof payloadOrText === "object") {
-      textToSend = payloadOrText.text !== undefined ? payloadOrText.text : inputPrompt;
-      if (Array.isArray(payloadOrText.images)) imagesToUpload = payloadOrText.images;
-      else if (payloadOrText.attachmentData && payloadOrText.attachmentType === "image") imagesToUpload = [payloadOrText.attachmentData];
-      if (Array.isArray(payloadOrText.documents)) docsToUpload = payloadOrText.documents;
-      else if (payloadOrText.attachmentData && payloadOrText.attachmentType === "document") docsToUpload = [{ name: payloadOrText.attachmentName, data: payloadOrText.attachmentData }];
-    } else if (typeof payloadOrText === "string") textToSend = payloadOrText;
-
-    if ((!textToSend.trim() && imagesToUpload.length === 0 && docsToUpload.length === 0) || isStreaming) return;
-    const targetSessionId = activeSessionId || (await createSession(activePersona));
-    if (!targetSessionId) return;
-
-    const fallbackDoc = docsToUpload[0]?.name ? `Analyze ${docsToUpload[0].name}` : "Analyze attachment";
-    const promptText = textToSend.trim() || (docsToUpload.length > 0 ? fallbackDoc : (imagesToUpload.length > 0 ? "Analyze attached image" : ""));
-    const userMsg = {
-      id: "usr-" + Date.now(), role: "user", text: promptText, attachment: imagesToUpload[0] || docsToUpload[0]?.data || null,
-      attachmentType: docsToUpload.length > 0 ? "document" : (imagesToUpload.length > 0 ? "image" : "none"),
-      attachmentName: docsToUpload[0]?.name || null, images: imagesToUpload, documents: docsToUpload, createdAt: new Date().toISOString()
-    };
-    setMessages((prev) => [...prev, userMsg]);
-    setInputPrompt(""); setAttachedImages([]);
-
-    const currSess = sessions.find((s) => s.id === targetSessionId);
-    if (!currSess || currSess.title === "New Chat") {
-      const words = promptText.split(/\s+/).slice(0, 4).join(" "), autoTitle = words ? words.charAt(0).toUpperCase() + words.slice(1) : "Document Chat";
-      setSessions((p) => p.map((s) => (s.id === targetSessionId ? { ...s, title: autoTitle } : s)));
-    }
-    await runStream(targetSessionId, promptText, imagesToUpload[0] || null, false, { images: imagesToUpload, documents: docsToUpload });
-  };
-
-  const handleRegenerate = async () => { if (!isStreaming && activeSessionId) { setMessages((p) => (p[p.length - 1]?.role === "model" ? p.slice(0, -1) : p)); await runStream(activeSessionId, "", null, true); } };
+  const { handleSendMessage, handleRegenerate, abortControllerRef } = useStudioStream({
+    selectedModel, activePersona, activeSessionId, sessions, setSessions, createSession, setMessages, setIsStreaming, setStreamingText, isStreaming, inputPrompt, setInputPrompt, attachedImages, setAttachedImages, fetchSessions, setActiveArtifact, location, navigate, toast
+  });
+  
   const handleDeleteSession = (sid) => { const tid = sid || activeSessionId; if (tid) deleteSession(tid); };
-  const handleExportChat = () => { if (messages.length === 0) return; const txt = messages.map((m) => `${m.role.toUpperCase()}: ${m.text || ""}`).join("\n\n"), blob = new Blob([txt], { type: "text/plain" }), url = URL.createObjectURL(blob), a = document.createElement("a"); a.href = url; a.download = `${activeSession?.title || "chat"}.txt`; a.click(); URL.revokeObjectURL(url); toast.success("Chat exported successfully"); };
+  const handleExportChat = () => { if (messages.length === 0) return; const txt = messages.map((m) => `${m.role.toUpperCase()}: ${m.text || ""}`).join("\\n\\n"), blob = new Blob([txt], { type: "text/plain" }), url = URL.createObjectURL(blob), a = document.createElement("a"); a.href = url; a.download = `${activeSession?.title || "chat"}.txt`; a.click(); URL.revokeObjectURL(url); toast.success("Chat exported successfully"); };
   const handleEditMessage = (id, text, att) => { setInputPrompt(text || ""); if (att) setAttachedImages(Array.isArray(att) ? att : [att]); setMessages((p) => { const idx = p.findIndex((m) => m.id === id); return idx === -1 ? p : p.slice(0, idx); }); };
-
-  useEffect(() => {
-    if (!isStreaming && queuedPromptRef.current) {
-      const q = queuedPromptRef.current; queuedPromptRef.current = null; handleSendMessage(q);
-    }
-    const handleToolCall = (e) => {
-      const d = e?.detail || {}, cid = d.id || d.callId || `call_${Date.now()}`;
-      if (d.name === "submitStudioPrompt") {
-        const p = d.args?.prompt || d.prompt, auto = d.args?.autoSubmit !== undefined ? d.args.autoSubmit : (d.autoSubmit !== undefined ? d.autoSubmit : true);
-        if (!p) { window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "submitStudioPrompt", { status: "error" }) })); return; }
-        if (!location.pathname.startsWith("/studio")) navigate("/studio");
-        if (isStreaming) { if (auto) queuedPromptRef.current = p; else setInputPrompt(p); }
-        else { if (auto) handleSendMessage(p); else setInputPrompt(p); }
-        window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "submitStudioPrompt", { success: true, queued: isStreaming }) }));
-      }
-      if (d.name === "switchSession") {
-        const q = (d.args?.query || d.query || "").toLowerCase().trim();
-        const matched = sessions.find((s) => (s.title || "").toLowerCase().includes(q)) || sessions[0];
-        if (matched) {
-          if (!location.pathname.startsWith("/studio")) navigate("/studio");
-          setActiveSessionId(matched.id || matched._id);
-          window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "switchSession", { success: true, title: matched.title }) }));
-        } else {
-          window.dispatchEvent(new CustomEvent("nesa:toolresponse", { detail: formatToolResponse(cid, "switchSession", { status: "not_found" }) }));
-        }
-      }
-    };
-    const handleDel = (e) => handleDeleteSession(e?.detail?.sessionId || e?.detail?.args?.sessionId);
-    const handleCancel = () => { queuedPromptRef.current = null; };
-    const handleImg = (e) => { const dt = e?.detail; if (dt?.imageUrl) setMessages((p) => [...p, { id: "img-" + Date.now(), role: "model", text: "![" + (dt.prompt || "Generated Image") + "](" + dt.imageUrl + ")\n*Generated via " + (dt.model || "NVIDIA NIM") + "*", createdAt: new Date().toISOString() }]); };
-    window.addEventListener("nesa:toolcall", handleToolCall); window.addEventListener("nesa:cancel_queued_prompt", handleCancel); window.addEventListener("nesa:delete_session", handleDel); window.addEventListener("studio:image_generated", handleImg);
-    return () => { window.removeEventListener("nesa:toolcall", handleToolCall); window.removeEventListener("nesa:cancel_queued_prompt", handleCancel); window.removeEventListener("nesa:delete_session", handleDel); window.removeEventListener("studio:image_generated", handleImg); };
-  }, [location.pathname, navigate, isStreaming, activeSessionId, sessions]);
 
   return (
     <div className="flex h-full w-full bg-surface-base text-text-primary overflow-hidden select-none pt-2 sm:pt-3">
@@ -173,7 +89,7 @@ export function Studio() {
               selectedModel={selectedModel} attachedImages={attachedImages} setAttachedImages={setAttachedImages}
             />
           </div>
-          {activeArtifact && <ArtifactPanel artifact={activeArtifact} onClose={() => setActiveArtifact(null)} />}
+          {activeArtifact && <ArtifactPanel key={activeArtifact.id || activeArtifact.url || "active-artifact"} artifact={activeArtifact} onClose={() => setActiveArtifact(null)} />}
         </div>
       </main>
       <ConfirmModal

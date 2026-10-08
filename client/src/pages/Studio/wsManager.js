@@ -1,14 +1,15 @@
+import { logClose } from "./logger";
+
 export function handleWsClose(event, {
   isCallActiveRef,
-  keyIndexRef,
   retryCountRef,
   retryTimerRef,
   setIsConnected,
   setConnectionError,
-  keys,
   connectFn,
   disconnectFn
 }) {
+  logClose(event?.code, event?.reason);
   setIsConnected(false);
   const reason = (event?.reason || "").toLowerCase();
   const isRateLimit =
@@ -19,7 +20,6 @@ export function handleWsClose(event, {
     reason.includes("exhausted");
 
   if (isRateLimit && isCallActiveRef.current) {
-    keyIndexRef.current = (keyIndexRef.current + 1) % keys.length;
     retryTimerRef.current = setTimeout(() => {
       if (isCallActiveRef.current) connectFn(true);
     }, 200);

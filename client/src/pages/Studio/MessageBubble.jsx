@@ -1,5 +1,5 @@
 import { useState, memo } from "react";
-import { PencilSimple, ArrowClockwise, Copy, Check, SpeakerHigh, Stop, DownloadSimple, Trash } from "@phosphor-icons/react";
+import { PencilSimple, ArrowClockwise, Copy, Check, SpeakerHigh, DownloadSimple, Trash } from "@phosphor-icons/react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { DocumentBadge } from "./DocumentBadge";
 import logoImg from "@/assets/logo.png";

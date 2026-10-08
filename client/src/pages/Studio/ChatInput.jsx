@@ -1,5 +1,6 @@
 import { useRef, useEffect } from "react";
-import { PaperPlaneRight, Paperclip, Stop, Microphone } from "@phosphor-icons/react";
+import { ChatInputButtons } from "./ChatInputButtons";
+import { useChatInputSubmit } from "./useChatInputSubmit";
 import { useSpeechToText } from "./useSpeechToText";
 import { ImageCropModal } from "./ImageCropModal";
 import { AttachedPreview } from "./AttachedPreview";
@@ -48,33 +49,9 @@ export function ChatInput({
     }
   }, [inputPrompt]);
 
-  const handleFormSubmit = (e) => {
-    if (e) e.preventDefault();
-    if (isStreaming) return;
-    if (!inputPrompt.trim() && !hasAttachment) return;
-
-    onSubmit({
-      text: inputPrompt,
-      images: currentImgList,
-      documents: attachedDocs,
-      attachmentType: hasDocs ? "document" : (hasImages ? "image" : "none"),
-      attachmentName: hasDocs ? attachedDocs[0].name : null,
-      attachmentData: hasDocs ? attachedDocs[0].data : (hasImages ? currentImgList[0] : null)
-    });
-    clearAllAttachments();
-    setInputPrompt("");
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleFormSubmit();
-    }
-  };
-
-  const placeholderText = hasDocs
-    ? (attachedDocs.length === 1 ? `Ask about ${attachedDocs[0].name}...` : `Ask about ${attachedDocs.length} documents...`)
-    : (hasImages ? (currentImgList.length === 1 ? "Ask about image..." : `Ask about ${currentImgList.length} images...`) : "Ask anything...");
+  const { handleFormSubmit, handleKeyDown, placeholderText } = useChatInputSubmit({
+    isStreaming, inputPrompt, hasAttachment, onSubmit, currentImgList, attachedDocs, hasDocs, hasImages, clearAllAttachments, setInputPrompt
+  });
 
   return (
     <div className="p-3 md:p-4 border-t border-border bg-surface-card/90 backdrop-blur shrink-0 w-full">
@@ -96,66 +73,21 @@ export function ChatInput({
             className="hidden"
           />
 
-          <button
-            type="button"
-            data-nesa-target="chat_attach"
-            onClick={() => handleAttachmentClick(fileInputRef)}
-            className={`p-2 rounded transition-colors cursor-pointer shrink-0 ${
-              hasAttachment ? "text-accent bg-accent/15" : "text-text-muted hover:text-text-primary hover:bg-surface-elevated"
-            }`}
-            title="Attach files (up to 3 images, 5 documents)"
-            aria-label="Attach files"
-          >
-            <Paperclip size={18} />
-          </button>
-
-          <button
-            type="button"
-            data-nesa-target="chat_mic"
-            onClick={toggleListening}
-            className={`p-2 rounded transition-colors cursor-pointer shrink-0 ${
-              isListening ? "animate-pulse text-red-500 bg-red-500/20 border border-red-500/40" : "text-text-muted hover:text-text-primary hover:bg-surface-elevated"
-            }`}
-            title={isListening ? "Stop listening" : "Speech to text"}
-            aria-label="Speech to text"
-          >
-            <Microphone size={18} weight={isListening ? "fill" : "regular"} />
-          </button>
-
-          <textarea
-            ref={textareaRef}
-            data-nesa-target="chat_input"
-            rows={1}
-            value={inputPrompt}
-            onChange={(e) => setInputPrompt(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            placeholder={placeholderText}
-            className="flex-1 max-h-32 bg-transparent text-text-primary text-xs resize-none focus:outline-none py-1.5 px-1 leading-relaxed"
+          <ChatInputButtons
+            isStreaming={isStreaming}
+            onStop={onStop}
+            hasAttachment={hasAttachment}
+            handleAttachmentClick={handleAttachmentClick}
+            fileInputRef={fileInputRef}
+            isListening={isListening}
+            toggleListening={toggleListening}
+            inputPrompt={inputPrompt}
+            setInputPrompt={setInputPrompt}
+            textareaRef={textareaRef}
+            handleKeyDown={handleKeyDown}
+            handlePaste={handlePaste}
+            placeholderText={placeholderText}
           />
-
-          {isStreaming ? (
-            <button
-              type="button"
-              onClick={onStop}
-              className="p-2 rounded-[var(--radius-sm)] bg-rose-600 hover:bg-rose-500 text-white transition-colors btn-tactile cursor-pointer shrink-0 flex items-center justify-center"
-              title="Stop generating"
-              aria-label="Stop generating"
-            >
-              <Stop size={15} weight="fill" />
-            </button>
-          ) : (
-            <button
-              type="submit"
-              data-nesa-target="chat_send"
-              disabled={!inputPrompt.trim() && !hasAttachment}
-              className="p-2 rounded-[var(--radius-sm)] bg-accent hover:bg-accent-hover text-white transition-colors btn-tactile cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0 flex items-center justify-center shadow-sm"
-              title="Send message"
-              aria-label="Send message"
-            >
-              <PaperPlaneRight size={15} weight="fill" />
-            </button>
-          )}
         </div>
       </form>
       <ImageCropModal

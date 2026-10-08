@@ -63,7 +63,7 @@ export function ArtifactPreviewer({ extension = "pdf", url, onOpenArtifact }) {
         const bUrl = URL.createObjectURL(blob);
         window.open(bUrl, "_blank");
         return;
-      } catch {}
+      } catch (err) { console.error("Error decoding data URL", err); }
     }
     window.open(resolvedUrl, "_blank");
   };

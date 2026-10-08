@@ -1,6 +1,6 @@
 import { FilePdf, FileDoc, FileXls, FileCsv, FileText, ArrowSquareOut } from "@phosphor-icons/react";
 
-export function getDocMeta(attachment, rawName) {
+function getDocMeta(attachment, rawName) {
   const urlStr = String(attachment || "");
   let displayName = rawName;
   if (!displayName || displayName === "document" || displayName === "attachment") {

@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Sparkle, Check, X } from "@phosphor-icons/react";
 import { useToast } from "@/context/ToastContext";
 
-export const MODEL_TIERS = [
+const MODEL_TIERS = [
   {
     id: "gemini-3.6-flash",
     name: "Gemini 3.6 Flash",
@@ -41,16 +41,7 @@ export function ModelSelector({ selectedModel, onSelectModel }) {
   const modalRef = useRef(null);
   const toast = useToast();
 
-  const [activeModel, setActiveModel] = useState(() => {
-    const saved = localStorage.getItem("selected_ai_model");
-    if (!saved || saved === "gemini-3.8-flash" || saved === "gemini-3.7-flash") return selectedModel || "gemini-3.6-flash";
-    return selectedModel || saved;
-  });
-
-  useEffect(() => {
-    if (selectedModel) setActiveModel(selectedModel);
-  }, [selectedModel]);
-
+  const activeModel = selectedModel || "gemini-3.6-flash";
   const currentTier = MODEL_TIERS.find((t) => t.id === activeModel) || MODEL_TIERS[0];
 
   useEffect(() => {
@@ -63,13 +54,12 @@ export function ModelSelector({ selectedModel, onSelectModel }) {
   }, [isOpen]);
 
   const handleSelect = (tier) => {
-    setActiveModel(tier.id);
     if (typeof onSelectModel === "function") {
       onSelectModel(tier.id);
     }
     try {
       localStorage.setItem("selected_ai_model", tier.id);
-    } catch {}
+    } catch (err) { console.error("Storage error:", err); }
     toast.success(`Switched to ${tier.name}`);
     setIsOpen(false);
   };

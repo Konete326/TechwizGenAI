@@ -11,7 +11,7 @@ export const generateEphemeralToken = async (req, res, next) => {
       expireTime: "1800s",
       newSessionExpireTime: "60s"
     });
-    return res.status(200).json({ success: true, token: response.token });
+    return res.status(200).json({ success: true, token: response.name });
   } catch (error) {
     return next(error);
   }

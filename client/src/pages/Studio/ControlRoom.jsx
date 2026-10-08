@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function ControlRoom({ clientId = 'cl_12345', targetUrl = 'http://localhost:3000' }) {
   const [data, setData] = useState(null);

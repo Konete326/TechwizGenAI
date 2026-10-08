@@ -1,3 +1,4 @@
+import { logDebug } from "./logger";
 export function pcmToB64(ab) {
   const view = new Uint8Array(ab);
   let s = "";
@@ -64,13 +65,13 @@ export function playRingingTone() {
       osc2.start(ctx.currentTime);
       osc1.stop(ctx.currentTime + 1.3);
       osc2.stop(ctx.currentTime + 1.3);
-    } catch {}
+    } catch(err) { console.error("Ringing tone error:", err); }
   };
   playBurst();
   timer = setInterval(playBurst, 2500);
   return () => {
     isStopped = true;
     if (timer) clearInterval(timer);
-    try { ctx.close(); } catch {}
+    try { ctx.close(); } catch(err) { logDebug("AudioContext close error", err); }
   };
 }

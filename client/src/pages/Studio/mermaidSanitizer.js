@@ -19,12 +19,12 @@ export function sanitizeMermaid(raw) {
     clean = lines.join("\n");
   }
 
-  clean = clean.replace(/([a-zA-Z0-9_-]+)\[([^\]"\n\r]*[\(\)\/\:\&\#\@\%\*\+\=\<\>][^\]"\n\r]*)\]/g, (_, id, label) => {
+  clean = clean.replace(/([a-zA-Z0-9_-]+)\[([^\]"\n\r]*[()/:&#@%*+=<>][^\]"\n\r]*)\]/g, (_, id, label) => {
     const safe = label.replace(/"/g, "'");
     return `${id}["${safe}"]`;
   });
 
-  clean = clean.replace(/([a-zA-Z0-9_-]+)\(([^)\"\n\r]*[\[\]\/\:\&\#\@\%\*\+\=\<\>][^)\"\n\r]*)\)/g, (_, id, label) => {
+  clean = clean.replace(/([a-zA-Z0-9_-]+)\(([^)"\n\r]*[[\]/:&#@%*+=<>][^)"\n\r]*)\)/g, (_, id, label) => {
     const safe = label.replace(/"/g, "'");
     return `${id}("${safe}")`;
   });

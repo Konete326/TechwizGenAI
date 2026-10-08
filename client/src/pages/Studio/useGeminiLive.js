@@ -1,114 +1,125 @@
+import { logDebug } from "./logger";
+import { fetchVoiceToken } from './geminiUtils';
 import { useState, useRef, useCallback, useEffect } from "react";
-import { pcmToB64 } from "./audioUtils";
-import { startCapture } from "./audioCapture";
-import { createPlayback } from "./audioPlayback";
 import { setupToolResponseListener } from "./toolDispatch";
-import { startCallTimer } from "./callTimer";
 import { createServerMessageHandler } from "./serverMessage";
-import { buildSetupMessage } from "./nesaSetup";
 import { handleWsClose } from "./wsManager";
+import { createLiveAudio } from "./liveAudio";
+import { sendSetupAndReconnectContext, startInputStream, ensureCallTimer } from "./liveOpen";
+import { resetToolGuards } from "./nesaToolGuards";
+import { useConnectionQuality } from "./useConnectionQuality";
+import { useNetworkEvents } from "./useNetworkEvents";
+import { useGeminiLiveSenders } from "./useGeminiLiveSenders";
+import { useMicMode } from "./useMicMode";
 
-const WS_BASE = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
+const WS_EPHEMERAL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained";
+const WS_DIRECT = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
 
-function getVoiceKeys() {
-  const c = localStorage.getItem("techwiz_custom_api_key") || localStorage.getItem("custom_api_key");
-  const k = [import.meta.env.VITE_GEMINI_LIVE_KEY_1, import.meta.env.VITE_GEMINI_LIVE_KEY_2, import.meta.env.VITE_GEMINI_LIVE_KEY_3, import.meta.env.VITE_GEMINI_API_KEY].filter(Boolean);
-  return c ? [c] : (k.length ? k : [""]);
+function getLiveWsUrl(tokenOrKey) {
+  if (tokenOrKey.startsWith("auth_tokens/")) {
+    return `${WS_EPHEMERAL}?access_token=${encodeURIComponent(tokenOrKey)}`;
+  }
+  return `${WS_DIRECT}?key=${encodeURIComponent(tokenOrKey)}`;
 }
 
 export function useGeminiLive({ onToolCall } = {}) {
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isUserSpeaking, setIsUserSpeaking] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [connectionError, setConnectionError] = useState("");
-  const wsRef = useRef(null), captureRef = useRef(null), playbackRef = useRef(null);
-  const isReadyRef = useRef(false), isCallActiveRef = useRef(false);
-  const keyIndexRef = useRef(0), retryCountRef = useRef(0), retryTimerRef = useRef(null);
+  const [connectionQuality, setConnectionQuality] = useState("offline");
+  const wsRef = useRef(null), isReadyRef = useRef(false), isCallActiveRef = useRef(false);
+  const retryCountRef = useRef(0), retryTimerRef = useRef(null);
   const durationRef = useRef(0), warned55Ref = useRef(false), durationStopRef = useRef(null);
   const pendingToolCallsRef = useRef(new Map()), onToolCallRef = useRef(onToolCall);
-  onToolCallRef.current = onToolCall;
+  const connectRef = useRef(null);
+  const lastMessageTimeRef = useRef(null), resumeHandleRef = useRef(null);
+  const userSpeakingTimerRef = useRef(null);
+  const [audio] = useState(() => createLiveAudio(setIsSpeaking));
+  const { micMode, toggleMicMode } = useMicMode({ sessionActive: isConnected });
+  useEffect(() => { onToolCallRef.current = onToolCall; }, [onToolCall]);
 
   const stopAudio = useCallback(() => {
-    playbackRef.current?.stopAll();
-    setIsSpeaking(false);
-  }, []);
+    if (import.meta.env.VITE_DEBUG === "true") {
+      const e = new Error();
+      console.log(`[DEBUG] ${performance.now().toFixed(1)} stopAudio called. Caller stack:`, e.stack);
+    }
+    audio.stopAll();
+  }, [audio]);
+
+  const resumeAudio = useCallback(() => {
+    audio.resume();
+  }, [audio]);
 
   const disconnect = useCallback((keepDuration = false) => {
     isCallActiveRef.current = false;
     isReadyRef.current = false;
     if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
-    pendingToolCallsRef.current.forEach(t => clearTimeout(t));
+    pendingToolCallsRef.current.forEach(({ timer }) => clearTimeout(timer));
     pendingToolCallsRef.current.clear();
     if (!keepDuration) {
       durationRef.current = 0; warned55Ref.current = false;
       durationStopRef.current?.(); durationStopRef.current = null;
+      resumeHandleRef.current = null;
     }
-    captureRef.current?.stop(); captureRef.current = null;
-    playbackRef.current?.close(); playbackRef.current = null;
-    if (wsRef.current) { try { wsRef.current.close(); } catch {} wsRef.current = null; }
-    setIsConnected(false); setIsSpeaking(false);
-  }, []);
+    if (userSpeakingTimerRef.current) { clearTimeout(userSpeakingTimerRef.current); userSpeakingTimerRef.current = null; }
+    setIsUserSpeaking(false);
+    audio.close();
+    if (wsRef.current) { try { wsRef.current.close(); } catch(err) { logDebug("WS close error", err); } wsRef.current = null; }
+    setIsConnected(false);
+    resetToolGuards();
+  }, [audio]);
 
   const connect = useCallback(async (isReconnect = false) => {
     disconnect(isReconnect);
     isCallActiveRef.current = true;
     setConnectionError("");
-    if (!isReconnect) { retryCountRef.current = 0; durationRef.current = 0; warned55Ref.current = false; }
-    const keys = getVoiceKeys();
-    const apiKey = keys[keyIndexRef.current % keys.length] || "";
+    if (!isReconnect) { retryCountRef.current = 0; durationRef.current = 0; warned55Ref.current = false; resumeHandleRef.current = null; }
+    const apiKey = await fetchVoiceToken();
     if (!apiKey) { setConnectionError("Gemini API key is required"); return; }
     try {
-      playbackRef.current = createPlayback();
-      const ws = new WebSocket(WS_BASE + "?key=" + apiKey);
+      audio.open();
+      const ws = new WebSocket(getLiveWsUrl(apiKey));
       wsRef.current = ws;
       ws.onopen = async () => {
-        ws.send(JSON.stringify(buildSetupMessage()));
+        sendSetupAndReconnectContext(ws, { resumeHandleRef, transcript, isReconnect });
         try {
-          captureRef.current = await startCapture({
-            onChunk: (pcmBuf) => {
-              if (ws.readyState !== WebSocket.OPEN || !isReadyRef.current) return;
-              ws.send(JSON.stringify({ realtimeInput: { mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: pcmToB64(pcmBuf) }] } }));
-            },
-            onMicLost: () => {
-              if (isCallActiveRef.current) { window.dispatchEvent(new CustomEvent("nesa:mic_lost")); captureRef.current = null; }
-            }
-          });
+          await startInputStream(ws, { audio, isReadyRef, isCallActiveRef, setIsUserSpeaking, userSpeakingTimerRef });
           setIsConnected(true);
-          if (!durationStopRef.current) {
-            durationStopRef.current = startCallTimer({ durationRef, warned55Ref, wsRef, onDisconnect: () => disconnect() });
-          }
+          ensureCallTimer({ durationStopRef, durationRef, warned55Ref, wsRef, onDisconnect: () => disconnect() });
         } catch (err) {
           setConnectionError(err?.message || "Microphone initialization failed");
           disconnect();
         }
       };
       ws.onmessage = createServerMessageHandler({
-        isReadyRef, playbackRef, setIsSpeaking, setTranscript,
-        wsRef, pendingRef: pendingToolCallsRef, stopAudio, onToolCallRef
+        isReadyRef, audio, setTranscript,
+        wsRef, pendingRef: pendingToolCallsRef, stopAudio, onToolCallRef, lastMessageTimeRef, resumeHandleRef
       });
       ws.onerror = () => setConnectionError("WebSocket connection failed");
       ws.onclose = (event) => handleWsClose(event, {
-        isCallActiveRef, keyIndexRef, retryCountRef, retryTimerRef,
-        setIsConnected, setConnectionError, keys, connectFn: connect, disconnectFn: disconnect
+        isCallActiveRef, retryCountRef, retryTimerRef,
+        setIsConnected, setConnectionError, connectFn: () => connectRef.current?.(true), disconnectFn: disconnect
       });
     } catch (err) {
       setConnectionError(err?.message || "Failed to initialize");
       disconnect();
     }
-  }, [disconnect, stopAudio]);
+  }, [audio, disconnect, stopAudio, transcript]);
+  useEffect(() => { connectRef.current = connect; }, [connect]);
 
-  const forceReply = useCallback((text = "Hello Nisa") => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: true } }));
-  }, []);
-
-  const sendContextTurn = useCallback((text) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN && text) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: true } }));
-  }, []);
-
+  const { forceReply, sendContextTurn } = useGeminiLiveSenders(wsRef);
   useEffect(() => setupToolResponseListener(wsRef, pendingToolCallsRef), []);
   useEffect(() => () => disconnect(), [disconnect]);
 
-  return { isConnected, isSpeaking, transcript, connectionError, connect, disconnect, forceReply, sendContextTurn };
+  useConnectionQuality({ isConnected, wsRef, lastMessageTimeRef, setConnectionQuality });
+  useNetworkEvents({ isConnected, connect, isCallActiveRef, setConnectionQuality });
+
+  return {
+    isConnected, isSpeaking, isUserSpeaking, transcript, connectionError, connectionQuality, micMode, toggleMicMode,
+    connect, disconnect, forceReply, sendContextTurn, resumeAudio
+  };
 }
 
 export default useGeminiLive;

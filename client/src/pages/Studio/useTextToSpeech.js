@@ -28,7 +28,7 @@ export function useTextToSpeech() {
 
   const stop = useCallback(() => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      try { window.speechSynthesis.cancel(); } catch {}
+      try { window.speechSynthesis.cancel(); } catch (err) { console.error("Speech stop failed:", err); }
     }
     setSpeakingMessageId(null);
   }, []);

@@ -1,75 +1,53 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useGeminiLive } from "./useGeminiLive";
 import { checkMicrophonePermission } from "@/utils/checkMicPermission";
+import { useNesaCallWidget } from "./useNesaCallWidget";
+import { useWakeLock } from "./useWakeLock";
+import { useNesaContextEvent } from "./useNesaContextEvent";
 
-export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
+export function useNesaCall({ onMicDenied, onToolCall } = {}) {
   const [callPhase, setCallPhase] = useState("ended");
   const [isCallActive, setIsCallActive] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
   const [debouncedSpeaking, setDebouncedSpeaking] = useState(false);
   const [lastExecutedTool, setLastExecutedTool] = useState(null);
 
-  const getRightPosition = useCallback(() => {
-    const w = typeof window !== "undefined" ? window.innerWidth : 1200;
-    const h = typeof window !== "undefined" ? window.innerHeight : 800;
-    return { x: Math.max(20, w - 360), y: Math.max(20, h - 540) };
-  }, []);
 
-  const [widgetPosition, setWidgetPosition] = useState(getRightPosition);
-  const [widgetSide, setWidgetSide] = useState("bottom-right");
-  const [dockCorner, setDockCorner] = useState("bottom-right");
+
+  const {
+    widgetPosition, setWidgetPosition,
+    widgetSide,
+    dockCorner,
+    isMinimized, setIsMinimized,
+    reposition
+  } = useNesaCallWidget();
+
   const isCallActiveRef = useRef(false);
   const ringTimerRef = useRef(null);
   const debounceTimerRef = useRef(null);
-
-  const reposition = useCallback((target) => {
-    if (target === "minimize") { setIsMinimized(true); return; }
-    if (target === "maximize") { setIsMinimized(false); return; }
-    let corner = target;
-    if (corner === "top") corner = "top-right";
-    else if (corner === "bottom") corner = "bottom-right";
-    else if (corner === "left") corner = "bottom-left";
-    else if (corner === "right") corner = "bottom-right";
-
-    const w = typeof window !== "undefined" ? window.innerWidth : 1200;
-    const h = typeof window !== "undefined" ? window.innerHeight : 800;
-
-    if (["top-left", "top-right", "bottom-left", "bottom-right"].includes(corner)) {
-      setDockCorner(corner);
-      setWidgetSide(corner);
-      if (corner === "top-left") setWidgetPosition({ x: 20, y: 80 });
-      else if (corner === "top-right") setWidgetPosition({ x: Math.max(20, w - 360), y: 80 });
-      else if (corner === "bottom-left") setWidgetPosition({ x: 20, y: Math.max(20, h - 540) });
-      else if (corner === "bottom-right") setWidgetPosition({ x: Math.max(20, w - 360), y: Math.max(20, h - 540) });
-    }
-    if (typeof window !== "undefined" && window.innerWidth >= 768) setIsMinimized(false);
-  }, []);
-
-  useEffect(() => {
-    const handleToolCall = (e) => {
-      const detail = e?.detail || {};
-      if (detail.name === "repositionWidget") {
-        const pos = detail.args?.position || detail.position;
-        if (pos) reposition(pos);
-      }
-    };
-    window.addEventListener("nesa:toolcall", handleToolCall);
-    return () => window.removeEventListener("nesa:toolcall", handleToolCall);
-  }, [reposition]);
 
   const handleLiveToolCall = useCallback((call) => {
     setLastExecutedTool(call);
     if (onToolCall) onToolCall(call);
   }, [onToolCall]);
 
-  const { isConnected, isSpeaking, transcript, connectionError, connect, disconnect, forceReply, sendContextTurn } = useGeminiLive({
+  const { isConnected, isSpeaking, isUserSpeaking, transcript, connectionError, connectionQuality, micMode, toggleMicMode, connect, disconnect, forceReply, sendContextTurn, resumeAudio } = useGeminiLive({
     onToolCall: handleLiveToolCall
   });
 
   useEffect(() => {
+    const handleAction = () => resumeAudio?.();
+    window.addEventListener("click", handleAction);
+    window.addEventListener("nesa:toolcall", handleAction);
+    return () => {
+      window.removeEventListener("click", handleAction);
+      window.removeEventListener("nesa:toolcall", handleAction);
+    };
+  }, [resumeAudio]);
+
+  useEffect(() => {
     if (isSpeaking) {
       if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
-      setDebouncedSpeaking(true);
+      setTimeout(() => setDebouncedSpeaking(true), 0);
     } else {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = setTimeout(() => setDebouncedSpeaking(false), 450);
@@ -90,7 +68,7 @@ export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
     setCallPhase("ended");
     setIsCallActive(false);
     setIsMinimized(false);
-  }, [disconnect]);
+  }, [disconnect, setIsMinimized]);
 
   const startCall = useCallback(async () => {
     const micCheck = await checkMicrophonePermission();
@@ -110,9 +88,9 @@ export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
       connect();
     }, 3000);
     return true;
-  }, [connect, disconnect, onMicDenied]);
+  }, [connect, disconnect, onMicDenied, setIsMinimized]);
 
-  const toggleMinimize = useCallback(() => setIsMinimized((prev) => !prev), []);
+  const toggleMinimize = useCallback(() => setIsMinimized((prev) => !prev), [setIsMinimized]);
 
   useEffect(() => {
     return () => {
@@ -122,57 +100,17 @@ export function useNesaCall({ onSendMessage, onMicDenied, onToolCall } = {}) {
     };
   }, [disconnect]);
 
-  useEffect(() => {
-    let wakeLock = null;
-    const acquireLock = async () => {
-      if (isCallActive && typeof navigator !== "undefined" && "wakeLock" in navigator) {
-        try { wakeLock = await navigator.wakeLock.request("screen"); } catch {}
-      }
-    };
-    acquireLock();
-    const handleVisChange = () => { if (document.visibilityState === "visible") acquireLock(); };
-    document.addEventListener("visibilitychange", handleVisChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisChange);
-      if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
-    };
-  }, [isCallActive]);
-
-  useEffect(() => {
-    const handleContextEvent = (e) => {
-      const text = e?.detail?.text || e?.detail;
-      if (text && sendContextTurn) sendContextTurn(text);
-    };
-    window.addEventListener("nesa:context", handleContextEvent);
-    return () => window.removeEventListener("nesa:context", handleContextEvent);
-  }, [sendContextTurn]);
+  useWakeLock(isCallActive);
+  useNesaContextEvent(sendContextTurn);
 
   const activeSpeaking = debouncedSpeaking || isSpeaking;
   const nesaState = activeSpeaking ? "speaking" : "idle";
 
   return {
-    isCallActive,
-    callPhase,
-    isMinimized,
-    setIsMinimized,
-    toggleMinimize,
-    nesaState,
-    isSpeaking: activeSpeaking,
-    isListening: isConnected,
-    transcript,
-    connectionError,
-    startCall,
-    endCall,
-    onStreamComplete: () => {},
-    forceReply,
-    sendContextTurn,
-    lastExecutedTool,
-    widgetPosition,
-    setWidgetPosition,
-    widgetSide,
-    dockCorner,
-    reposition
+    isCallActive, callPhase, isMinimized, setIsMinimized, toggleMinimize, nesaState,
+    isSpeaking: activeSpeaking, isListening: isConnected, isUserSpeaking, transcript, connectionError, connectionQuality,
+    micMode, toggleMicMode,
+    startCall, endCall, onStreamComplete: () => {}, forceReply, sendContextTurn, lastExecutedTool,
+    widgetPosition, setWidgetPosition, widgetSide, dockCorner, reposition
   };
 }
-
-export default useNesaCall;

@@ -32,7 +32,7 @@ export function NesaCallMinimized({
           )}
         </div>
         <div className="min-w-0 flex flex-col justify-center">
-          <p className="text-xs font-semibold text-zinc-100 truncate leading-tight">Nesa</p>
+          <p className="text-xs font-semibold text-zinc-100 truncate leading-tight">Nisa</p>
           <p className="text-[10px] font-mono text-zinc-400 leading-tight mt-0.5">{durationText}</p>
         </div>
       </div>

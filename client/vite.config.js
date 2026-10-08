@@ -52,9 +52,17 @@ export default defineConfig({
           }
         ]
       },
+      devOptions: {
+        enabled: false
+      },
       workbox: {
+        navigateFallbackDenylist: [/^\/.*\.mp4$/],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         runtimeCaching: [
+          {
+            urlPattern: ({ request, url }) => request.destination === "video" || url.pathname.endsWith(".mp4"),
+            handler: "NetworkOnly"
+          },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: "CacheFirst",

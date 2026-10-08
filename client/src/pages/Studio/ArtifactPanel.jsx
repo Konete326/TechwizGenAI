@@ -15,7 +15,7 @@ export function ArtifactPanel({ artifact, onClose }) {
   const [viewport, setViewport] = useState("desktop");
   const [reloadKey, setReloadKey] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
-  const [editableContent, setEditableContent] = useState("");
+  const [editableContent, setEditableContent] = useState(artifact?.content || "");
   const [modifiedUrl, setModifiedUrl] = useState(null);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const mermaidRef = useRef(null);
@@ -26,13 +26,7 @@ export function ArtifactPanel({ artifact, onClose }) {
   const isCodeArtifact = artifact?.type === "code" || ["html", "svg", "js", "jsx"].includes(ext);
   const isEditable = !isMermaid && !isCodeArtifact && textEditable.includes(ext);
 
-  useEffect(() => {
-    setIsEditing(false);
-    setActiveTab("preview");
-    setViewport("desktop");
-    setEditableContent(artifact?.content || "");
-    setModifiedUrl(null);
-  }, [artifact]);
+
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -53,7 +47,7 @@ export function ArtifactPanel({ artifact, onClose }) {
         mermaidRef.current.innerHTML = svg;
         const svgEl = mermaidRef.current.querySelector("svg");
         if (svgEl) { svgEl.style.maxWidth = "100%"; svgEl.style.height = "auto"; }
-      } catch {}
+      } catch (err) { console.error("Mermaid render failed:", err); }
     };
     renderSvg();
     return () => {

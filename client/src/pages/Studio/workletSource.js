@@ -1,26 +1,44 @@
 export const WORKLET_SRC = `class P extends AudioWorkletProcessor {
-  constructor() {
+  constructor(options) {
     super();
-    this.b = new Float32Array(1024);
-    this.i = 0;
+    this.buffer = new Float32Array(512);
+    this.bufferIndex = 0;
+    this.sourceSampleRate = options?.processorOptions?.sampleRate || (typeof sampleRate !== 'undefined' ? sampleRate : 48000);
+    this.targetSampleRate = 16000;
+    this.step = this.sourceSampleRate / this.targetSampleRate;
+    this.phase = 0;
+    this.lastSample = 0;
   }
+
   process(inputs) {
-    const d = inputs[0]?.[0];
-    if (!d) return true;
-    this.b.set(d, this.i);
-    this.i += d.length;
-    if (this.i >= 1024) {
-      let m = 0;
-      const p = new Int16Array(1024);
-      for (let i = 0; i < 1024; i++) {
-        m = Math.max(m, Math.abs(this.b[i]));
-        const v = Math.max(-1, Math.min(1, this.b[i]));
-        p[i] = v < 0 ? v * 32768 : v * 32767;
+    const input = inputs[0]?.[0];
+    if (!input || input.length === 0) return true;
+
+    for (let i = 0; i < input.length; i++) {
+      const current = input[i];
+      while (this.phase < 1) {
+        const interpolated = this.lastSample + this.phase * (current - this.lastSample);
+        this.buffer[this.bufferIndex++] = interpolated;
+
+        if (this.bufferIndex >= 512) {
+          let peak = 0;
+          const pcm = new Int16Array(512);
+          for (let j = 0; j < 512; j++) {
+            const v = Math.max(-1, Math.min(1, this.buffer[j]));
+            const abs = Math.abs(v);
+            if (abs > peak) peak = abs;
+            pcm[j] = v < 0 ? v * 32768 : v * 32767;
+          }
+          this.port.postMessage({ pcm: pcm.buffer, peak }, [pcm.buffer]);
+          this.bufferIndex = 0;
+        }
+
+        this.phase += this.step;
       }
-      this.port.postMessage({ pcm: p.buffer, peak: m }, [p.buffer]);
-      this.b = new Float32Array(1024);
-      this.i = 0;
+      this.phase -= 1;
+      this.lastSample = current;
     }
+
     return true;
   }
 }

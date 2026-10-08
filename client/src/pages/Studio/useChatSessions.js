@@ -1,17 +1,26 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { VITE_API_URL } from "@/config/env";
-
+import { useChatSessionsMutations } from "./useChatSessionsMutations";
 export function useChatSessions({ isStreaming = false } = {}) {
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-
   const token = localStorage.getItem("token");
   const activeSessionIdRef = useRef(activeSessionId);
-  activeSessionIdRef.current = activeSessionId;
   const isStreamingRef = useRef(isStreaming);
-  isStreamingRef.current = isStreaming;
+  const [prevActiveSessionId, setPrevActiveSessionId] = useState(activeSessionId);
+  if (activeSessionId !== prevActiveSessionId) {
+    setPrevActiveSessionId(activeSessionId);
+    setMessages([]);
+  }
+  
+  useEffect(() => {
+    activeSessionIdRef.current = activeSessionId;
+  }, [activeSessionId]);
+  useEffect(() => {
+    isStreamingRef.current = isStreaming;
+  }, [isStreaming]);
 
   const fetchSessions = useCallback(async (isSilent = false) => {
     if (!token) return;
@@ -32,7 +41,8 @@ export function useChatSessions({ isStreaming = false } = {}) {
         });
         if (incoming.length === 0) setMessages([]);
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to fetch sessions:", err);
       return null;
     } finally {
       if (!isSilent) setIsLoading(false);
@@ -53,7 +63,13 @@ export function useChatSessions({ isStreaming = false } = {}) {
           const pendingOptimistic = prev.filter((m) => {
             const isOpt = String(m.id || "").startsWith("usr-") || String(m.id || "").startsWith("ai-") || Boolean(m.isOptimistic);
             if (!isOpt) return false;
-            return !incoming.some((inc) => inc.role === m.role && inc.text === m.text);
+            return !incoming.some((inc) => {
+              if (inc.role !== m.role) return false;
+              if (inc.text?.trim() === m.text?.trim()) return true;
+              if (m.role === "user" && m.attachment && inc.attachment) return true;
+              if (m.role === "user" && m.images?.length && inc.attachment) return true;
+              return false;
+            });
           });
           const merged = pendingOptimistic.length > 0 ? [...incoming, ...pendingOptimistic] : incoming;
           if (prev.length === merged.length) {
@@ -66,7 +82,8 @@ export function useChatSessions({ isStreaming = false } = {}) {
           return merged;
         });
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to fetch messages:", err);
       return null;
     }
   }, [token]);
@@ -103,79 +120,10 @@ export function useChatSessions({ isStreaming = false } = {}) {
   useEffect(() => {
     if (activeSessionId) {
       fetchMessages(activeSessionId, true);
-    } else {
-      setMessages([]);
     }
   }, [activeSessionId, fetchMessages]);
 
-  const createSession = async (persona = "general") => {
-    if (!token) return null;
-    try {
-      const res = await fetch(`${VITE_API_URL}/ai/sessions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ persona })
-      });
-      const data = await res.json();
-      if (data.success && data.data?.id) {
-        setSessions((prev) => [data.data, ...prev]);
-        setActiveSessionId(data.data.id);
-        return data.data.id;
-      }
-    } catch {
-      return null;
-    }
-    return null;
-  };
-
-  const deleteSession = async (sessionId) => {
-    if (!token) return;
-    try {
-      await fetch(`${VITE_API_URL}/ai/sessions/${sessionId}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-      if (activeSessionId === sessionId) {
-        const remaining = sessions.filter((s) => s.id !== sessionId);
-        if (remaining.length > 0) setActiveSessionId(remaining[0].id);
-        else { setActiveSessionId(null); setMessages([]); }
-      }
-    } catch {
-      return null;
-    }
-  };
-
-  const renameSession = async (sessionId, newTitle) => {
-    if (!token || !sessionId || !newTitle.trim()) return;
-    try {
-      const res = await fetch(`${VITE_API_URL}/ai/sessions/${sessionId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ title: newTitle.trim() })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, title: newTitle.trim() } : s)));
-      }
-    } catch {
-      return null;
-    }
-  };
-
-  const updateSessionPersona = async (sessionId, persona) => {
-    if (!token || !sessionId || !persona) return;
-    try {
-      const res = await fetch(`${VITE_API_URL}/ai/sessions/${sessionId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ persona })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, persona } : s)));
-      }
-    } catch {
-      return null;
-    }
-  };
+  const { createSession, deleteSession, renameSession, updateSessionPersona } = useChatSessionsMutations({ token, sessions, setSessions, activeSessionId, setActiveSessionId, setMessages });
 
   return {
     sessions, setSessions, activeSessionId, setActiveSessionId,

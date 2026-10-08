@@ -4,7 +4,7 @@ export function parseChartFromText(text) {
 
   const jsonMatch = clean.match(/\{[\s\S]*\}/);
   if (jsonMatch) {
-    let jsonStr = jsonMatch[0].replace(/,\s*([\]\}])/g, "$1").replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, '"$1"');
+    let jsonStr = jsonMatch[0].replace(/,\s*([\]}])/g, "$1").replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, '"$1"');
     try {
       const parsed = JSON.parse(jsonStr);
       const rawData = Array.isArray(parsed.data) ? parsed.data : (Array.isArray(parsed) ? parsed : null);
@@ -22,7 +22,7 @@ export function parseChartFromText(text) {
           data
         };
       }
-    } catch {}
+    } catch (err) { console.error("Chart parse error:", err); }
   }
 
   if (/pie/i.test(clean)) {
