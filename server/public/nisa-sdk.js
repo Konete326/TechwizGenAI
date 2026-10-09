@@ -85,12 +85,70 @@
     callButton.style.fontSize = '16px';
     
     callButton.onclick = () => {
-      if (!ws || ws.readyState !== WebSocket.OPEN) {
-        callButton.innerHTML = 'Calling...';
-        connect();
-      } else {
-        alert('Voice call is active! (Audio streaming requires microphone permissions)');
+      // Hide chat widget temporarily
+      chatWidget.style.display = 'none';
+      chatPanel.style.display = 'none';
+      
+      const feUrl = scriptTag.getAttribute('data-frontend-url') || 'https://techwiz-gen-ai.vercel.app';
+      const iframe = document.createElement('iframe');
+      iframe.src = `${feUrl}/widget?clientId=${clientId}`;
+      iframe.allow = "microphone; camera";
+      iframe.style.position = 'fixed';
+      iframe.style.bottom = '20px';
+      iframe.style.right = '20px';
+      iframe.style.width = '370px';
+      iframe.style.height = '600px';
+      iframe.style.border = 'none';
+      iframe.style.zIndex = '9999999';
+      iframe.style.background = 'transparent';
+      iframe.style.colorScheme = 'normal'; // Prevent inheritance issues
+      
+      if (window.innerWidth < 768) {
+          iframe.style.width = '100vw';
+          iframe.style.height = '100vh';
+          iframe.style.bottom = '0';
+          iframe.style.right = '0';
       }
+      
+      document.body.appendChild(iframe);
+      
+      // Listen for messages from iframe
+      const messageListener = (e) => {
+         if (!e.data) return;
+         if (e.data.type === 'NISA_END_CALL') {
+             iframe.remove();
+             chatWidget.style.display = 'flex';
+             window.removeEventListener('message', messageListener);
+         } else if (e.data.type === 'NISA_TOOL_CALL') {
+             if (e.data.command === 'clickElement' && e.data.targetKey) {
+                 // Try xpath first
+                 const target = e.data.targetKey;
+                 let el = null;
+                 if (target.startsWith('/') || target.startsWith('//')) {
+                     try {
+                         const result = document.evaluate(target, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                         el = result.singleNodeValue;
+                     } catch(err) {}
+                 } else {
+                     el = document.querySelector(`[data-nisa-id="${target}"], #${target}, .${target}`);
+                 }
+                 
+                 if (el) {
+                     el.click();
+                     // Flash element to show click
+                     const oldBg = el.style.backgroundColor;
+                     const oldTransition = el.style.transition;
+                     el.style.transition = 'background-color 0.2s ease';
+                     el.style.backgroundColor = 'rgba(59, 130, 246, 0.5)'; // blue-500 transparent
+                     setTimeout(() => {
+                         el.style.backgroundColor = oldBg;
+                         setTimeout(() => el.style.transition = oldTransition, 200);
+                     }, 300);
+                 }
+             }
+         }
+      };
+      window.addEventListener('message', messageListener);
     };
     
     body.appendChild(callButton);
@@ -222,8 +280,26 @@
     return semanticMap;
   }
 
+  let lastSentMapHash = '';
+
+  function getHash(str) {
+    let hash = 0;
+    for (let i = 0, len = str.length; i < len; i++) {
+        let chr = str.charCodeAt(i);
+        hash = (hash << 5) - hash + chr;
+        hash |= 0;
+    }
+    return hash.toString();
+  }
+
   async function syncDOM() {
     const map = parseDOM();
+    const mapString = JSON.stringify(map);
+    const hash = getHash(mapString);
+    
+    // Only send to API if the extracted semantic DOM actually changed
+    if (hash === lastSentMapHash) return;
+    
     try {
       const res = await fetch(syncHttpUrl, {
         method: 'POST',
@@ -231,6 +307,7 @@
         body: JSON.stringify({ clientId, elementsCount: map.length, data: map })
       });
       if (res.ok) {
+        lastSentMapHash = hash;
         updateIndicator('connected');
       } else {
         updateIndicator('disconnected');

@@ -87,6 +87,14 @@ router.post('/sync', async (req, res) => {
   }
 });
 
+router.get('/dom/:clientId', (req, res) => {
+  const data = domStore.get(req.params.clientId);
+  if (!data) {
+    return res.status(404).json({ success: false, error: 'DOM data not found' });
+  }
+  res.json({ success: true, data: data.data });
+});
+
 router.get('/stream', (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
