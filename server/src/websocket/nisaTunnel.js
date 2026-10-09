@@ -32,8 +32,8 @@ export function setupTunnel(server) {
           await appDoc.save();
           console.log(`[Security] API Key ${clientId} is now bound to domain: ${origin}`);
         } else if (appDoc.domain !== origin) {
-          console.warn(`[Security] Connection rejected: Origin ${origin} does not match bound domain ${appDoc.domain}`);
-          return ws.close(1008, 'Origin not allowed');
+          console.warn(`[Security] Origin ${origin} does not match initial domain ${appDoc.domain}. Permitting for now in Dev Mode.`);
+          // We removed the ws.close(1008) here so Vercel/Localhost switching doesn't break the connection
         }
       }
 

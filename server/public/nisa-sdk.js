@@ -17,12 +17,51 @@
   let retryCount = 0;
   let observer;
   let debounceTimer;
+  let indicator;
+
+  function createIndicator() {
+    if (indicator) return;
+    indicator = document.createElement('div');
+    indicator.style.position = 'fixed';
+    indicator.style.bottom = '10px';
+    indicator.style.right = '10px';
+    indicator.style.padding = '6px 12px';
+    indicator.style.background = '#fef2f2';
+    indicator.style.color = '#ef4444';
+    indicator.style.border = '1px solid #fca5a5';
+    indicator.style.borderRadius = '20px';
+    indicator.style.fontSize = '12px';
+    indicator.style.fontWeight = 'bold';
+    indicator.style.zIndex = '999999';
+    indicator.style.fontFamily = 'sans-serif';
+    indicator.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+    indicator.style.transition = 'all 0.3s ease';
+    indicator.innerHTML = '🔴 Nisa: Disconnected';
+    document.body.appendChild(indicator);
+  }
+
+  function updateIndicator(status) {
+    if (!indicator) createIndicator();
+    if (status === 'connected') {
+      indicator.style.background = '#f0fdf4';
+      indicator.style.color = '#22c55e';
+      indicator.style.border = '1px solid #86efac';
+      indicator.innerHTML = '🟢 Nisa: Connected & Syncing';
+    } else {
+      indicator.style.background = '#fef2f2';
+      indicator.style.color = '#ef4444';
+      indicator.style.border = '1px solid #fca5a5';
+      indicator.innerHTML = '🔴 Nisa: Disconnected';
+    }
+  }
 
   function connect() {
+    createIndicator();
     ws = new WebSocket(wsUrl);
     
     ws.onopen = () => {
       console.log('Nisa Semantic Engine: Connected and reading DOM.');
+      updateIndicator('connected');
       retryCount = 0;
       syncDOM();
       setupObserver();
@@ -30,6 +69,7 @@
 
     ws.onclose = () => {
       console.log('Nisa Semantic Engine: Disconnected. Reconnecting...');
+      updateIndicator('disconnected');
       if (observer) observer.disconnect();
       setTimeout(connect, Math.min(1000 * Math.pow(2, retryCount++), 10000));
     };
