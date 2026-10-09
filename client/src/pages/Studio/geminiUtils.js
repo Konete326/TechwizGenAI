@@ -1,17 +1,28 @@
 import { VITE_API_URL } from "@/config/env";
 
-export async function fetchVoiceToken() {
+export async function fetchVoiceToken(clientId = null) {
   if (import.meta.env.DEV) {
     const c = localStorage.getItem("techwiz_custom_api_key") || localStorage.getItem("custom_api_key");
     if (c) return c;
   }
   try {
     const token = localStorage.getItem("token");
-    const res = await fetch(`${VITE_API_URL}/live/token`, {
+    let url = `${VITE_API_URL}/live/token`;
+    let headers = {};
+    let body = null;
+    
+    if (clientId) {
+      url = `${VITE_API_URL}/live/widget-token`;
+      headers["Content-Type"] = "application/json";
+      body = JSON.stringify({ clientId });
+    } else {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(url, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`
-      }
+      headers,
+      body
     });
     
     const text = await res.text();

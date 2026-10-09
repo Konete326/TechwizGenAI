@@ -22,7 +22,7 @@ function getLiveWsUrl(tokenOrKey) {
   return `${WS_DIRECT}?key=${encodeURIComponent(tokenOrKey)}`;
 }
 
-export function useGeminiLive({ onToolCall } = {}) {
+export function useGeminiLive({ onToolCall, clientId } = {}) {
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
@@ -76,7 +76,7 @@ export function useGeminiLive({ onToolCall } = {}) {
     isCallActiveRef.current = true;
     setConnectionError("");
     if (!isReconnect) { retryCountRef.current = 0; durationRef.current = 0; warned55Ref.current = false; resumeHandleRef.current = null; }
-    const apiKey = await fetchVoiceToken();
+    const apiKey = await fetchVoiceToken(clientId);
     if (!apiKey) { setConnectionError("Gemini API key is required"); return; }
     try {
       audio.open();

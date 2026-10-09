@@ -5,7 +5,7 @@ import { useNesaCallWidget } from "./useNesaCallWidget";
 import { useWakeLock } from "./useWakeLock";
 import { useNesaContextEvent } from "./useNesaContextEvent";
 
-export function useNesaCall({ onMicDenied, onToolCall } = {}) {
+export function useNesaCall({ onMicDenied, onToolCall, clientId } = {}) {
   const [callPhase, setCallPhase] = useState("ended");
   const [isCallActive, setIsCallActive] = useState(false);
   const [debouncedSpeaking, setDebouncedSpeaking] = useState(false);
@@ -31,6 +31,7 @@ export function useNesaCall({ onMicDenied, onToolCall } = {}) {
   }, [onToolCall]);
 
   const { isConnected, isSpeaking, isUserSpeaking, transcript, connectionError, connectionQuality, micMode, toggleMicMode, connect, disconnect, forceReply, sendContextTurn, resumeAudio } = useGeminiLive({
+    clientId,
     onToolCall: handleLiveToolCall
   });
 

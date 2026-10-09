@@ -124,8 +124,11 @@ function WidgetApp() {
 }
 
 export default function LiveWidget() {
+  const [searchParams] = useSearchParams();
+  const clientId = searchParams.get('clientId');
+  
   return (
-    <NesaCallProvider>
+    <NesaCallProvider clientId={clientId}>
       <WidgetApp />
     </NesaCallProvider>
   );

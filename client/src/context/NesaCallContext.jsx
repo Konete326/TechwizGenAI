@@ -4,9 +4,10 @@ import { useToast } from "./ToastContext";
 
 const NesaCallContext = createContext(null);
 
-export function NesaCallProvider({ children }) {
+export function NesaCallProvider({ children, clientId }) {
   const toast = useToast();
   const nesaCall = useNesaCall({
+    clientId,
     onMicDenied: (m) => toast?.error?.(m || "Microphone access is required")
   });
 

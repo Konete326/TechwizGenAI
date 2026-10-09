@@ -97,8 +97,11 @@ router.post('/sync', async (req, res) => {
 router.get('/dom/:clientId', async (req, res) => {
   try {
     const appDoc = await ClientApp.findOne({ clientId: req.params.clientId });
-    if (!appDoc || !appDoc.domData) {
-      return res.status(404).json({ success: false, error: 'DOM data not found' });
+    if (!appDoc) {
+      return res.status(404).json({ success: false, error: 'Client not found' });
+    }
+    if (!appDoc.domData) {
+      return res.json({ success: true, data: [] });
     }
     res.json({ success: true, data: appDoc.domData });
   } catch (error) {
