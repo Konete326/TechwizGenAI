@@ -20,49 +20,111 @@
   let debounceTimer;
   let indicator;
 
-  function createIndicator() {
-    if (indicator) return;
-    indicator = document.createElement('div');
-    indicator.style.position = 'fixed';
-    indicator.style.bottom = '10px';
-    indicator.style.right = '10px';
-    indicator.style.padding = '6px 12px';
-    indicator.style.background = '#fef2f2';
-    indicator.style.color = '#ef4444';
-    indicator.style.border = '1px solid #fca5a5';
-    indicator.style.borderRadius = '20px';
-    indicator.style.fontSize = '12px';
-    indicator.style.fontWeight = 'bold';
-    indicator.style.zIndex = '999999';
-    indicator.style.fontFamily = 'sans-serif';
-    indicator.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
-    indicator.style.transition = 'all 0.3s ease';
-    indicator.innerHTML = '🔴 Nisa: Disconnected';
-    document.body.appendChild(indicator);
+  let chatWidget;
+  let chatPanel;
+  let callButton;
+  
+  function createChatWidget() {
+    if (chatWidget) return;
+    
+    // Floating Button
+    chatWidget = document.createElement('div');
+    chatWidget.style.position = 'fixed';
+    chatWidget.style.bottom = '20px';
+    chatWidget.style.right = '20px';
+    chatWidget.style.width = '60px';
+    chatWidget.style.height = '60px';
+    chatWidget.style.background = '#2563eb';
+    chatWidget.style.borderRadius = '50%';
+    chatWidget.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)';
+    chatWidget.style.cursor = 'pointer';
+    chatWidget.style.zIndex = '999999';
+    chatWidget.style.display = 'flex';
+    chatWidget.style.alignItems = 'center';
+    chatWidget.style.justifyContent = 'center';
+    chatWidget.style.color = '#fff';
+    chatWidget.style.fontSize = '24px';
+    chatWidget.innerHTML = '🤖';
+    
+    // Chat Panel
+    chatPanel = document.createElement('div');
+    chatPanel.style.position = 'fixed';
+    chatPanel.style.bottom = '90px';
+    chatPanel.style.right = '20px';
+    chatPanel.style.width = '300px';
+    chatPanel.style.background = '#fff';
+    chatPanel.style.borderRadius = '12px';
+    chatPanel.style.boxShadow = '0 10px 25px -5px rgba(0,0,0,0.2)';
+    chatPanel.style.zIndex = '999998';
+    chatPanel.style.display = 'none';
+    chatPanel.style.flexDirection = 'column';
+    chatPanel.style.overflow = 'hidden';
+    chatPanel.style.fontFamily = 'sans-serif';
+    
+    const header = document.createElement('div');
+    header.style.background = '#2563eb';
+    header.style.color = '#fff';
+    header.style.padding = '15px';
+    header.style.fontWeight = 'bold';
+    header.innerHTML = 'Nisa Assistant <span id="nisa-status-dot" style="display:inline-block;width:8px;height:8px;background:#ef4444;border-radius:50%;margin-left:8px;"></span>';
+    
+    const body = document.createElement('div');
+    body.style.padding = '20px';
+    body.style.textAlign = 'center';
+    
+    callButton = document.createElement('button');
+    callButton.innerHTML = '📞 Call Nisa';
+    callButton.style.background = '#10b981';
+    callButton.style.color = '#fff';
+    callButton.style.border = 'none';
+    callButton.style.padding = '12px 24px';
+    callButton.style.borderRadius = '24px';
+    callButton.style.fontWeight = 'bold';
+    callButton.style.cursor = 'pointer';
+    callButton.style.width = '100%';
+    callButton.style.fontSize = '16px';
+    
+    callButton.onclick = () => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        callButton.innerHTML = 'Calling...';
+        connect();
+      } else {
+        alert('Voice call is active! (Audio streaming requires microphone permissions)');
+      }
+    };
+    
+    body.appendChild(callButton);
+    chatPanel.appendChild(header);
+    chatPanel.appendChild(body);
+    
+    document.body.appendChild(chatWidget);
+    document.body.appendChild(chatPanel);
+    
+    chatWidget.onclick = () => {
+      chatPanel.style.display = chatPanel.style.display === 'none' ? 'flex' : 'none';
+    };
   }
 
   function updateIndicator(status) {
-    if (!indicator) createIndicator();
+    if (!chatWidget) createChatWidget();
+    const dot = document.getElementById('nisa-status-dot');
+    if (!dot) return;
+    
     if (status === 'connected') {
-      indicator.style.background = '#f0fdf4';
-      indicator.style.color = '#22c55e';
-      indicator.style.border = '1px solid #86efac';
-      indicator.innerHTML = '🟢 Nisa: Connected & Syncing';
+      dot.style.background = '#4ade80';
     } else {
-      indicator.style.background = '#fef2f2';
-      indicator.style.color = '#ef4444';
-      indicator.style.border = '1px solid #fca5a5';
-      indicator.innerHTML = '🔴 Nisa: Disconnected';
+      dot.style.background = '#ef4444';
     }
   }
 
   function connect() {
-    createIndicator();
+    createChatWidget();
     ws = new WebSocket(wsUrl);
     
     ws.onopen = () => {
       console.log('Nisa Semantic Engine: Voice WebSocket Connected.');
       retryCount = 0;
+      if (callButton) callButton.innerHTML = '🔴 End Call';
     };
 
     ws.onclose = () => {
@@ -147,6 +209,15 @@
         xpath: getXPath(el)
       });
     });
+
+    // Fallback: If page is completely empty but has body text
+    if (semanticMap.length === 0 && document.body.innerText.trim()) {
+       semanticMap.push({
+         element: 'body',
+         text: document.body.innerText.trim().substring(0, 500),
+         xpath: '/html/body'
+       });
+    }
 
     return semanticMap;
   }
