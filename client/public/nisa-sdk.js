@@ -272,3 +272,8 @@
   global.NisaAgent = NisaSDK;
 
 })(typeof window !== 'undefined' ? window : this);
+
+// Auto-init for Magic Script
+const scriptTag = document.currentScript || document.querySelector('script[src*="nisa-sdk.js"]');
+if (scriptTag && scriptTag.dataset.clientId) { NisaAgent.init({ clientId: scriptTag.dataset.clientId }); }
+

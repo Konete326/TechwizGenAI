@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nisa Dummy Store</title>
+  <!-- Nisa Magic Script -->
+  <script src="/nisa-sdk.js" data-client-id="nisa_DEMO_CLIENT"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    button { padding: 10px 20px; margin: 10px 0; background: #007bff; color: white; border: none; cursor: pointer; }
+    input { padding: 10px; margin: 10px 0; display: block; }
+  </style>
+</head>
+<body>
+  <h1>Welcome to the Dummy Store</h1>
+  
+  <input type="text" id="searchBox" placeholder="Search products...">
+  <button id="searchBtn">Search</button>
+  
+  <h2>Featured Product</h2>
+  <p>Premium Sneakers</p>
+  <button id="addToCartBtn">Add to Cart</button>
+
+  <h2>Cart</h2>
+  <p id="cartStatus">Cart is empty.</p>
+  <button id="checkoutBtn">Checkout</button>
+
+  <script>
+    document.getElementById('addToCartBtn').addEventListener('click', () => {
+      document.getElementById('cartStatus').innerText = '1 item in cart.';
+      console.log('Item added to cart.');
+    });
+    
+    document.getElementById('checkoutBtn').addEventListener('click', () => {
+      if(document.getElementById('cartStatus').innerText === 'Cart is empty.') {
+        alert('Cart is empty!');
+      } else {
+        alert('Checkout complete!');
+      }
+    });
+  </script>
+</body>
+</html>

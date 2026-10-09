@@ -1,32 +1,97 @@
-const WebSocket = require('ws');
+import { WebSocketServer } from 'ws';
+import { geminiClient } from '../config/gemini.js';
+import { EventEmitter } from 'events';
+import { ClientApp } from '../models/ClientApp.js';
 
-const activeTunnels = new Map();
+export const activeTunnels = new Map();
+export const tunnelEvents = new EventEmitter();
+export const domStore = new Map();
 
-function setupTunnel(server) {
-  const wss = new WebSocket.Server({ server, path: '/tunnel' });
+export function setupTunnel(server) {
+  const wss = new WebSocketServer({ server, path: '/tunnel' });
 
-  wss.on('connection', (ws, req) => {
+  wss.on('connection', async (ws, req) => {
     try {
       const urlParams = new URLSearchParams(req.url.split('?')[1]);
       const clientId = urlParams.get('clientId');
 
-      if (!clientId) {
-        ws.close(1008, 'Missing clientId');
-        return;
+      if (!clientId) return ws.close(1008, 'Missing clientId');
+
+      // Domain/Origin Validation
+      const appDoc = await ClientApp.findOne({ clientId });
+      if (!appDoc) {
+        console.warn(`[Security] Connection rejected: Invalid clientId ${clientId}`);
+        return ws.close(1008, 'Invalid API Key');
+      }
+
+      const origin = req.headers.origin;
+      if (origin) {
+        if (!appDoc.domain) {
+          // Trust on First Use (TOFU)
+          appDoc.domain = origin;
+          await appDoc.save();
+          console.log(`[Security] API Key ${clientId} is now bound to domain: ${origin}`);
+        } else if (appDoc.domain !== origin) {
+          console.warn(`[Security] Connection rejected: Origin ${origin} does not match bound domain ${appDoc.domain}`);
+          return ws.close(1008, 'Origin not allowed');
+        }
       }
 
       activeTunnels.set(clientId, ws);
+      tunnelEvents.emit('status', { clientId, status: 'Active' });
 
-      ws.on('close', () => {
-        if (activeTunnels.get(clientId) === ws) {
-          activeTunnels.delete(clientId);
+      // Connect to Gemini 3.8 Live API
+      const geminiSession = await geminiClient.live.connect({
+        model: 'gemini-3.8-live',
+        config: {
+          responseModalities: ['audio'],
+          systemInstruction: { parts: [{ text: 'You are Nisa. Output JSON commands to interact with the DOM when necessary.' }] }
+        },
+        callbacks: {
+          onmessage: (msg) => {
+            if (ws.readyState === 1) ws.send(JSON.stringify(msg));
+          }
         }
       });
 
-      ws.on('error', () => {
-        if (activeTunnels.get(clientId) === ws) {
-          activeTunnels.delete(clientId);
+      // Receive audio/text/dom from SDK
+      ws.on('message', (message) => {
+        try {
+          const data = JSON.parse(message);
+          
+          if (data.type === 'dom_sync') {
+            domStore.set(clientId, data);
+            tunnelEvents.emit('status', { clientId, status: 'Active', elementsCount: data.elementsCount });
+            
+            // Console logs as requested
+            console.log(`\n=== [DOM SYNC] Semantic Map Received ===`);
+            console.log(`Client ID: ${clientId}`);
+            console.log(`Total Actionable/Readable Elements: ${data.elementsCount}`);
+            if (data.data && data.data.length > 0) {
+              console.log(`Sample Semantic Nodes (First 2):`);
+              console.log(JSON.stringify(data.data.slice(0, 2), null, 2));
+            }
+            console.log(`========================================\n`);
+            return;
+          }
+
+          if (data.audio || data.text) {
+            geminiSession.sendRealtimeInput(data);
+          }
+        } catch (e) {
+          console.error("Invalid message format", e);
         }
+      });
+
+      ws.on('close', () => {
+        activeTunnels.delete(clientId);
+        domStore.delete(clientId);
+        tunnelEvents.emit('status', { clientId, status: 'Inactive', elementsCount: 0 });
+      });
+      ws.on('error', () => {
+        activeTunnels.delete(clientId);
+        domStore.delete(clientId);
+        tunnelEvents.emit('status', { clientId, status: 'Inactive', elementsCount: 0 });
       });
     } catch (err) {
       ws.close(1011, 'Internal error');
@@ -36,12 +101,6 @@ function setupTunnel(server) {
   return wss;
 }
 
-function getActiveTunnel(clientId) {
+export function getActiveTunnel(clientId) {
   return activeTunnels.get(clientId);
 }
-
-module.exports = {
-  setupTunnel,
-  getActiveTunnel,
-  activeTunnels
-};

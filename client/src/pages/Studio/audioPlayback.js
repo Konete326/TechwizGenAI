@@ -10,7 +10,7 @@ export function createPlayback() {
   const MAX_CUSHION = 0.5;
 
   let speakingInterval = null;
-  const MAX_LOOKAHEAD_SEC = 2;
+  const MAX_LOOKAHEAD_SEC = 600;
 
   function checkSpeaking(onSpeakingChange) {
     const active = srcs.length > 0 || nextTime > ctx.currentTime;

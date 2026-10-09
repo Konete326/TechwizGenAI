@@ -10,6 +10,8 @@ export function sendSetupAndReconnectContext(ws, { resumeHandleRef, transcript, 
   ws.send(JSON.stringify(buildSetupMessage(resumeHandleRef.current)));
   if (isReconnect && transcript) {
     ws.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text: "Context from before reconnect: " + transcript.slice(-1000) }] }], turnComplete: false } }));
+  } else if (!isReconnect) {
+    ws.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text: "Hello Nisa, I just connected. Briefly greet me and let me know you are ready." }] }], turnComplete: true } }));
   }
 }
 

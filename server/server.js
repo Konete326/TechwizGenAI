@@ -16,6 +16,7 @@ import analyticsRoutes from "./src/routes/analyticsRoutes.js";
 import dashboardRoutes from "./src/routes/dashboardRoutes.js";
 import liveRoutes from "./src/routes/liveRoutes.js";
 import toolRoutes from "./src/routes/toolRoutes.js";
+import clientManager from "./src/routes/clientManager.js";
 import { seedAdmin } from "./src/config/seedAdmin.js";
 
 await connectDB();
@@ -57,6 +58,7 @@ app.use((req, res, next) => {
 });
 app.use(compression());
 app.use(express.json({ limit: "10mb" }));
+app.use(express.static("public"));
 app.use("/api", apiLimiter);
 
 app.get(["/api/health", "/health"], (req, res) => {
@@ -76,13 +78,17 @@ app.use(["/api/analytics", "/analytics"], analyticsRoutes);
 app.use(["/api/dashboard", "/dashboard"], dashboardRoutes);
 app.use(["/api/live", "/live"], liveRoutes);
 app.use(["/api/tools", "/tools"], toolRoutes);
+app.use("/api/client", clientManager);
 
 app.use(errorHandler);
 
+import { setupTunnel } from './src/websocket/nisaTunnel.js';
+
 if (!process.env.VERCEL) {
-  app.listen(env.PORT, () => {
+  const server = app.listen(env.PORT, () => {
     console.log(`Server listening on port ${env.PORT}`);
   });
+  setupTunnel(server);
 }
 
 export default app;

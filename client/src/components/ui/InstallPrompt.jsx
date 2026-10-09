@@ -18,6 +18,16 @@ export function InstallPrompt() {
     };
   }, []);
 
+  useEffect(() => {
+    let timer;
+    if (deferredPrompt && !dismissed) {
+      timer = setTimeout(() => {
+        setDismissed(true);
+      }, 5000);
+    }
+    return () => clearTimeout(timer);
+  }, [deferredPrompt, dismissed]);
+
   const handleInstall = async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();

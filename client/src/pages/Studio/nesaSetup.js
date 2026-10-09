@@ -7,8 +7,9 @@ export function buildSetupMessage(resumeHandle = null) {
     model: "models/gemini-3.8-live",
     generationConfig: {
       responseModalities: ["AUDIO"],
-      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } }
+      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } },
     },
+    contextWindowCompression: { slidingWindow: {} },
     inputAudioTranscription: {},
     outputAudioTranscription: {},
     systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
