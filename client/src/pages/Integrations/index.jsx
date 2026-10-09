@@ -43,10 +43,11 @@ const Integrations = () => {
     try {
       // Pass the backend server URL so the CDN script points to port 5000 / Vercel API
       const baseUrl = VITE_SERVER_URL;
+      const frontendUrl = window.location.origin;
       const res = await fetch(`${VITE_API_URL}/client/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: selectedType, baseUrl })
+        body: JSON.stringify({ type: selectedType, baseUrl, frontendUrl })
       });
       const data = await res.json();
       if (data.success) {

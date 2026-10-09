@@ -24,7 +24,7 @@ router.get('/apps', async (req, res) => {
 
 router.post('/generate', async (req, res) => {
   try {
-    const { type, baseUrl } = req.body;
+    const { type, baseUrl, frontendUrl } = req.body;
     let clientId;
     let isUnique = false;
     
@@ -39,7 +39,8 @@ router.post('/generate', async (req, res) => {
     const scriptBase = baseUrl || 'https://cdn.nisa.ai';
     
     if (type === 'CDN') {
-      code = `<script src="${scriptBase}/nisa-sdk.js" data-client-id="${clientId}"></script>`;
+      const feAttr = frontendUrl ? ` data-frontend-url="${frontendUrl}"` : '';
+      code = `<script src="${scriptBase}/nisa-sdk.js" data-client-id="${clientId}"${feAttr}></script>`;
     } else {
       code = `npm install @nisa/sdk\n\nimport { Nisa } from '@nisa/sdk';\nNisa.init({ clientId: '${clientId}' });`;
     }
