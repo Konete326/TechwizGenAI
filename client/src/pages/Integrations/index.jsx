@@ -8,7 +8,7 @@ const Integrations = () => {
   const [selectedType, setSelectedType] = useState('CDN');
   const [viewApp, setViewApp] = useState(null);
 
-  useEffect(() => {
+  const fetchApps = () => {
     fetch(`${VITE_API_URL}/client/apps`)
       .then(res => res.json())
       .then(data => {
@@ -17,38 +17,22 @@ const Integrations = () => {
             id: app.clientId,
             type: app.type,
             code: app.code,
-            status: app.status
+            status: app.status,
+            elementsCount: app.elementsCount || 0
           })));
         }
       })
       .catch(err => console.error(err));
+  };
 
-    const eventSource = new EventSource(`${VITE_API_URL}/client/stream`);
+  useEffect(() => {
+    // Initial fetch
+    fetchApps();
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'init') {
-          setApps(prevApps => prevApps.map(app => 
-            data.activeIds.includes(app.id) 
-              ? { ...app, status: 'Active' } 
-              : { ...app, status: 'Inactive' }
-          ));
-        } else if (data.type === 'status') {
-          setApps(prevApps => prevApps.map(app => 
-            app.id === data.clientId 
-              ? { ...app, status: data.status, elementsCount: data.elementsCount || 0 } 
-              : app
-          ));
-        }
-      } catch (err) {
-        console.error('SSE Error:', err);
-      }
-    };
+    // Vercel Serverless doesn't support SSE streaming well, so we poll every 3 seconds
+    const interval = setInterval(fetchApps, 3000);
 
-    return () => {
-      eventSource.close();
-    };
+    return () => clearInterval(interval);
   }, []);
 
   const handleAddApp = async () => {
