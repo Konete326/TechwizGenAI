@@ -120,30 +120,52 @@
              chatWidget.style.display = 'flex';
              window.removeEventListener('message', messageListener);
          } else if (e.data.type === 'NISA_TOOL_CALL') {
-             if (e.data.command === 'clickElement' && e.data.targetKey) {
-                 // Try xpath first
-                 const target = e.data.targetKey;
+             const { command, targetKey, value, route } = e.data;
+             
+             if (command === 'navigatePage' && route) {
+                 window.location.href = route;
+                 return;
+             }
+             
+             if ((command === 'clickElement' || command === 'spotlightElement' || command === 'fillFormField') && targetKey) {
                  let el = null;
-                 if (target.startsWith('/') || target.startsWith('//')) {
+                 if (targetKey.startsWith('/') || targetKey.startsWith('//')) {
                      try {
-                         const result = document.evaluate(target, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                         const result = document.evaluate(targetKey, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
                          el = result.singleNodeValue;
                      } catch(err) {}
                  } else {
-                     el = document.querySelector(`[data-nisa-id="${target}"], #${target}, .${target}`);
+                     el = document.querySelector(`[data-nisa-id="${targetKey}"], #${targetKey}, .${targetKey}, [name="${targetKey}"]`);
                  }
                  
                  if (el) {
-                     el.click();
-                     // Flash element to show click
-                     const oldBg = el.style.backgroundColor;
-                     const oldTransition = el.style.transition;
-                     el.style.transition = 'background-color 0.2s ease';
-                     el.style.backgroundColor = 'rgba(59, 130, 246, 0.5)'; // blue-500 transparent
-                     setTimeout(() => {
-                         el.style.backgroundColor = oldBg;
-                         setTimeout(() => el.style.transition = oldTransition, 200);
-                     }, 300);
+                     if (command === 'clickElement') {
+                         el.click();
+                         // Flash element to show click
+                         const oldBg = el.style.backgroundColor;
+                         const oldTransition = el.style.transition;
+                         el.style.transition = 'background-color 0.2s ease';
+                         el.style.backgroundColor = 'rgba(59, 130, 246, 0.5)'; // blue-500 transparent
+                         setTimeout(() => {
+                             el.style.backgroundColor = oldBg;
+                             setTimeout(() => el.style.transition = oldTransition, 200);
+                         }, 300);
+                     } else if (command === 'fillFormField') {
+                         el.value = value || '';
+                         el.dispatchEvent(new Event('input', { bubbles: true }));
+                         el.dispatchEvent(new Event('change', { bubbles: true }));
+                         el.focus();
+                     } else if (command === 'spotlightElement') {
+                         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                         const oldBoxShadow = el.style.boxShadow;
+                         const oldTransition = el.style.transition;
+                         el.style.transition = 'box-shadow 0.3s ease';
+                         el.style.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.8)';
+                         setTimeout(() => {
+                             el.style.boxShadow = oldBoxShadow;
+                             setTimeout(() => el.style.transition = oldTransition, 300);
+                         }, 2000);
+                     }
                  }
              }
          }
