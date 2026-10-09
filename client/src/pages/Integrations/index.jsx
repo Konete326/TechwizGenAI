@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Copy, Plus, Trash, Eye, Circle, Code } from '@phosphor-icons/react';
-import { VITE_API_URL } from "@/config/env";
+import { VITE_API_URL, VITE_SERVER_URL } from "@/config/env";
 
 const Integrations = () => {
   const [apps, setApps] = useState([]);
@@ -57,8 +57,8 @@ const Integrations = () => {
     }
     
     try {
-      // Pass the current domain so the CDN script points to localhost or vercel depending on where we are
-      const baseUrl = window.location.origin;
+      // Pass the backend server URL so the CDN script points to port 5000 / Vercel API
+      const baseUrl = VITE_SERVER_URL;
       const res = await fetch(`${VITE_API_URL}/client/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
