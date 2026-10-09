@@ -62,6 +62,31 @@ router.delete('/apps/:id', async (req, res) => {
   }
 });
 
+router.post('/sync', async (req, res) => {
+  try {
+    const { clientId, elementsCount, data } = req.body;
+    
+    // Validate
+    const appDoc = await ClientApp.findOne({ clientId });
+    if (!appDoc) return res.status(401).json({ error: 'Invalid API Key' });
+
+    // Store the DOM data
+    domStore.set(clientId, { elementsCount, data });
+    
+    // Tell the Admin panel that we are active
+    tunnelEvents.emit('status', { clientId, status: 'Active', elementsCount });
+    
+    // Log for debugging
+    console.log(`\n=== [DOM SYNC HTTP (Vercel Jugaad)] ===`);
+    console.log(`Client ID: ${clientId} | Elements: ${elementsCount}`);
+    console.log(`=======================================\n`);
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.get('/stream', (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',

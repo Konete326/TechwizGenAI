@@ -12,6 +12,7 @@
   // Use the API's port if running locally, otherwise fallback to the host
   const host = scriptUrl.host;
   const wsUrl = `${protocol}//${host}/tunnel?clientId=${clientId}`;
+  const syncHttpUrl = `${scriptUrl.protocol}//${host}/api/client/sync`;
   
   let ws;
   let retryCount = 0;
@@ -60,22 +61,17 @@
     ws = new WebSocket(wsUrl);
     
     ws.onopen = () => {
-      console.log('Nisa Semantic Engine: Connected and reading DOM.');
-      updateIndicator('connected');
+      console.log('Nisa Semantic Engine: Voice WebSocket Connected.');
       retryCount = 0;
-      syncDOM();
-      setupObserver();
     };
 
     ws.onclose = () => {
-      console.log('Nisa Semantic Engine: Disconnected. Reconnecting...');
-      updateIndicator('disconnected');
-      if (observer) observer.disconnect();
+      console.log('Nisa Semantic Engine: Voice WebSocket Disconnected. Reconnecting...');
       setTimeout(connect, Math.min(1000 * Math.pow(2, retryCount++), 10000));
     };
 
     ws.onerror = (err) => {
-      console.error('Nisa SDK WebSocket error:', err);
+      console.error('Nisa SDK Voice WebSocket error:', err);
     }
 
     ws.onmessage = (event) => {
@@ -155,10 +151,22 @@
     return semanticMap;
   }
 
-  function syncDOM() {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  async function syncDOM() {
     const map = parseDOM();
-    ws.send(JSON.stringify({ type: 'dom_sync', elementsCount: map.length, data: map }));
+    try {
+      const res = await fetch(syncHttpUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId, elementsCount: map.length, data: map })
+      });
+      if (res.ok) {
+        updateIndicator('connected');
+      } else {
+        updateIndicator('disconnected');
+      }
+    } catch (e) {
+      updateIndicator('disconnected');
+    }
   }
 
   function setupObserver() {
@@ -183,8 +191,14 @@
 
   // Initial connection delay slightly to ensure DOM is ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', connect);
+    document.addEventListener('DOMContentLoaded', () => {
+      setupObserver();
+      syncDOM();
+      connect(); // Try websocket for voice (may fail on Vercel, but won't stop DOM sync)
+    });
   } else {
+    setupObserver();
+    syncDOM();
     connect();
   }
 })();
