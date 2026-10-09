@@ -6,6 +6,8 @@ const clientAppSchema = new mongoose.Schema({
   code: { type: String, required: true },
   domain: { type: String }, // For Origin validation (Trust on First Use)
   status: { type: String, default: 'Inactive' },
+  domData: { type: mongoose.Schema.Types.Mixed },
+  elementsCount: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
 });
 

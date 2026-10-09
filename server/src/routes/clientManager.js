@@ -10,9 +10,8 @@ router.get('/apps', async (req, res) => {
     const apps = await ClientApp.find().sort({ createdAt: -1 });
     const enrichedApps = apps.map(app => {
       const obj = app.toObject();
-      if (domStore.has(app.clientId)) {
+      if (obj.elementsCount > 0) {
         obj.status = 'Active';
-        obj.elementsCount = domStore.get(app.clientId).elementsCount;
       }
       return obj;
     });
@@ -67,18 +66,20 @@ router.post('/sync', async (req, res) => {
   try {
     const { clientId, elementsCount, data } = req.body;
     
-    // Validate
-    const appDoc = await ClientApp.findOne({ clientId });
+    // Validate and update
+    const appDoc = await ClientApp.findOneAndUpdate(
+      { clientId },
+      { domData: data, elementsCount: elementsCount, status: 'Active' },
+      { new: true }
+    );
+    
     if (!appDoc) return res.status(401).json({ error: 'Invalid API Key' });
 
-    // Store the DOM data
-    domStore.set(clientId, { elementsCount, data });
-    
     // Tell the Admin panel that we are active
     tunnelEvents.emit('status', { clientId, status: 'Active', elementsCount });
     
     // Log for debugging
-    console.log(`\n=== [DOM SYNC HTTP (Vercel Jugaad)] ===`);
+    console.log(`\n=== [DOM SYNC HTTP (MongoDB Persistent)] ===`);
     console.log(`Client ID: ${clientId} | Elements: ${elementsCount}`);
     console.log(`=======================================\n`);
     
@@ -88,12 +89,16 @@ router.post('/sync', async (req, res) => {
   }
 });
 
-router.get('/dom/:clientId', (req, res) => {
-  const data = domStore.get(req.params.clientId);
-  if (!data) {
-    return res.status(404).json({ success: false, error: 'DOM data not found' });
+router.get('/dom/:clientId', async (req, res) => {
+  try {
+    const appDoc = await ClientApp.findOne({ clientId: req.params.clientId });
+    if (!appDoc || !appDoc.domData) {
+      return res.status(404).json({ success: false, error: 'DOM data not found' });
+    }
+    res.json({ success: true, data: appDoc.domData });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
-  res.json({ success: true, data: data.data });
 });
 
 router.get('/stream', (req, res) => {

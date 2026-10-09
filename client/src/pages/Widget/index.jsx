@@ -23,6 +23,13 @@ function WidgetApp() {
     }
   }, [c.isCallActive]);
 
+  // Notify SDK when minimized/expanded to resize the iframe
+  useEffect(() => {
+    if (window.parent) {
+      window.parent.postMessage({ type: c.isMinimized ? 'NISA_MINIMIZE' : 'NISA_EXPAND' }, '*');
+    }
+  }, [c.isMinimized]);
+
   function getHash(str) {
     let hash = 0;
     for (let i = 0, len = str.length; i < len; i++) {

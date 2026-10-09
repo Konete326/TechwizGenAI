@@ -170,6 +170,16 @@
              if(loadingOverlay) loadingOverlay.remove();
              chatWidget.style.display = 'flex';
              window.removeEventListener('message', messageListener);
+         } else if (e.data.type === 'NISA_MINIMIZE') {
+             if (window.innerWidth >= 768) {
+                 iframe.style.width = '300px';
+                 iframe.style.height = '100px';
+             }
+         } else if (e.data.type === 'NISA_EXPAND') {
+             if (window.innerWidth >= 768) {
+                 iframe.style.width = '370px';
+                 iframe.style.height = '600px';
+             }
          } else if (e.data.type === 'NISA_TOOL_CALL') {
              const { command, targetKey, value, route } = e.data;
              
