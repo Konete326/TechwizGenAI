@@ -16,6 +16,13 @@ function WidgetApp() {
     }
   }, [c.isCallActive, c.callPhase, c.startCall]);
 
+  // Notify SDK that the iframe is ready to be displayed
+  useEffect(() => {
+    if (c.isCallActive && window.parent) {
+      window.parent.postMessage({ type: 'NISA_IFRAME_READY' }, '*');
+    }
+  }, [c.isCallActive]);
+
   function getHash(str) {
     let hash = 0;
     for (let i = 0, len = str.length; i < len; i++) {

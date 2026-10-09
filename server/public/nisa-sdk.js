@@ -90,33 +90,84 @@
       chatPanel.style.display = 'none';
       
       const feUrl = scriptTag.getAttribute('data-frontend-url') || 'https://techwiz-gen-ai.vercel.app';
+      
+      // Create Loading Shimmer Overlay
+      const loadingOverlay = document.createElement('div');
+      loadingOverlay.style.position = 'fixed';
+      loadingOverlay.style.bottom = window.innerWidth < 768 ? '0' : '20px';
+      loadingOverlay.style.right = window.innerWidth < 768 ? '0' : '20px';
+      loadingOverlay.style.width = window.innerWidth < 768 ? '100vw' : '370px';
+      loadingOverlay.style.height = window.innerWidth < 768 ? '100vh' : '600px';
+      loadingOverlay.style.background = 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)';
+      loadingOverlay.style.borderRadius = window.innerWidth < 768 ? '0' : '24px';
+      loadingOverlay.style.zIndex = '9999998';
+      loadingOverlay.style.display = 'flex';
+      loadingOverlay.style.flexDirection = 'column';
+      loadingOverlay.style.alignItems = 'center';
+      loadingOverlay.style.justifyContent = 'center';
+      loadingOverlay.style.color = '#fff';
+      loadingOverlay.style.fontFamily = 'sans-serif';
+      loadingOverlay.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.5)';
+      
+      if (!document.getElementById('nisa-shimmer-style')) {
+        const style = document.createElement('style');
+        style.id = 'nisa-shimmer-style';
+        style.innerHTML = `@keyframes nisaShimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } } @keyframes nisaPulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 0.4; } }`;
+        document.head.appendChild(style);
+      }
+      
+      const shimmerCircle = document.createElement('div');
+      shimmerCircle.style.width = '70px';
+      shimmerCircle.style.height = '70px';
+      shimmerCircle.style.borderRadius = '50%';
+      shimmerCircle.style.background = 'linear-gradient(90deg, rgba(59, 130, 246, 0.2) 25%, rgba(59, 130, 246, 0.5) 50%, rgba(59, 130, 246, 0.2) 75%)';
+      shimmerCircle.style.backgroundSize = '200% 100%';
+      shimmerCircle.style.animation = 'nisaShimmer 2s infinite linear';
+      shimmerCircle.style.marginBottom = '24px';
+      shimmerCircle.style.display = 'flex';
+      shimmerCircle.style.alignItems = 'center';
+      shimmerCircle.style.justifyContent = 'center';
+      shimmerCircle.style.fontSize = '32px';
+      shimmerCircle.innerHTML = '🤖';
+      
+      const shimmerText = document.createElement('div');
+      shimmerText.innerText = 'Connecting to Nisa AI...';
+      shimmerText.style.fontSize = '16px';
+      shimmerText.style.fontWeight = '500';
+      shimmerText.style.animation = 'nisaPulse 2s infinite ease-in-out';
+      
+      loadingOverlay.appendChild(shimmerCircle);
+      loadingOverlay.appendChild(shimmerText);
+      document.body.appendChild(loadingOverlay);
+
       const iframe = document.createElement('iframe');
       iframe.src = `${feUrl}/widget?clientId=${clientId}`;
       iframe.allow = "microphone; camera";
       iframe.style.position = 'fixed';
-      iframe.style.bottom = '20px';
-      iframe.style.right = '20px';
-      iframe.style.width = '370px';
-      iframe.style.height = '600px';
+      iframe.style.bottom = window.innerWidth < 768 ? '0' : '20px';
+      iframe.style.right = window.innerWidth < 768 ? '0' : '20px';
+      iframe.style.width = window.innerWidth < 768 ? '100vw' : '370px';
+      iframe.style.height = window.innerWidth < 768 ? '100vh' : '600px';
       iframe.style.border = 'none';
       iframe.style.zIndex = '9999999';
       iframe.style.background = 'transparent';
-      iframe.style.colorScheme = 'normal'; // Prevent inheritance issues
-      
-      if (window.innerWidth < 768) {
-          iframe.style.width = '100vw';
-          iframe.style.height = '100vh';
-          iframe.style.bottom = '0';
-          iframe.style.right = '0';
-      }
+      iframe.style.colorScheme = 'normal';
+      iframe.style.opacity = '0'; // Hidden initially
+      iframe.style.transition = 'opacity 0.5s ease-in-out';
       
       document.body.appendChild(iframe);
       
       // Listen for messages from iframe
       const messageListener = (e) => {
          if (!e.data) return;
-         if (e.data.type === 'NISA_END_CALL') {
+         if (e.data.type === 'NISA_IFRAME_READY') {
+             iframe.style.opacity = '1';
+             setTimeout(() => {
+                 if(loadingOverlay) loadingOverlay.remove();
+             }, 500);
+         } else if (e.data.type === 'NISA_END_CALL') {
              iframe.remove();
+             if(loadingOverlay) loadingOverlay.remove();
              chatWidget.style.display = 'flex';
              window.removeEventListener('message', messageListener);
          } else if (e.data.type === 'NISA_TOOL_CALL') {
