@@ -13,6 +13,7 @@ import Analytics from "../pages/Analytics/index.jsx";
 import AuthLayout from "../pages/Auth/AuthLayout.jsx";
 import NotFoundPage from "../pages/NotFound/index.jsx";
 import Integrations from "../pages/Integrations/index.jsx";
+import LiveWidget from "../pages/Widget/index.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -22,6 +23,10 @@ export const router = createBrowserRouter([
       { path: "/register", element: null },
       { path: "/auth", element: null }
     ]
+  },
+  {
+    path: "/widget",
+    element: <LiveWidget />
   },
   {
     path: "/",
