@@ -19,6 +19,7 @@
   let observer;
   let debounceTimer;
   let indicator;
+  let serverFrontendUrl = 'https://techwiz-gen-ai.vercel.app'; // Default fallback
 
   let chatWidget;
   let chatPanel;
@@ -89,7 +90,7 @@
       chatWidget.style.display = 'none';
       chatPanel.style.display = 'none';
       
-      const feUrl = scriptTag.getAttribute('data-frontend-url') || 'https://techwiz-gen-ai.vercel.app';
+      const feUrl = serverFrontendUrl;
       
       // Create Loading Shimmer Overlay
       const loadingOverlay = document.createElement('div');
@@ -420,16 +421,29 @@
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
   }
 
-  // Initial connection delay slightly to ensure DOM is ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      setupObserver();
-      syncDOM();
-      connect(); // Try websocket for voice (may fail on Vercel, but won't stop DOM sync)
-    });
-  } else {
+  async function initSDK() {
+    try {
+      // Fetch dynamic configuration from backend
+      const configRes = await fetch(`${scriptUrl.protocol}//${host}/api/client/config/${clientId}`);
+      if (configRes.ok) {
+        const config = await configRes.json();
+        if (config.success && config.data.frontendUrl) {
+           serverFrontendUrl = config.data.frontendUrl;
+        }
+      }
+    } catch(e) {
+      console.warn("Nisa SDK: Could not fetch remote config, using fallback.");
+    }
+    
     setupObserver();
     syncDOM();
     connect();
+  }
+
+  // Initial connection delay slightly to ensure DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSDK);
+  } else {
+    initSDK();
   }
 })();

@@ -8,6 +8,7 @@ const clientAppSchema = new mongoose.Schema({
   status: { type: String, default: 'Inactive' },
   domData: { type: mongoose.Schema.Types.Mixed },
   elementsCount: { type: Number, default: 0 },
+  frontendUrl: { type: String }, // To dynamically load the iframe without hardcoding in the CDN tag
   createdAt: { type: Date, default: Date.now }
 });
 

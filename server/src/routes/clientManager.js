@@ -38,13 +38,18 @@ router.post('/generate', async (req, res) => {
     const scriptBase = baseUrl || 'https://cdn.nisa.ai';
     
     if (type === 'CDN') {
-      const feAttr = frontendUrl ? ` data-frontend-url="${frontendUrl}"` : '';
-      code = `<script src="${scriptBase}/nisa-sdk.js" data-client-id="${clientId}"${feAttr}></script>`;
+      code = `<script src="${scriptBase}/nisa-sdk.js" data-client-id="${clientId}"></script>`;
     } else {
       code = `npm install @nisa/sdk\n\nimport { Nisa } from '@nisa/sdk';\nNisa.init({ clientId: '${clientId}' });`;
     }
 
-    const newApp = new ClientApp({ clientId, type, code, status: 'Inactive' });
+    const newApp = new ClientApp({ 
+      clientId, 
+      type, 
+      code, 
+      status: 'Inactive',
+      frontendUrl: frontendUrl || 'https://techwiz-gen-ai.vercel.app' 
+    });
     await newApp.save();
     
     res.status(201).json({ success: true, data: newApp });
@@ -96,6 +101,18 @@ router.get('/dom/:clientId', async (req, res) => {
       return res.status(404).json({ success: false, error: 'DOM data not found' });
     }
     res.json({ success: true, data: appDoc.domData });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/config/:clientId', async (req, res) => {
+  try {
+    const appDoc = await ClientApp.findOne({ clientId: req.params.clientId });
+    if (!appDoc) {
+      return res.status(404).json({ success: false, error: 'Client not found' });
+    }
+    res.json({ success: true, data: { frontendUrl: appDoc.frontendUrl || 'https://techwiz-gen-ai.vercel.app' } });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
