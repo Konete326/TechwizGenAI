@@ -45,7 +45,22 @@
     chatWidget.style.justifyContent = 'center';
     chatWidget.style.color = '#fff';
     chatWidget.style.fontSize = '24px';
-    chatWidget.innerHTML = '🤖';
+    chatWidget.innerHTML = `<img src="${serverFrontendUrl}/logo.png" style="width:100%;height:100%;object-fit:cover;border-radius:50%;animation: nisaRing 2s infinite;" alt="Nisa" />`;
+    if (!document.getElementById('nisa-ring-style')) {
+        const style = document.createElement('style');
+        style.id = 'nisa-ring-style';
+        style.innerHTML = `
+        @keyframes nisaRing {
+            0% { transform: rotate(0) scale(1); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7); }
+            10% { transform: rotate(15deg) scale(1.1); }
+            20% { transform: rotate(-15deg) scale(1.1); }
+            30% { transform: rotate(15deg) scale(1.1); }
+            40% { transform: rotate(-15deg) scale(1.1); }
+            50% { transform: rotate(0) scale(1); box-shadow: 0 0 0 20px rgba(37, 99, 235, 0); }
+            100% { transform: rotate(0) scale(1); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+        }`;
+        document.head.appendChild(style);
+    }
     
     // Chat Panel
     chatPanel = document.createElement('div');
