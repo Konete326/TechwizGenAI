@@ -70,14 +70,15 @@ function WidgetApp() {
   useEffect(() => {
     const handleToolCall = (e) => {
       const call = e.detail;
-      if (call && (call.name === 'clickElement' || call.name === 'spotlightElement' || call.name === 'fillFormField' || call.name === 'navigatePage')) {
+      if (call) {
          if (window.parent) {
              window.parent.postMessage({ 
                 type: 'NISA_TOOL_CALL', 
                 command: call.name, 
                 targetKey: call.args?.targetKey,
                 value: call.args?.value,
-                route: call.args?.route
+                route: call.args?.route,
+                args: call.args
              }, '*');
          }
          // Instantly resolve the tool response inside the iframe so Nisa doesn't hang

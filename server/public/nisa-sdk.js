@@ -141,48 +141,107 @@
       loadingOverlay.appendChild(shimmerText);
       document.body.appendChild(loadingOverlay);
 
+      const wrapper = document.createElement('div');
+      wrapper.id = 'nisa-iframe-wrapper';
+      wrapper.style.position = 'fixed';
+      wrapper.style.bottom = window.innerWidth < 768 ? '0' : '20px';
+      wrapper.style.right = window.innerWidth < 768 ? '0' : '20px';
+      wrapper.style.width = window.innerWidth < 768 ? '100vw' : '370px';
+      wrapper.style.height = window.innerWidth < 768 ? '100vh' : '624px';
+      wrapper.style.zIndex = '9999999';
+      wrapper.style.transition = 'opacity 0.5s ease-in-out';
+      wrapper.style.opacity = '0';
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.boxShadow = '0 10px 25px rgba(0,0,0,0.1)';
+      wrapper.style.borderRadius = '12px';
+      
+      const dragHeader = document.createElement('div');
+      dragHeader.style.height = '24px';
+      dragHeader.style.background = '#09090b';
+      dragHeader.style.color = '#fff';
+      dragHeader.style.fontSize = '12px';
+      dragHeader.style.textAlign = 'center';
+      dragHeader.style.cursor = 'move';
+      dragHeader.style.borderRadius = '12px 12px 0 0';
+      dragHeader.style.display = window.innerWidth < 768 ? 'none' : 'flex';
+      dragHeader.style.alignItems = 'center';
+      dragHeader.style.justifyContent = 'center';
+      dragHeader.style.userSelect = 'none';
+      dragHeader.innerHTML = '<span style="opacity:0.7">▤</span>';
+      
       const iframe = document.createElement('iframe');
       iframe.src = `${feUrl}/widget?clientId=${clientId}`;
       iframe.allow = "microphone; camera";
-      iframe.style.position = 'fixed';
-      iframe.style.bottom = window.innerWidth < 768 ? '0' : '20px';
-      iframe.style.right = window.innerWidth < 768 ? '0' : '20px';
-      iframe.style.width = window.innerWidth < 768 ? '100vw' : '370px';
-      iframe.style.height = window.innerWidth < 768 ? '100vh' : '600px';
+      iframe.style.width = '100%';
+      iframe.style.height = '100%';
+      iframe.style.flex = '1';
       iframe.style.border = 'none';
-      iframe.style.zIndex = '9999999';
       iframe.style.background = 'transparent';
       iframe.style.colorScheme = 'normal';
-      iframe.style.opacity = '0'; // Hidden initially
-      iframe.style.transition = 'opacity 0.5s ease-in-out';
       
-      document.body.appendChild(iframe);
+      wrapper.appendChild(dragHeader);
+      wrapper.appendChild(iframe);
+      document.body.appendChild(wrapper);
+
+      let isDragging = false, startX, startY, startRight, startBottom;
+      dragHeader.addEventListener('mousedown', (e) => {
+         isDragging = true;
+         startX = e.clientX; startY = e.clientY;
+         const rect = wrapper.getBoundingClientRect();
+         startRight = window.innerWidth - rect.right;
+         startBottom = window.innerHeight - rect.bottom;
+         iframe.style.pointerEvents = 'none';
+      });
+      window.addEventListener('mousemove', (e) => {
+         if(!isDragging) return;
+         wrapper.style.right = (startRight - (e.clientX - startX)) + 'px';
+         wrapper.style.bottom = (startBottom - (e.clientY - startY)) + 'px';
+      });
+      window.addEventListener('mouseup', () => {
+         isDragging = false;
+         iframe.style.pointerEvents = 'auto';
+      });
       
       // Listen for messages from iframe
       const messageListener = (e) => {
          if (!e.data) return;
          if (e.data.type === 'NISA_IFRAME_READY') {
-             iframe.style.opacity = '1';
+             wrapper.style.opacity = '1';
              setTimeout(() => {
                  if(loadingOverlay) loadingOverlay.remove();
              }, 500);
          } else if (e.data.type === 'NISA_END_CALL') {
-             iframe.remove();
+             wrapper.remove();
              if(loadingOverlay) loadingOverlay.remove();
              chatWidget.style.display = 'flex';
              window.removeEventListener('message', messageListener);
          } else if (e.data.type === 'NISA_MINIMIZE') {
              if (window.innerWidth >= 768) {
-                 iframe.style.width = '300px';
-                 iframe.style.height = '100px';
+                 wrapper.style.width = '300px';
+                 wrapper.style.height = '124px';
              }
          } else if (e.data.type === 'NISA_EXPAND') {
              if (window.innerWidth >= 768) {
-                 iframe.style.width = '370px';
-                 iframe.style.height = '600px';
+                 wrapper.style.width = '370px';
+                 wrapper.style.height = '624px';
              }
          } else if (e.data.type === 'NISA_TOOL_CALL') {
-             const { command, targetKey, value, route } = e.data;
+             const { command, targetKey, value, route, args } = e.data;
+             
+             if (command === 'openDynamicModal' && args) {
+                 const m = document.createElement('div');
+                 m.id = 'nisa-dynamic-modal';
+                 m.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:24px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,0.2);z-index:9999999;max-width:90%;width:400px;font-family:sans-serif;color:#000;';
+                 m.innerHTML = `<h3 style="margin-top:0;font-size:18px;">${args.title||''}</h3><p style="white-space:pre-wrap;font-size:14px;color:#333;margin-bottom:0;">${args.content||''}</p><div style="text-align:right;margin-top:16px;"><button onclick="this.parentElement.parentElement.remove()" style="background:#09090b;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;">Close</button></div>`;
+                 document.body.appendChild(m);
+                 return;
+             }
+             if (command === 'closeModal') {
+                 const m = document.getElementById('nisa-dynamic-modal');
+                 if (m) m.remove();
+                 return;
+             }
              
              if (command === 'navigatePage' && route) {
                  window.location.href = route;
