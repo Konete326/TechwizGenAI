@@ -37,11 +37,43 @@ export function setupTunnel(server) {
       activeTunnels.set(clientId, ws);
       tunnelEvents.emit('status', { clientId, status: 'Active' });
 
+      const category = appDoc.appCategory || 'POS';
+      const customRules = appDoc.customInstructions ? ` Custom Rules: ${appDoc.customInstructions}` : '';
+      const dynamicInstruction = `Role: You are Nisa, an autonomous voice AI operating inside a ${category} application (${appDoc.appName || 'Client Application'}). Output JSON tool commands to click buttons, fill forms, or navigate when requested.${customRules}`;
+
+      const tools = [
+        {
+          functionDeclarations: [
+            {
+              name: "clickElement",
+              description: "Clicks any button or clickable element on the host screen. Accepts targetKey, selector, or XPath.",
+              parameters: { type: "OBJECT", properties: { targetKey: { type: "STRING" } }, required: ["targetKey"] }
+            },
+            {
+              name: "fillFormField",
+              description: "Fills a form field or input on the host screen.",
+              parameters: { type: "OBJECT", properties: { targetKey: { type: "STRING" }, value: { type: "STRING" } }, required: ["targetKey", "value"] }
+            },
+            {
+              name: "spotlightElement",
+              description: "Highlights a UI element with a pulse ring.",
+              parameters: { type: "OBJECT", properties: { targetKey: { type: "STRING" } }, required: ["targetKey"] }
+            },
+            {
+              name: "navigatePage",
+              description: "Navigates to a specific route or URL.",
+              parameters: { type: "OBJECT", properties: { route: { type: "STRING" } }, required: ["route"] }
+            }
+          ]
+        }
+      ];
+
       const geminiSession = await geminiClient.live.connect({
         model: 'gemini-3.8-live',
         config: {
           responseModalities: ['audio'],
-          systemInstruction: { parts: [{ text: 'You are Nisa. Output JSON commands to interact with the DOM when necessary.' }] }
+          systemInstruction: { parts: [{ text: dynamicInstruction }] },
+          tools
         },
         callbacks: {
           onmessage: (msg) => {

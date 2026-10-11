@@ -8,11 +8,13 @@ import {
   ArrowsClockwise, 
   Layout, 
   Code, 
-  Broadcast
+  Broadcast,
+  Lightning
 } from '@phosphor-icons/react';
 import { VITE_API_URL } from '@/config/env';
 import IntegrationSkeletonView from './IntegrationSkeletonView';
 import IntegrationJsonView from './IntegrationJsonView';
+import IntegrationPowersView from './IntegrationPowersView';
 
 export default function IntegrationDetails() {
   const { clientId } = useParams();
@@ -173,7 +175,7 @@ export default function IntegrationDetails() {
               </button>
             </div>
             <span className="bg-surface text-text-muted border border-border px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase shrink-0 hidden sm:inline-block">
-              {app?.type || 'CDN'}
+              {app?.appCategory || app?.type || 'CDN'}
             </span>
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-surface border border-border text-[11px] shrink-0">
               <Circle
@@ -217,6 +219,17 @@ export default function IntegrationDetails() {
               <Code size={14} weight={activeTab === 'json' ? 'bold' : 'regular'} />
               <span>JSON</span>
             </button>
+            <button
+              onClick={() => setActiveTab('powers')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
+                activeTab === 'powers'
+                  ? 'bg-surface-card text-accent font-semibold shadow-xs'
+                  : 'text-text-muted hover:text-text-primary'
+              }`}
+            >
+              <Lightning size={14} weight={activeTab === 'powers' ? 'fill' : 'regular'} />
+              <span>Powers</span>
+            </button>
           </div>
 
           <button
@@ -254,7 +267,13 @@ export default function IntegrationDetails() {
       </div>
 
       <div className="flex-1 min-h-0 w-full overflow-hidden">
-        {elements.length === 0 ? (
+        {activeTab === 'powers' ? (
+          <IntegrationPowersView 
+            clientId={clientId} 
+            app={app} 
+            onConfigUpdated={(updated) => setApp(prev => ({ ...prev, ...updated }))} 
+          />
+        ) : elements.length === 0 ? (
           <div className="h-full bg-surface-card rounded-xl border border-border p-6 flex flex-col items-center justify-center text-center overflow-y-auto space-y-4">
             <div className="w-12 h-12 rounded-xl bg-accent/10 border border-accent/20 text-accent mx-auto flex items-center justify-center animate-pulse">
               <Broadcast size={24} />
@@ -284,12 +303,10 @@ export default function IntegrationDetails() {
               </div>
             )}
           </div>
+        ) : activeTab === 'skeleton' ? (
+          <IntegrationSkeletonView elements={elements} clientId={clientId} />
         ) : (
-          activeTab === 'skeleton' ? (
-            <IntegrationSkeletonView elements={elements} clientId={clientId} />
-          ) : (
-            <IntegrationJsonView elements={elements} clientId={clientId} />
-          )
+          <IntegrationJsonView elements={elements} clientId={clientId} />
         )}
       </div>
     </div>

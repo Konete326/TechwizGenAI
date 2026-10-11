@@ -23,11 +23,10 @@ router.get('/apps', async (req, res) => {
 
 router.post('/generate', async (req, res) => {
   try {
-    const { type, baseUrl, frontendUrl } = req.body;
+    const { type, baseUrl, frontendUrl, appName, appCategory, customInstructions } = req.body;
     let clientId;
     let isUnique = false;
     
-    // Ensure random string is completely unique
     while (!isUnique) {
       clientId = 'nisa_' + crypto.randomBytes(8).toString('hex');
       const existing = await ClientApp.findOne({ clientId });
@@ -48,6 +47,9 @@ router.post('/generate', async (req, res) => {
       type, 
       code, 
       status: 'Inactive',
+      appName: appName || 'My Web Application',
+      appCategory: appCategory || 'POS',
+      customInstructions: customInstructions || '',
       frontendUrl: frontendUrl || 'https://techwiz-gen-ai.vercel.app' 
     });
     await newApp.save();
@@ -71,7 +73,6 @@ router.post('/sync', async (req, res) => {
   try {
     const { clientId, elementsCount, data } = req.body;
     
-    // Validate and update
     const appDoc = await ClientApp.findOneAndUpdate(
       { clientId },
       { domData: data, elementsCount: elementsCount, status: 'Active' },
@@ -80,10 +81,8 @@ router.post('/sync', async (req, res) => {
     
     if (!appDoc) return res.status(401).json({ error: 'Invalid API Key' });
 
-    // Tell the Admin panel that we are active
     tunnelEvents.emit('status', { clientId, status: 'Active', elementsCount });
     
-    // Log for debugging
     console.log(`\n=== [DOM SYNC HTTP (MongoDB Persistent)] ===`);
     console.log(`Client ID: ${clientId} | Elements: ${elementsCount}`);
     console.log(`=======================================\n`);
@@ -144,7 +143,98 @@ router.get('/config/:clientId', async (req, res) => {
     if (!appDoc) {
       return res.status(404).json({ success: false, error: 'Client not found' });
     }
-    res.json({ success: true, data: { frontendUrl: appDoc.frontendUrl || 'https://techwiz-gen-ai.vercel.app' } });
+    res.json({ 
+      success: true, 
+      data: { 
+        frontendUrl: appDoc.frontendUrl || 'https://techwiz-gen-ai.vercel.app',
+        appName: appDoc.appName || 'My Web Application',
+        appCategory: appDoc.appCategory || 'POS',
+        powers: appDoc.powers || {
+          autoCapture: true,
+          selfLearning: true,
+          formFilling: true,
+          navigation: true,
+          dynamicModals: true,
+          spotlightGuidance: true
+        },
+        customInstructions: appDoc.customInstructions || '',
+        voiceName: appDoc.voiceName || 'Aoede'
+      } 
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.put('/config/:clientId', async (req, res) => {
+  try {
+    const { appName, appCategory, powers, customInstructions, voiceName, frontendUrl } = req.body;
+    const update = { updatedAt: new Date() };
+    if (appName !== undefined) update.appName = appName;
+    if (appCategory !== undefined) update.appCategory = appCategory;
+    if (powers !== undefined) update.powers = powers;
+    if (customInstructions !== undefined) update.customInstructions = customInstructions;
+    if (voiceName !== undefined) update.voiceName = voiceName;
+    if (frontendUrl !== undefined) update.frontendUrl = frontendUrl;
+
+    const updated = await ClientApp.findOneAndUpdate(
+      { clientId: req.params.clientId },
+      { $set: update },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ success: false, error: 'Client not found' });
+    }
+
+    const ws = activeTunnels.get(req.params.clientId);
+    if (ws && ws.readyState === 1) {
+      ws.send(JSON.stringify({ 
+        type: 'config_updated', 
+        powers: updated.powers, 
+        appCategory: updated.appCategory,
+        customInstructions: updated.customInstructions
+      }));
+    }
+
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/config/:clientId', async (req, res) => {
+  try {
+    const { appName, appCategory, powers, customInstructions, voiceName, frontendUrl } = req.body;
+    const update = { updatedAt: new Date() };
+    if (appName !== undefined) update.appName = appName;
+    if (appCategory !== undefined) update.appCategory = appCategory;
+    if (powers !== undefined) update.powers = powers;
+    if (customInstructions !== undefined) update.customInstructions = customInstructions;
+    if (voiceName !== undefined) update.voiceName = voiceName;
+    if (frontendUrl !== undefined) update.frontendUrl = frontendUrl;
+
+    const updated = await ClientApp.findOneAndUpdate(
+      { clientId: req.params.clientId },
+      { $set: update },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ success: false, error: 'Client not found' });
+    }
+
+    const ws = activeTunnels.get(req.params.clientId);
+    if (ws && ws.readyState === 1) {
+      ws.send(JSON.stringify({ 
+        type: 'config_updated', 
+        powers: updated.powers, 
+        appCategory: updated.appCategory,
+        customInstructions: updated.customInstructions
+      }));
+    }
+
+    res.json({ success: true, data: updated });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

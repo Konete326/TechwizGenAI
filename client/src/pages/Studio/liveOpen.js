@@ -6,8 +6,8 @@ import { noteUserActivity } from "./nesaToolGuards";
 
 const MIC_MIME = "audio/pcm;rate=16000";
 
-export function sendSetupAndReconnectContext(ws, { resumeHandleRef, transcript, isReconnect }) {
-  ws.send(JSON.stringify(buildSetupMessage(resumeHandleRef.current)));
+export function sendSetupAndReconnectContext(ws, { resumeHandleRef, transcript, isReconnect, customConfig }) {
+  ws.send(JSON.stringify(buildSetupMessage(resumeHandleRef.current, customConfig)));
   if (isReconnect && transcript) {
     ws.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text: "Context from before reconnect: " + transcript.slice(-1000) }] }], turnComplete: false } }));
   } else if (!isReconnect) {

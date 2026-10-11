@@ -18,6 +18,7 @@
   let observer;
   let debounceTimer;
   let serverFrontendUrl = 'https://techwiz-gen-ai.vercel.app';
+  let clientConfig = null;
 
   let chatWidget;
   let chatPanel;
@@ -79,7 +80,7 @@
     } catch (err) {}
 
     const lowerTarget = targetKey.toLowerCase().trim();
-    const actionables = document.querySelectorAll('button, a, input, [role="button"], [role="link"], [role="tab"], [role="menuitem"], .btn, .button, [onclick], [data-action]');
+    const actionables = document.querySelectorAll('button, a, input, select, textarea, [role="button"], [role="link"], [role="tab"], [role="menuitem"], .btn, .button, [onclick], [data-action]');
     for (const item of actionables) {
       const txt = (item.innerText || item.value || item.getAttribute('aria-label') || item.getAttribute('title') || '').toLowerCase().trim();
       if (txt === lowerTarget || (txt && lowerTarget.length > 2 && txt.includes(lowerTarget))) {
@@ -244,7 +245,7 @@
       shimmerCircle.style.borderRadius = '50%';
       shimmerCircle.style.background = 'linear-gradient(90deg, rgba(59, 130, 246, 0.2) 25%, rgba(59, 130, 246, 0.5) 50%, rgba(59, 130, 246, 0.2) 75%)';
       shimmerCircle.style.backgroundSize = '200% 100%';
-      shimmerCircle.style.animation = 'nisaShimmer 2s infinite linear';
+      shimmerCircle.animation = 'nisaShimmer 2s infinite linear';
       shimmerCircle.style.marginBottom = '24px';
       shimmerCircle.style.display = 'flex';
       shimmerCircle.style.alignItems = 'center';
@@ -369,8 +370,13 @@
             window.location.href = route;
             return;
           }
+
+          if (command === 'scrollPage') {
+            window.scrollBy({ top: value || 400, behavior: 'smooth' });
+            return;
+          }
           
-          if ((command === 'clickElement' || command === 'spotlightElement' || command === 'fillFormField') && targetKey) {
+          if ((command === 'clickElement' || command === 'spotlightElement' || command === 'fillFormField' || command === 'selectOption' || command === 'submitForm') && targetKey) {
             const el = findElement(targetKey);
             
             if (el) {
@@ -396,6 +402,16 @@
                 el.value = value || '';
                 el.dispatchEvent(new Event('input', { bubbles: true }));
                 el.dispatchEvent(new Event('change', { bubbles: true }));
+              } else if (command === 'selectOption') {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.value = value;
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+              } else if (command === 'submitForm') {
+                const form = el.tagName === 'FORM' ? el : el.closest('form');
+                if (form) {
+                  if (form.requestSubmit) form.requestSubmit();
+                  else form.submit();
+                }
               } else if (command === 'spotlightElement') {
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 const oldBoxShadow = el.style.boxShadow;
@@ -440,6 +456,7 @@
 
   function setupInteractionLearner() {
     document.addEventListener('click', (e) => {
+      if (clientConfig && clientConfig.powers && clientConfig.powers.selfLearning === false) return;
       const target = e.target;
       if (!target || target === document.body || target === document.documentElement) return;
       if (target.closest && (target.closest('#nisa-iframe-wrapper') || target.closest('#nisa-chat-widget') || target.closest('#nisa-chat-panel') || target.closest('#nisa-dynamic-modal'))) {
@@ -497,6 +514,7 @@
     }, true);
 
     document.addEventListener('change', (e) => {
+      if (clientConfig && clientConfig.powers && clientConfig.powers.selfLearning === false) return;
       const target = e.target;
       if (!target || (target.tagName !== 'INPUT' && target.tagName !== 'SELECT' && target.tagName !== 'TEXTAREA')) return;
       if (target.closest && (target.closest('#nisa-iframe-wrapper') || target.closest('#nisa-chat-widget') || target.closest('#nisa-chat-panel'))) {
@@ -560,6 +578,13 @@
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
+        if (msg.type === 'config_updated') {
+          clientConfig = clientConfig || {};
+          if (msg.powers) clientConfig.powers = msg.powers;
+          if (msg.appCategory) clientConfig.appCategory = msg.appCategory;
+          if (msg.customInstructions) clientConfig.customInstructions = msg.customInstructions;
+          return;
+        }
         if (msg.type === 'request_dom_sync' || msg.command === 'rescan_dom') {
           syncDOM(true);
         }
@@ -692,6 +717,7 @@
   }
 
   async function syncDOM(force = false) {
+    if (clientConfig && clientConfig.powers && clientConfig.powers.autoCapture === false) return;
     const map = parseDOM();
     const mapString = JSON.stringify(map);
     const hash = getHash(mapString);
@@ -750,8 +776,11 @@
       const configRes = await fetch(`${scriptUrl.protocol}//${host}/api/client/config/${clientId}`);
       if (configRes.ok) {
         const config = await configRes.json();
-        if (config.success && config.data.frontendUrl) {
-          serverFrontendUrl = config.data.frontendUrl;
+        if (config.success && config.data) {
+          clientConfig = config.data;
+          if (config.data.frontendUrl) {
+            serverFrontendUrl = config.data.frontendUrl;
+          }
         }
       }
     } catch (e) {

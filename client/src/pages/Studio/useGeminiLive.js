@@ -83,7 +83,20 @@ export function useGeminiLive({ onToolCall, clientId } = {}) {
       const ws = new WebSocket(getLiveWsUrl(apiKey));
       wsRef.current = ws;
       ws.onopen = async () => {
-        sendSetupAndReconnectContext(ws, { resumeHandleRef, transcript, isReconnect });
+        let customConfig = null;
+        if (clientId) {
+          try {
+            const apiUrl = import.meta.env.VITE_API_URL || '';
+            const cfgRes = await fetch(`${apiUrl}/client/config/${clientId}`);
+            if (cfgRes.ok) {
+              const cfgJson = await cfgRes.json();
+              if (cfgJson.success && cfgJson.data) {
+                customConfig = cfgJson.data;
+              }
+            }
+          } catch (e) {}
+        }
+        sendSetupAndReconnectContext(ws, { resumeHandleRef, transcript, isReconnect, customConfig });
         try {
           await startInputStream(ws, { audio, isReadyRef, isCallActiveRef, setIsUserSpeaking, userSpeakingTimerRef });
           setIsConnected(true);
@@ -106,7 +119,7 @@ export function useGeminiLive({ onToolCall, clientId } = {}) {
       setConnectionError(err?.message || "Failed to initialize");
       disconnect();
     }
-  }, [audio, disconnect, stopAudio, transcript]);
+  }, [audio, clientId, disconnect, stopAudio, transcript]);
   useEffect(() => { connectRef.current = connect; }, [connect]);
 
   const { forceReply, sendContextTurn } = useGeminiLiveSenders(wsRef);
