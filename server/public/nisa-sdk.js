@@ -381,7 +381,7 @@
       
       const iframe = document.createElement('iframe');
       iframe.src = `${feUrl}/widget?clientId=${clientId}`;
-      const allowPolicy = "microphone *; camera *; autoplay *; clipboard-read; clipboard-write; display-capture *";
+      const allowPolicy = "microphone *; camera *; autoplay *; clipboard-read; clipboard-write; display-capture *; screen-wake-lock *";
       iframe.allow = allowPolicy;
       iframe.setAttribute('allow', allowPolicy);
       iframe.setAttribute('allowusermedia', 'true');
@@ -715,19 +715,30 @@
 
   function connect() {
     createChatWidget();
-    ws = new WebSocket(wsUrl);
+    if (host.includes('vercel.app') || host.includes('now.sh')) {
+      return;
+    }
+    if (retryCount >= 2) {
+      return;
+    }
+    try {
+      ws = new WebSocket(wsUrl);
+    } catch (_) {
+      return;
+    }
     
     ws.onopen = () => {
       retryCount = 0;
     };
 
     ws.onclose = () => {
-      setTimeout(connect, Math.min(1000 * Math.pow(2, retryCount++), 10000));
+      if (retryCount < 2) {
+        retryCount++;
+        setTimeout(connect, Math.min(1000 * Math.pow(2, retryCount), 5000));
+      }
     };
 
-    ws.onerror = (err) => {
-      console.error('Nisa SDK Tunnel WebSocket error:', err);
-    };
+    ws.onerror = () => {};
 
     ws.onmessage = (event) => {
       try {

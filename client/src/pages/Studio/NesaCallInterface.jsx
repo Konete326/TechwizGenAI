@@ -35,11 +35,12 @@ export function NesaCallInterface({
   useEffect(() => {
     if (callPhase === "ringing") {
       const stopTone = playRingingTone();
-      const hasVib = typeof navigator !== "undefined" && Boolean(navigator.vibrate);
-      const doVib = () => { try { navigator.vibrate([400, 200, 400, 1000]); } catch(err) { console.error("Vibrate failed:", err); } };
+      const isTopWindow = typeof window !== "undefined" && window.self === window.top;
+      const hasVib = isTopWindow && typeof navigator !== "undefined" && Boolean(navigator.vibrate);
+      const doVib = () => { try { navigator.vibrate([400, 200, 400, 1000]); } catch (_) {} };
       if (hasVib) doVib();
       const vibId = hasVib ? setInterval(doVib, 2000) : null;
-      return () => { stopTone(); if (vibId) clearInterval(vibId); if (hasVib) { try { navigator.vibrate(0); } catch(err) { console.error("Vibrate stop failed:", err); } } };
+      return () => { stopTone(); if (vibId) clearInterval(vibId); if (hasVib) { try { navigator.vibrate(0); } catch (_) {} } };
     }
     if (callPhase === "connected") {
       const fadeTimer = setTimeout(() => { setShowRinging(false); setIsFadingRinging(false); }, 700);
