@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useGeminiLive } from "./useGeminiLive";
-import { checkMicrophonePermission } from "@/utils/checkMicPermission";
+import { checkMicrophonePermission, stopActiveMicStream } from "@/utils/checkMicPermission";
 import { useNesaCallWidget } from "./useNesaCallWidget";
 import { useWakeLock } from "./useWakeLock";
 import { useNesaContextEvent } from "./useNesaContextEvent";
@@ -62,6 +62,7 @@ export function useNesaCall({ onMicDenied, onToolCall, clientId } = {}) {
 
   const endCall = useCallback(() => {
     clearRingTimer();
+    stopActiveMicStream();
     if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
     setDebouncedSpeaking(false);
     isCallActiveRef.current = false;
@@ -96,6 +97,7 @@ export function useNesaCall({ onMicDenied, onToolCall, clientId } = {}) {
   useEffect(() => {
     return () => {
       clearRingTimer();
+      stopActiveMicStream();
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       disconnect();
     };

@@ -18,19 +18,19 @@ export const NESA_TOOL_DECLARATIONS = [
   },
   {
     name: "spotlightElement",
-    description: "Highlight or spotlight an on-screen UI element with guidance text.",
+    description: "Highlight or spotlight an on-screen UI element with guidance text. Accepts targetKey, element XPath, or selector.",
     parameters: {
       type: "OBJECT",
-      properties: { targetKey: { type: "STRING", enum: NESA_TARGET_KEYS, description: "Exact target key to highlight." }, label: { type: "STRING", description: "Short guidance text" } },
+      properties: { targetKey: { type: "STRING", description: "Target key, XPath, or selector to highlight." }, label: { type: "STRING", description: "Short guidance text" } },
       required: ["targetKey"]
     }
   },
   {
     name: "clickElement",
-    description: "Clicks, activates, or triggers any button, tab, link, or interactive control on the current screen.",
+    description: "Clicks, activates, or triggers any button, tab, link, or interactive control on the screen. Accepts targetKey, element XPath, or selector.",
     parameters: {
       type: "OBJECT",
-      properties: { targetKey: { type: "STRING", enum: NESA_TARGET_KEYS, description: "Exact target identifier of the button or control to click." } },
+      properties: { targetKey: { type: "STRING", description: "Target identifier, XPath, or selector of the button or control to click." } },
       required: ["targetKey"]
     }
   },

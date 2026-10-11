@@ -94,8 +94,37 @@ router.post('/sync', async (req, res) => {
   }
 });
 
+router.post('/request-sync/:clientId', async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    const ws = activeTunnels.get(clientId);
+    let isLiveConnected = false;
+    if (ws && ws.readyState === 1) {
+      ws.send(JSON.stringify({ type: 'request_dom_sync', command: 'rescan_dom' }));
+      isLiveConnected = true;
+    }
+    const mem = domStore.get(clientId);
+    const appDoc = await ClientApp.findOne({ clientId });
+    const currentData = (mem?.data && Array.isArray(mem.data) && mem.data.length > 0)
+      ? mem.data
+      : (appDoc?.domData || []);
+    res.json({
+      success: true,
+      liveConnected: isLiveConnected,
+      elementsCount: currentData.length,
+      data: currentData
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.get('/dom/:clientId', async (req, res) => {
   try {
+    const mem = domStore.get(req.params.clientId);
+    if (mem?.data && Array.isArray(mem.data) && mem.data.length > 0) {
+      return res.json({ success: true, data: mem.data });
+    }
     const appDoc = await ClientApp.findOne({ clientId: req.params.clientId });
     if (!appDoc) {
       return res.status(404).json({ success: false, error: 'Client not found' });

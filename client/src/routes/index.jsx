@@ -13,6 +13,7 @@ import Analytics from "../pages/Analytics/index.jsx";
 import AuthLayout from "../pages/Auth/AuthLayout.jsx";
 import NotFoundPage from "../pages/NotFound/index.jsx";
 import Integrations from "../pages/Integrations/index.jsx";
+import IntegrationDetails from "../pages/Integrations/IntegrationDetails.jsx";
 import LiveWidget from "../pages/Widget/index.jsx";
 
 export const router = createBrowserRouter([
@@ -79,6 +80,10 @@ export const router = createBrowserRouter([
       {
         path: "integrations",
         element: <Integrations />
+      },
+      {
+        path: "integrations/:clientId",
+        element: <IntegrationDetails />
       },
       {
         path: "profile",

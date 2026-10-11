@@ -1,6 +1,33 @@
+let activeMicStream = null;
+
+export function getActiveMicStream() {
+  if (activeMicStream && activeMicStream.active && activeMicStream.getAudioTracks().some((t) => t.readyState === "live")) {
+    return activeMicStream;
+  }
+  return null;
+}
+
+export function setActiveMicStream(stream) {
+  activeMicStream = stream;
+}
+
+export function stopActiveMicStream() {
+  if (activeMicStream) {
+    try {
+      activeMicStream.getTracks().forEach((t) => t.stop());
+    } catch {}
+    activeMicStream = null;
+  }
+}
+
 export async function checkMicrophonePermission() {
   if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
     return { granted: false, error: "Microphone is not supported on this browser" };
+  }
+
+  const existing = getActiveMicStream();
+  if (existing) {
+    return { granted: true };
   }
 
   try {
@@ -19,8 +46,15 @@ export async function checkMicrophonePermission() {
       } catch {}
     }
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stream.getTracks().forEach((t) => t.stop());
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: 1
+      }
+    });
+    setActiveMicStream(stream);
     return { granted: true };
   } catch (err) {
     const isDenied = err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError";

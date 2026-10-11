@@ -17,7 +17,6 @@ export function setupTunnel(server) {
 
       if (!clientId) return ws.close(1008, 'Missing clientId');
 
-      // Domain/Origin Validation
       const appDoc = await ClientApp.findOne({ clientId });
       if (!appDoc) {
         console.warn(`[Security] Connection rejected: Invalid clientId ${clientId}`);
@@ -27,20 +26,17 @@ export function setupTunnel(server) {
       const origin = req.headers.origin;
       if (origin) {
         if (!appDoc.domain) {
-          // Trust on First Use (TOFU)
           appDoc.domain = origin;
           await appDoc.save();
           console.log(`[Security] API Key ${clientId} is now bound to domain: ${origin}`);
         } else if (appDoc.domain !== origin) {
           console.warn(`[Security] Origin ${origin} does not match initial domain ${appDoc.domain}. Permitting for now in Dev Mode.`);
-          // We removed the ws.close(1008) here so Vercel/Localhost switching doesn't break the connection
         }
       }
 
       activeTunnels.set(clientId, ws);
       tunnelEvents.emit('status', { clientId, status: 'Active' });
 
-      // Connect to Gemini 3.8 Live API
       const geminiSession = await geminiClient.live.connect({
         model: 'gemini-3.8-live',
         config: {
@@ -54,7 +50,6 @@ export function setupTunnel(server) {
         }
       });
 
-      // Receive audio/text/dom from SDK
       ws.on('message', (message) => {
         try {
           const data = JSON.parse(message);
@@ -62,8 +57,11 @@ export function setupTunnel(server) {
           if (data.type === 'dom_sync') {
             domStore.set(clientId, data);
             tunnelEvents.emit('status', { clientId, status: 'Active', elementsCount: data.elementsCount });
+            ClientApp.findOneAndUpdate(
+              { clientId },
+              { domData: data.data, elementsCount: data.elementsCount, status: 'Active' }
+            ).catch(() => {});
             
-            // Console logs as requested
             console.log(`\n=== [DOM SYNC] Semantic Map Received ===`);
             console.log(`Client ID: ${clientId}`);
             console.log(`Total Actionable/Readable Elements: ${data.elementsCount}`);
@@ -72,6 +70,15 @@ export function setupTunnel(server) {
               console.log(JSON.stringify(data.data.slice(0, 2), null, 2));
             }
             console.log(`========================================\n`);
+            return;
+          }
+
+          if (data.type === 'element_demonstrated') {
+            console.log(`\n=== [SELF-LEARNING] User Demonstrated Element ===`);
+            console.log(`Client ID: ${clientId}`);
+            console.log(`Action: ${data.action || 'click'}`);
+            console.log(`Element:`, JSON.stringify(data.element, null, 2));
+            console.log(`=================================================\n`);
             return;
           }
 

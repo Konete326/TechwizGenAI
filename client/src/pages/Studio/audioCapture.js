@@ -1,15 +1,20 @@
 import { logDebug } from "./logger";
 import { WORKLET_SRC } from "./workletSource.js";
+import { getActiveMicStream, setActiveMicStream, stopActiveMicStream } from "../../utils/checkMicPermission";
 
 export async function startCapture({ onChunk, onMicLost }) {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true,
-      channelCount: 1
-    }
-  });
+  let stream = getActiveMicStream();
+  if (!stream) {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: 1
+      }
+    });
+    setActiveMicStream(stream);
+  }
   const track = stream.getAudioTracks()[0];
   if (track) {
     track.onended = onMicLost;
@@ -54,7 +59,7 @@ export async function startCapture({ onChunk, onMicLost }) {
   return {
     stop() {
       try { worklet.disconnect(); } catch(err) { console.error("Worklet disconnect error:", err); }
-      stream.getTracks().forEach(t => t.stop());
+      stopActiveMicStream();
       URL.revokeObjectURL(blobUrl);
       try { ctx.close(); } catch(err) { logDebug("AudioContext close error", err); }
     }

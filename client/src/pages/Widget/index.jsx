@@ -10,20 +10,36 @@ function WidgetApp() {
   const [lastDomHash, setLastDomHash] = useState('');
 
   useEffect(() => {
-    // Auto start the call when this iframe loads
     if (!c.isCallActive && c.callPhase === "ended") {
       c.startCall();
     }
   }, [c.isCallActive, c.callPhase, c.startCall]);
 
-  // Notify SDK that the iframe is ready to be displayed
+  useEffect(() => {
+    const handleParentMsg = (e) => {
+      if (e.data?.type === 'NISA_START_CALL') {
+        if (!c.isCallActive) {
+          c.startCall();
+        }
+      }
+      if (e.data?.type === 'NISA_ELEMENT_DEMONSTRATED') {
+        const { action, element } = e.data;
+        if (element && c.sendContextTurn) {
+          const textLabel = element.text ? `"${element.text}"` : `<${element.element}>`;
+          c.sendContextTurn(`[SYSTEM EVENT: User demonstrated manual ${action || 'interaction'} on element ${textLabel} with XPath "${element.xpath}". Nisa has now learned this element and its selector! Acknowledge warmly in your verbal reply in the user's language that you observed their action, understood it, and have now learned this element, and can click or perform this action for them whenever requested.]`);
+        }
+      }
+    };
+    window.addEventListener('message', handleParentMsg);
+    return () => window.removeEventListener('message', handleParentMsg);
+  }, [c.isCallActive, c.startCall, c.sendContextTurn]);
+
   useEffect(() => {
     if (c.isCallActive && window.parent) {
       window.parent.postMessage({ type: 'NISA_IFRAME_READY' }, '*');
     }
   }, [c.isCallActive]);
 
-  // Notify SDK when minimized/expanded to resize the iframe
   useEffect(() => {
     if (window.parent) {
       window.parent.postMessage({ type: c.isMinimized ? 'NISA_MINIMIZE' : 'NISA_EXPAND' }, '*');
@@ -40,7 +56,6 @@ function WidgetApp() {
     return hash.toString();
   }
 
-  // Poll DOM changes from backend
   useEffect(() => {
     if (!clientId || !c.isCallActive) return;
 
@@ -62,11 +77,10 @@ function WidgetApp() {
     };
 
     const interval = setInterval(pollDom, 3000);
-    pollDom(); // initial
+    pollDom();
     return () => clearInterval(interval);
   }, [clientId, c.isCallActive, c.sendContextTurn, lastDomHash]);
 
-  // Listen for tool calls and forward to parent window (SDK)
   useEffect(() => {
     const handleToolCall = (e) => {
       const call = e.detail;
@@ -81,7 +95,6 @@ function WidgetApp() {
                 args: call.args
              }, '*');
          }
-         // Instantly resolve the tool response inside the iframe so Nisa doesn't hang
          setTimeout(() => {
             window.dispatchEvent(new CustomEvent("nesa:toolresponse", {
                detail: { id: call.id || call.callId, name: call.name, response: { status: "success", executed: true } }
@@ -102,7 +115,6 @@ function WidgetApp() {
         onToggleMinimize={c.toggleMinimize} 
         onEndCall={() => {
             c.endCall();
-            // Send message to parent to close iframe
             if (window.parent) {
                 window.parent.postMessage({ type: 'NISA_END_CALL' }, '*');
             }
