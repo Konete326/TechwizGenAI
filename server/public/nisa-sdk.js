@@ -177,29 +177,9 @@
     callButton.style.width = '100%';
     callButton.style.fontSize = '16px';
     
-    callButton.onclick = async () => {
+    callButton.onclick = () => {
       chatWidget.style.display = 'none';
       chatPanel.style.display = 'none';
-
-      if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
-        try {
-          if (navigator.permissions && navigator.permissions.query) {
-            try {
-              const status = await navigator.permissions.query({ name: 'microphone' });
-              if (status.state !== 'granted') {
-                const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-                s.getTracks().forEach((t) => t.stop());
-              }
-            } catch (e) {
-              const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-              s.getTracks().forEach((t) => t.stop());
-            }
-          } else {
-            const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-            s.getTracks().forEach((t) => t.stop());
-          }
-        } catch (err) {}
-      }
 
       const existingWrapper = document.getElementById('nisa-iframe-wrapper');
       if (existingWrapper) {

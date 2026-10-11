@@ -73,13 +73,12 @@ export function useNesaCall({ onMicDenied, onToolCall, clientId } = {}) {
   }, [disconnect, setIsMinimized]);
 
   const startCall = useCallback(async () => {
+    clearRingTimer();
     const micCheck = await checkMicrophonePermission();
     if (!micCheck.granted) {
       if (onMicDenied) onMicDenied(micCheck.error);
       return false;
     }
-    clearRingTimer();
-    disconnect();
     setIsMinimized(false);
     setCallPhase("ringing");
 
@@ -88,9 +87,9 @@ export function useNesaCall({ onMicDenied, onToolCall, clientId } = {}) {
       isCallActiveRef.current = true;
       setIsCallActive(true);
       connect();
-    }, 3000);
+    }, 1000);
     return true;
-  }, [connect, disconnect, onMicDenied, setIsMinimized]);
+  }, [connect, onMicDenied, setIsMinimized]);
 
   const toggleMinimize = useCallback(() => setIsMinimized((prev) => !prev), [setIsMinimized]);
 
