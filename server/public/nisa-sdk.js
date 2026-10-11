@@ -183,13 +183,7 @@
 
       const existingWrapper = document.getElementById('nisa-iframe-wrapper');
       if (existingWrapper) {
-        existingWrapper.style.display = 'flex';
-        existingWrapper.style.opacity = '1';
-        const existingIframe = existingWrapper.querySelector('iframe');
-        if (existingIframe?.contentWindow) {
-          existingIframe.contentWindow.postMessage({ type: 'NISA_START_CALL' }, '*');
-        }
-        return;
+        existingWrapper.remove();
       }
 
       const feUrl = serverFrontendUrl;
@@ -200,7 +194,7 @@
       loadingOverlay.style.bottom = window.innerWidth < 768 ? '0' : '20px';
       loadingOverlay.style.right = window.innerWidth < 768 ? '0' : '20px';
       loadingOverlay.style.width = window.innerWidth < 768 ? '100vw' : '370px';
-      loadingOverlay.style.height = window.innerWidth < 768 ? '100vh' : '600px';
+      loadingOverlay.style.height = window.innerWidth < 768 ? '100vh' : '624px';
       loadingOverlay.style.background = 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)';
       loadingOverlay.style.borderRadius = window.innerWidth < 768 ? '0' : '24px';
       loadingOverlay.style.zIndex = '9999998';
@@ -251,8 +245,8 @@
       wrapper.style.width = window.innerWidth < 768 ? '100vw' : '370px';
       wrapper.style.height = window.innerWidth < 768 ? '100vh' : '624px';
       wrapper.style.zIndex = '9999999';
-      wrapper.style.transition = 'opacity 0.5s ease-in-out';
-      wrapper.style.opacity = '0';
+      wrapper.style.transition = 'opacity 0.3s ease-in-out';
+      wrapper.style.opacity = '1';
       wrapper.style.display = 'flex';
       wrapper.style.flexDirection = 'column';
       wrapper.style.boxShadow = '0 10px 25px rgba(0,0,0,0.1)';
@@ -284,10 +278,16 @@
       iframe.style.border = 'none';
       iframe.style.background = 'transparent';
       iframe.style.colorScheme = 'normal';
+
+      iframe.onload = () => {
+        wrapper.style.opacity = '1';
+        setTimeout(() => {
+          if (loadingOverlay && loadingOverlay.parentNode) loadingOverlay.remove();
+        }, 300);
+      };
       
       wrapper.appendChild(dragHeader);
       wrapper.appendChild(iframe);
-      document.body.appendChild(wrapper);
 
       let isDragging = false, startX, startY, startRight, startBottom;
       dragHeader.addEventListener('mousedown', (e) => {
@@ -312,13 +312,13 @@
         if (!e.data) return;
         if (e.data.type === 'NISA_IFRAME_READY') {
           wrapper.style.opacity = '1';
-          setTimeout(() => {
-            if (loadingOverlay) loadingOverlay.remove();
-          }, 500);
+          if (loadingOverlay && loadingOverlay.parentNode) loadingOverlay.remove();
         } else if (e.data.type === 'NISA_END_CALL') {
-          wrapper.style.display = 'none';
-          if (loadingOverlay) loadingOverlay.remove();
+          window.removeEventListener('message', messageListener);
+          wrapper.remove();
+          if (loadingOverlay && loadingOverlay.parentNode) loadingOverlay.remove();
           chatWidget.style.display = 'flex';
+          if (callButton) callButton.innerHTML = '📞 Call Nisa';
         } else if (e.data.type === 'NISA_MINIMIZE') {
           if (window.innerWidth >= 768) {
             wrapper.style.width = '300px';
@@ -407,7 +407,14 @@
           }
         }
       };
+
       window.addEventListener('message', messageListener);
+      document.body.appendChild(wrapper);
+
+      setTimeout(() => {
+        if (loadingOverlay && loadingOverlay.parentNode) loadingOverlay.remove();
+        wrapper.style.opacity = '1';
+      }, 1500);
     };
     
     body.appendChild(callButton);
@@ -544,7 +551,6 @@
     
     ws.onopen = () => {
       retryCount = 0;
-      if (callButton) callButton.innerHTML = '🔴 End Call';
     };
 
     ws.onclose = () => {
@@ -552,7 +558,7 @@
     };
 
     ws.onerror = (err) => {
-      console.error('Nisa SDK Voice WebSocket error:', err);
+      console.error('Nisa SDK Tunnel WebSocket error:', err);
     };
 
     ws.onmessage = (event) => {

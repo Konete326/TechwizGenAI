@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { NesaCallProvider, useNesaCallContext } from "../../context/NesaCallContext";
 import { NesaCallInterface } from "../Studio/NesaCallInterface";
@@ -8,12 +8,14 @@ function WidgetApp() {
   const [searchParams] = useSearchParams();
   const clientId = searchParams.get('clientId');
   const [lastDomHash, setLastDomHash] = useState('');
+  const hasAutoStartedRef = useRef(false);
 
   useEffect(() => {
-    if (!c.isCallActive && c.callPhase === "ended") {
+    if (!hasAutoStartedRef.current) {
+      hasAutoStartedRef.current = true;
       c.startCall();
     }
-  }, [c.isCallActive, c.callPhase, c.startCall]);
+  }, [c.startCall]);
 
   useEffect(() => {
     const handleParentMsg = (e) => {
@@ -33,6 +35,12 @@ function WidgetApp() {
     window.addEventListener('message', handleParentMsg);
     return () => window.removeEventListener('message', handleParentMsg);
   }, [c.isCallActive, c.startCall, c.sendContextTurn]);
+
+  useEffect(() => {
+    if (window.parent) {
+      window.parent.postMessage({ type: 'NISA_IFRAME_READY' }, '*');
+    }
+  }, []);
 
   useEffect(() => {
     if (c.isCallActive && window.parent) {
