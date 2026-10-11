@@ -24,6 +24,8 @@
   let chatPanel;
   let callButton;
   const learnedElements = new Map();
+  const registeredXPaths = new Set();
+  const registeredIds = new Set();
 
   function showLearnedPulse(el) {
     if (!el || typeof el.getBoundingClientRect !== 'function') return;
@@ -617,6 +619,9 @@
       const xpath = getXPath(interactiveEl);
       if (!xpath) return;
 
+      const isKnown = registeredXPaths.has(xpath) || (interactiveEl.id && registeredIds.has(interactiveEl.id)) || learnedElements.has(xpath);
+      if (isKnown) return;
+
       const text = (interactiveEl.innerText || interactiveEl.value || interactiveEl.getAttribute('aria-label') || interactiveEl.getAttribute('title') || '').trim();
       const item = {
         element: interactiveEl.tagName.toLowerCase(),
@@ -635,6 +640,8 @@
       if (interactiveEl.getAttribute('role')) item.role = interactiveEl.getAttribute('role');
 
       learnedElements.set(xpath, item);
+      registeredXPaths.add(xpath);
+      if (interactiveEl.id) registeredIds.add(interactiveEl.id);
 
       const wrapper = document.getElementById('nisa-iframe-wrapper');
       if (wrapper) {
@@ -673,6 +680,9 @@
       const xpath = getXPath(target);
       if (!xpath) return;
 
+      const isKnown = registeredXPaths.has(xpath) || (target.id && registeredIds.has(target.id)) || learnedElements.has(xpath);
+      if (isKnown) return;
+
       const item = {
         element: target.tagName.toLowerCase(),
         type: target.type || undefined,
@@ -690,6 +700,8 @@
       if (target.placeholder) item.placeholder = target.placeholder;
 
       learnedElements.set(xpath, item);
+      registeredXPaths.add(xpath);
+      if (target.id) registeredIds.add(target.id);
 
       const wrapper = document.getElementById('nisa-iframe-wrapper');
       if (wrapper) {
@@ -770,6 +782,8 @@
       const xpath = getXPath(el);
       if (!xpath || seenXPaths.has(xpath)) return;
       seenXPaths.add(xpath);
+      registeredXPaths.add(xpath);
+      if (el.id) registeredIds.add(el.id);
 
       const item = {
         element: el.tagName.toLowerCase(),
@@ -803,6 +817,8 @@
           const xpath = getXPath(el);
           if (xpath && !seenXPaths.has(xpath)) {
             seenXPaths.add(xpath);
+            registeredXPaths.add(xpath);
+            if (el.id) registeredIds.add(el.id);
             const txt = (el.innerText?.trim() || el.getAttribute('aria-label') || el.getAttribute('title') || '').substring(0, 100);
             if (txt) {
               semanticMap.push({
@@ -827,6 +843,9 @@
       
       const xpath = getXPath(el);
       if (!xpath || seenXPaths.has(xpath)) return;
+      seenXPaths.add(xpath);
+      registeredXPaths.add(xpath);
+      if (el.id) registeredIds.add(el.id);
       
       const text = el.innerText?.trim();
       if (!text) return;
@@ -946,9 +965,9 @@
       console.warn("Nisa SDK: Could not fetch remote config, using fallback.");
     }
     
+    syncDOM();
     setupInteractionLearner();
     setupObserver();
-    syncDOM();
     connect();
   }
 
