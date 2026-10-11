@@ -2,6 +2,7 @@ import express from 'express';
 import crypto from 'crypto';
 import { tunnelEvents, activeTunnels, domStore } from '../websocket/nisaTunnel.js';
 import { ClientApp } from '../models/ClientApp.js';
+import { detectAppProfileFromDom } from '../utils/domClassifier.js';
 
 const router = express.Router();
 
@@ -73,13 +74,23 @@ router.post('/sync', async (req, res) => {
   try {
     const { clientId, elementsCount, data } = req.body;
     
+    const existing = await ClientApp.findOne({ clientId });
+    if (!existing) return res.status(401).json({ error: 'Invalid API Key' });
+
+    const update = { domData: data, elementsCount: elementsCount, status: 'Active' };
+    const detected = detectAppProfileFromDom(data, existing.domain || '');
+    if (detected.appName && (!existing.appName || existing.appName === 'My Web Application')) {
+      update.appName = detected.appName;
+    }
+    if (detected.appCategory && (!existing.appCategory || existing.appCategory === 'POS')) {
+      update.appCategory = detected.appCategory;
+    }
+
     const appDoc = await ClientApp.findOneAndUpdate(
       { clientId },
-      { domData: data, elementsCount: elementsCount, status: 'Active' },
+      { $set: update },
       { new: true }
     );
-    
-    if (!appDoc) return res.status(401).json({ error: 'Invalid API Key' });
 
     tunnelEvents.emit('status', { clientId, status: 'Active', elementsCount });
     
@@ -87,7 +98,26 @@ router.post('/sync', async (req, res) => {
     console.log(`Client ID: ${clientId} | Elements: ${elementsCount}`);
     console.log(`=======================================\n`);
     
-    res.json({ success: true });
+    res.json({ success: true, detected });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/profile/detect/:clientId', async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    const mem = domStore.get(clientId);
+    const appDoc = await ClientApp.findOne({ clientId });
+    if (!appDoc && !mem) {
+      return res.status(404).json({ success: false, error: 'Client not found' });
+    }
+    const currentData = (mem?.data && Array.isArray(mem.data) && mem.data.length > 0)
+      ? mem.data
+      : (appDoc?.domData || []);
+    const domain = appDoc?.domain || '';
+    const detected = detectAppProfileFromDom(currentData, domain);
+    res.json({ success: true, data: detected });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

@@ -443,6 +443,14 @@
           wrapper.style.height = window.innerWidth < 768 ? '100vh' : '624px';
         } else if (e.data.type === 'NISA_TOOL_CALL') {
           const { command, targetKey, value, route, args } = e.data;
+
+          if (clientConfig && clientConfig.powers) {
+            if (command === 'clickElement' && clientConfig.powers.elementClicking === false) return;
+            if (command === 'fillFormField' && clientConfig.powers.formFilling === false) return;
+            if (command === 'navigatePage' && clientConfig.powers.navigation === false) return;
+            if (command === 'spotlightElement' && clientConfig.powers.spotlightGuidance === false) return;
+            if (command === 'openDynamicModal' && clientConfig.powers.dynamicModals === false) return;
+          }
           
           if (command === 'repositionWidget') {
             const pos = (args?.position || value || targetKey || '').toLowerCase();
@@ -770,6 +778,14 @@
   function parseDOM() {
     const semanticMap = [];
     const seenXPaths = new Set();
+
+    if (document.title) {
+      semanticMap.push({
+        element: 'title',
+        text: document.title,
+        xpath: '/html/head/title'
+      });
+    }
     
     const actionableSelector = 'button, a, input, select, textarea, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [role="switch"], [role="checkbox"], [onclick], [data-action], [data-nisa-id], [data-clickable], [contenteditable="true"], .btn, .button';
     const actionables = document.querySelectorAll(actionableSelector);

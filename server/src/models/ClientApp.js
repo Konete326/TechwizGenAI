@@ -8,14 +8,7 @@ const clientAppSchema = new mongoose.Schema({
   status: { type: String, default: 'Inactive' },
   appName: { type: String, default: 'My Web Application' },
   appCategory: { type: String, default: 'POS' },
-  powers: {
-    autoCapture: { type: Boolean, default: true },
-    selfLearning: { type: Boolean, default: true },
-    formFilling: { type: Boolean, default: true },
-    navigation: { type: Boolean, default: true },
-    dynamicModals: { type: Boolean, default: true },
-    spotlightGuidance: { type: Boolean, default: true }
-  },
+  powers: { type: mongoose.Schema.Types.Mixed, default: {} },
   customInstructions: { type: String, default: '' },
   voiceName: { type: String, default: 'Aoede' },
   domData: { type: mongoose.Schema.Types.Mixed },

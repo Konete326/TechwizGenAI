@@ -1,6 +1,7 @@
 import { WebSocketServer } from 'ws';
 import { EventEmitter } from 'events';
 import { ClientApp } from '../models/ClientApp.js';
+import { detectAppProfileFromDom } from '../utils/domClassifier.js';
 
 export const activeTunnels = new Map();
 export const tunnelEvents = new EventEmitter();
@@ -43,10 +44,18 @@ export function setupTunnel(server) {
           if (data.type === 'dom_sync') {
             domStore.set(clientId, data);
             tunnelEvents.emit('status', { clientId, status: 'Active', elementsCount: data.elementsCount });
-            ClientApp.findOneAndUpdate(
-              { clientId },
-              { domData: data.data, elementsCount: data.elementsCount, status: 'Active' }
-            ).catch(() => {});
+            ClientApp.findOne({ clientId }).then(async (doc) => {
+              if (!doc) return;
+              const update = { domData: data.data, elementsCount: data.elementsCount, status: 'Active' };
+              const detected = detectAppProfileFromDom(data.data, doc.domain || '');
+              if (detected.appName && (!doc.appName || doc.appName === 'My Web Application')) {
+                update.appName = detected.appName;
+              }
+              if (detected.appCategory && (!doc.appCategory || doc.appCategory === 'POS')) {
+                update.appCategory = detected.appCategory;
+              }
+              await ClientApp.updateOne({ clientId }, { $set: update });
+            }).catch(() => {});
             
             console.log(`\n=== [DOM SYNC] Semantic Map Received ===`);
             console.log(`Client ID: ${clientId}`);
