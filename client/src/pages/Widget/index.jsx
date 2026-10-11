@@ -93,26 +93,32 @@ function WidgetApp() {
     const handleToolCall = (e) => {
       const call = e.detail;
       if (call) {
-         if (window.parent) {
-             window.parent.postMessage({ 
-                type: 'NISA_TOOL_CALL', 
-                command: call.name, 
-                targetKey: call.args?.targetKey,
-                value: call.args?.value,
-                route: call.args?.route,
-                args: call.args
-             }, '*');
-         }
-         setTimeout(() => {
-            window.dispatchEvent(new CustomEvent("nesa:toolresponse", {
-               detail: { id: call.id || call.callId, name: call.name, response: { status: "success", executed: true } }
-            }));
-         }, 500);
+        if (call.name === "repositionWidget") {
+          const pos = call.args?.position || call.position;
+          if (pos && c.reposition) {
+            c.reposition(pos);
+          }
+        }
+        if (window.parent) {
+          window.parent.postMessage({ 
+            type: 'NISA_TOOL_CALL', 
+            command: call.name, 
+            targetKey: call.args?.targetKey,
+            value: call.args?.value,
+            route: call.args?.route,
+            args: call.args
+          }, '*');
+        }
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("nesa:toolresponse", {
+            detail: { id: call.id || call.callId, name: call.name, response: { status: "success", executed: true } }
+          }));
+        }, 500);
       }
     };
     window.addEventListener("nesa:toolcall", handleToolCall);
     return () => window.removeEventListener("nesa:toolcall", handleToolCall);
-  }, []);
+  }, [c.reposition]);
 
   return (
     <div className="w-screen h-screen bg-transparent overflow-hidden flex items-center justify-center pointer-events-auto">

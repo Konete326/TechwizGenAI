@@ -1,5 +1,3 @@
-import { ALLOWED_ROUTES } from "./nesaToolGuards";
-
 export const NESA_TARGET_KEYS = [
   "nav_dashboard", "nav_studio", "nav_assets", "nav_analytics", "nav_settings", "nav_profile",
   "sidebar_toggle", "theme_toggle", "user_menu", "logout_btn", "new_chat", "chat_input",
@@ -13,8 +11,8 @@ export const NESA_TARGET_KEYS = [
 export const NESA_TOOL_DECLARATIONS = [
   {
     name: "navigatePage",
-    description: "Navigate to a specific platform route or view such as assets, analytics, dashboard, studio, or settings.",
-    parameters: { type: "OBJECT", properties: { route: { type: "STRING", enum: ALLOWED_ROUTES, description: "Target route, must be one of the allowed app routes" } }, required: ["route"] }
+    description: "Navigate to a specific platform route, page, or URL in the application.",
+    parameters: { type: "OBJECT", properties: { route: { type: "STRING", description: "Target route, path, or URL to navigate to" } }, required: ["route"] }
   },
   {
     name: "spotlightElement",

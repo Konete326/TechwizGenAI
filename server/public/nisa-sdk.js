@@ -70,7 +70,7 @@
     }
 
     try {
-      el = document.querySelector(`[data-nisa-id="${targetKey}"], #${CSS.escape(targetKey)}, [name="${CSS.escape(targetKey)}"]`);
+      el = document.querySelector(`[data-nesa-target="${targetKey}"], [data-nisa-id="${targetKey}"], [data-testid="${targetKey}"], [data-action="${targetKey}"], #${CSS.escape(targetKey)}, [name="${CSS.escape(targetKey)}"]`);
       if (el) return el;
     } catch (err) {}
 
@@ -80,10 +80,10 @@
     } catch (err) {}
 
     const lowerTarget = targetKey.toLowerCase().trim();
-    const actionables = document.querySelectorAll('button, a, input, select, textarea, [role="button"], [role="link"], [role="tab"], [role="menuitem"], .btn, .button, [onclick], [data-action]');
+    const actionables = document.querySelectorAll('button, a, input, select, textarea, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [role="switch"], [role="checkbox"], .btn, .button, [onclick], [data-action]');
     for (const item of actionables) {
-      const txt = (item.innerText || item.value || item.getAttribute('aria-label') || item.getAttribute('title') || '').toLowerCase().trim();
-      if (txt === lowerTarget || (txt && lowerTarget.length > 2 && txt.includes(lowerTarget))) {
+      const txt = (item.innerText || item.value || item.getAttribute('aria-label') || item.getAttribute('title') || item.getAttribute('placeholder') || '').toLowerCase().trim();
+      if (txt === lowerTarget || (txt && lowerTarget.length > 2 && (txt.includes(lowerTarget) || lowerTarget.includes(txt)))) {
         return item;
       }
     }
@@ -98,7 +98,104 @@
       }
     }
 
+    for (const [xp, learned] of learnedElements.entries()) {
+      const lText = (learned.text || '').toLowerCase().trim();
+      if (lText && (lText === lowerTarget || lText.includes(lowerTarget))) {
+        try {
+          const res = document.evaluate(xp, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+          if (res.singleNodeValue) return res.singleNodeValue;
+        } catch (e) {}
+      }
+    }
+
     return null;
+  }
+
+  function showVisualSpotlight(el, label) {
+    if (!el || typeof el.getBoundingClientRect !== 'function') return;
+    const oldSpotlight = document.getElementById('nisa-spotlight-container');
+    if (oldSpotlight) oldSpotlight.remove();
+
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    const container = document.createElement('div');
+    container.id = 'nisa-spotlight-container';
+    container.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999990;overflow:hidden;';
+
+    const backdrop = document.createElement('div');
+    backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.22);backdrop-filter:blur(2px);pointer-events:auto;transition:opacity 0.3s ease;';
+    backdrop.onclick = () => container.remove();
+
+    const ring = document.createElement('div');
+    ring.id = 'nisa-spotlight-ring';
+    ring.style.cssText = 'position:fixed;border:2px solid #3b82f6;border-radius:10px;box-shadow:0 0 0 4px rgba(59,130,246,0.5), 0 0 30px rgba(59,130,246,0.7);pointer-events:none;transition:all 0.2s ease;';
+
+    const tooltip = document.createElement('div');
+    tooltip.style.cssText = 'position:fixed;background:#09090b;border:1px solid rgba(59,130,246,0.6);color:#fff;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;box-shadow:0 10px 25px rgba(0,0,0,0.5);pointer-events:none;white-space:nowrap;z-index:9999992;';
+    tooltip.innerText = label || 'Highlighted Feature';
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999991;';
+    svg.innerHTML = `
+      <defs>
+        <marker id="nisa-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="#60a5fa" />
+        </marker>
+      </defs>
+      <path id="nisa-arrow-path" stroke="#60a5fa" stroke-width="2.5" fill="none" marker-end="url(#nisa-arrow)" stroke-dasharray="8 4">
+        <animate attributeName="stroke-dashoffset" from="24" to="0" dur="0.8s" repeatCount="indefinite" />
+      </path>
+    `;
+
+    container.appendChild(backdrop);
+    container.appendChild(svg);
+    container.appendChild(ring);
+    container.appendChild(tooltip);
+    document.body.appendChild(container);
+
+    function updatePos() {
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) return;
+      ring.style.top = Math.max(0, rect.top - 6) + 'px';
+      ring.style.left = Math.max(0, rect.left - 6) + 'px';
+      ring.style.width = (rect.width + 12) + 'px';
+      ring.style.height = (rect.height + 12) + 'px';
+
+      const ttTop = rect.top > 60 ? (rect.top - 38) : (rect.bottom + 12);
+      const ttLeft = Math.max(16, Math.min(window.innerWidth - 220, rect.left + rect.width / 2 - 60));
+      tooltip.style.top = ttTop + 'px';
+      tooltip.style.left = ttLeft + 'px';
+
+      const wrapper = document.getElementById('nisa-iframe-wrapper');
+      let sx = window.innerWidth - 60, sy = window.innerHeight - 60;
+      if (wrapper) {
+        const wr = wrapper.getBoundingClientRect();
+        sx = wr.left + wr.width / 2;
+        sy = wr.top + 30;
+      }
+      const tx = rect.left + rect.width / 2;
+      const ty = rect.top + rect.height / 2;
+      const dx = tx - sx, dy = ty - sy;
+      const p1x = sx + dx * 0.35 + (dy > 0 ? -25 : 25);
+      const p1y = sy + dy * 0.35 + (dx > 0 ? 25 : -25);
+      const p2x = sx + dx * 0.65 + (dy > 0 ? 25 : -25);
+      const p2y = sy + dy * 0.65 + (dx > 0 ? -25 : 25);
+      const pathEl = document.getElementById('nisa-arrow-path');
+      if (pathEl) {
+        pathEl.setAttribute('d', `M ${sx} ${sy} C ${p1x} ${p1y}, ${p2x} ${p2y}, ${tx} ${ty}`);
+      }
+    }
+
+    setTimeout(updatePos, 80);
+    setTimeout(updatePos, 300);
+    window.addEventListener('scroll', updatePos, { passive: true, capture: true });
+    window.addEventListener('resize', updatePos, { passive: true });
+
+    setTimeout(() => {
+      window.removeEventListener('scroll', updatePos, { capture: true });
+      window.removeEventListener('resize', updatePos);
+      if (container.parentNode) container.remove();
+    }, 5000);
   }
 
   function createChatWidget() {
@@ -107,75 +204,101 @@
     chatWidget = document.createElement('div');
     chatWidget.id = 'nisa-chat-widget';
     chatWidget.style.position = 'fixed';
-    chatWidget.style.bottom = '20px';
-    chatWidget.style.right = '20px';
-    chatWidget.style.width = '60px';
-    chatWidget.style.height = '60px';
-    chatWidget.style.background = '#2563eb';
+    chatWidget.style.bottom = '24px';
+    chatWidget.style.right = '24px';
+    chatWidget.style.width = '56px';
+    chatWidget.style.height = '56px';
+    chatWidget.style.background = '#09090b';
+    chatWidget.style.border = '1px solid rgba(255, 255, 255, 0.15)';
     chatWidget.style.borderRadius = '50%';
-    chatWidget.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)';
+    chatWidget.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3)';
     chatWidget.style.cursor = 'pointer';
     chatWidget.style.zIndex = '999999';
     chatWidget.style.display = 'flex';
     chatWidget.style.alignItems = 'center';
     chatWidget.style.justifyContent = 'center';
-    chatWidget.style.color = '#fff';
-    chatWidget.style.fontSize = '24px';
-    chatWidget.innerHTML = `<img src="${serverFrontendUrl}/logo.png" style="width:100%;height:100%;object-fit:cover;border-radius:50%;animation: nisaRing 2s infinite;" alt="Nisa" />`;
-    
-    if (!document.getElementById('nisa-ring-style')) {
-      const style = document.createElement('style');
-      style.id = 'nisa-ring-style';
-      style.innerHTML = `
-      @keyframes nisaRing {
-        0% { transform: rotate(0) scale(1); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7); }
-        10% { transform: rotate(15deg) scale(1.1); }
-        20% { transform: rotate(-15deg) scale(1.1); }
-        30% { transform: rotate(15deg) scale(1.1); }
-        40% { transform: rotate(-15deg) scale(1.1); }
-        50% { transform: rotate(0) scale(1); box-shadow: 0 0 0 20px rgba(37, 99, 235, 0); }
-        100% { transform: rotate(0) scale(1); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
-      }`;
-      document.head.appendChild(style);
-    }
+    chatWidget.style.transition = 'transform 0.2s ease, box-shadow 0.2s ease';
+    chatWidget.innerHTML = `
+      <div style="position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center;">
+        <img src="${serverFrontendUrl}/logo.png" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Nisa" />
+        <span id="nisa-status-dot" style="position:absolute;bottom:0;right:0;width:10px;height:10px;background:#10b981;border:2px solid #09090b;border-radius:50%;"></span>
+      </div>
+    `;
+    chatWidget.onmouseenter = () => {
+      chatWidget.style.transform = 'scale(1.06)';
+      chatWidget.style.boxShadow = '0 15px 30px -5px rgba(37, 99, 235, 0.4)';
+    };
+    chatWidget.onmouseleave = () => {
+      chatWidget.style.transform = 'scale(1)';
+      chatWidget.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.4)';
+    };
     
     chatPanel = document.createElement('div');
     chatPanel.id = 'nisa-chat-panel';
     chatPanel.style.position = 'fixed';
-    chatPanel.style.bottom = '90px';
-    chatPanel.style.right = '20px';
+    chatPanel.style.bottom = '92px';
+    chatPanel.style.right = '24px';
     chatPanel.style.width = '300px';
-    chatPanel.style.background = '#fff';
-    chatPanel.style.borderRadius = '12px';
-    chatPanel.style.boxShadow = '0 10px 25px -5px rgba(0,0,0,0.2)';
+    chatPanel.style.background = '#09090b';
+    chatPanel.style.border = '1px solid rgba(255, 255, 255, 0.12)';
+    chatPanel.style.borderRadius = '16px';
+    chatPanel.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.5)';
     chatPanel.style.zIndex = '999998';
     chatPanel.style.display = 'none';
     chatPanel.style.flexDirection = 'column';
     chatPanel.style.overflow = 'hidden';
-    chatPanel.style.fontFamily = 'sans-serif';
+    chatPanel.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    chatPanel.style.color = '#fff';
     
     const header = document.createElement('div');
-    header.style.background = '#2563eb';
-    header.style.color = '#fff';
-    header.style.padding = '15px';
-    header.style.fontWeight = 'bold';
-    header.innerHTML = 'Nisa Assistant <span id="nisa-status-dot" style="display:inline-block;width:8px;height:8px;background:#ef4444;border-radius:50%;margin-left:8px;"></span>';
+    header.style.padding = '16px 18px 12px 18px';
+    header.style.display = 'flex';
+    header.style.alignItems = 'center';
+    header.style.justifyContent = 'space-between';
+    header.style.borderBottom = '1px solid rgba(255, 255, 255, 0.08)';
+    header.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;">
+        <img src="${serverFrontendUrl}/logo.png" style="width:28px;height:28px;border-radius:50%;object-fit:cover;" alt="Nisa" />
+        <div>
+          <div style="font-size:14px;font-weight:600;color:#f4f4f5;line-height:1.2;">Nisa Copilot</div>
+          <div style="font-size:11px;color:#a1a1aa;">Autonomous AI Assistant</div>
+        </div>
+      </div>
+      <span style="font-size:11px;color:#10b981;background:rgba(16,185,129,0.12);padding:2px 8px;border-radius:9999px;font-weight:500;">Ready</span>
+    `;
     
     const body = document.createElement('div');
-    body.style.padding = '20px';
-    body.style.textAlign = 'center';
+    body.style.padding = '16px 18px';
+
+    const desc = document.createElement('div');
+    desc.style.fontSize = '12.5px';
+    desc.style.color = '#a1a1aa';
+    desc.style.lineHeight = '1.45';
+    desc.style.marginBottom = '14px';
+    desc.innerText = 'Talk with Nisa to navigate screens, click controls, fill forms, and operate this system by voice.';
     
     callButton = document.createElement('button');
-    callButton.innerHTML = '📞 Call Nisa';
-    callButton.style.background = '#10b981';
+    callButton.innerHTML = `
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;">
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+      </svg>
+      Start Voice Call
+    `;
+    callButton.style.background = '#2563eb';
     callButton.style.color = '#fff';
     callButton.style.border = 'none';
-    callButton.style.padding = '12px 24px';
-    callButton.style.borderRadius = '24px';
-    callButton.style.fontWeight = 'bold';
+    callButton.style.padding = '11px 18px';
+    callButton.style.borderRadius = '10px';
+    callButton.style.fontWeight = '600';
+    callButton.style.fontSize = '13.5px';
     callButton.style.cursor = 'pointer';
     callButton.style.width = '100%';
-    callButton.style.fontSize = '16px';
+    callButton.style.display = 'flex';
+    callButton.style.alignItems = 'center';
+    callButton.style.justifyContent = 'center';
+    callButton.style.transition = 'background 0.2s ease';
+    callButton.onmouseenter = () => { callButton.style.background = '#1d4ed8'; };
+    callButton.onmouseleave = () => { callButton.style.background = '#2563eb'; };
     
     callButton.onclick = () => {
       chatWidget.style.display = 'none';
@@ -206,20 +329,11 @@
       loadingOverlay.style.fontFamily = 'sans-serif';
       loadingOverlay.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.5)';
       
-      if (!document.getElementById('nisa-shimmer-style')) {
-        const style = document.createElement('style');
-        style.id = 'nisa-shimmer-style';
-        style.innerHTML = `@keyframes nisaShimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } } @keyframes nisaPulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 0.4; } }`;
-        document.head.appendChild(style);
-      }
-      
       const shimmerCircle = document.createElement('div');
       shimmerCircle.style.width = '70px';
       shimmerCircle.style.height = '70px';
       shimmerCircle.style.borderRadius = '50%';
       shimmerCircle.style.background = 'linear-gradient(90deg, rgba(59, 130, 246, 0.2) 25%, rgba(59, 130, 246, 0.5) 50%, rgba(59, 130, 246, 0.2) 75%)';
-      shimmerCircle.style.backgroundSize = '200% 100%';
-      shimmerCircle.animation = 'nisaShimmer 2s infinite linear';
       shimmerCircle.style.marginBottom = '24px';
       shimmerCircle.style.display = 'flex';
       shimmerCircle.style.alignItems = 'center';
@@ -231,7 +345,6 @@
       shimmerText.innerText = 'Connecting to Nisa AI...';
       shimmerText.style.fontSize = '16px';
       shimmerText.style.fontWeight = '500';
-      shimmerText.style.animation = 'nisaPulse 2s infinite ease-in-out';
       
       loadingOverlay.appendChild(shimmerCircle);
       loadingOverlay.appendChild(shimmerText);
@@ -245,11 +358,11 @@
       wrapper.style.width = window.innerWidth < 768 ? '100vw' : '370px';
       wrapper.style.height = window.innerWidth < 768 ? '100vh' : '624px';
       wrapper.style.zIndex = '9999999';
-      wrapper.style.transition = 'opacity 0.3s ease-in-out';
+      wrapper.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
       wrapper.style.opacity = '1';
       wrapper.style.display = 'flex';
       wrapper.style.flexDirection = 'column';
-      wrapper.style.boxShadow = '0 10px 25px rgba(0,0,0,0.1)';
+      wrapper.style.boxShadow = '0 10px 25px rgba(0,0,0,0.2)';
       wrapper.style.borderRadius = '12px';
       
       const dragHeader = document.createElement('div');
@@ -318,25 +431,46 @@
           wrapper.remove();
           if (loadingOverlay && loadingOverlay.parentNode) loadingOverlay.remove();
           chatWidget.style.display = 'flex';
-          if (callButton) callButton.innerHTML = '📞 Call Nisa';
+          const oldSpotlight = document.getElementById('nisa-spotlight-container');
+          if (oldSpotlight) oldSpotlight.remove();
         } else if (e.data.type === 'NISA_MINIMIZE') {
-          if (window.innerWidth >= 768) {
-            wrapper.style.width = '300px';
-            wrapper.style.height = '124px';
-          }
+          wrapper.style.width = window.innerWidth < 768 ? '100vw' : '300px';
+          wrapper.style.height = '124px';
         } else if (e.data.type === 'NISA_EXPAND') {
-          if (window.innerWidth >= 768) {
-            wrapper.style.width = '370px';
-            wrapper.style.height = '624px';
-          }
+          wrapper.style.width = window.innerWidth < 768 ? '100vw' : '370px';
+          wrapper.style.height = window.innerWidth < 768 ? '100vh' : '624px';
         } else if (e.data.type === 'NISA_TOOL_CALL') {
           const { command, targetKey, value, route, args } = e.data;
           
+          if (command === 'repositionWidget') {
+            const pos = (args?.position || value || targetKey || '').toLowerCase();
+            if (pos === 'minimize') {
+              wrapper.style.width = window.innerWidth < 768 ? '100vw' : '300px';
+              wrapper.style.height = '124px';
+            } else if (pos === 'maximize') {
+              wrapper.style.width = window.innerWidth < 768 ? '100vw' : '370px';
+              wrapper.style.height = window.innerWidth < 768 ? '100vh' : '624px';
+            } else if (pos === 'top-left') {
+              wrapper.style.top = '20px'; wrapper.style.left = '20px';
+              wrapper.style.bottom = 'auto'; wrapper.style.right = 'auto';
+            } else if (pos === 'top-right') {
+              wrapper.style.top = '20px'; wrapper.style.right = '20px';
+              wrapper.style.bottom = 'auto'; wrapper.style.left = 'auto';
+            } else if (pos === 'bottom-left') {
+              wrapper.style.bottom = '20px'; wrapper.style.left = '20px';
+              wrapper.style.top = 'auto'; wrapper.style.right = 'auto';
+            } else if (pos === 'bottom-right') {
+              wrapper.style.bottom = '20px'; wrapper.style.right = '20px';
+              wrapper.style.top = 'auto'; wrapper.style.right = 'auto';
+            }
+            return;
+          }
+
           if (command === 'openDynamicModal' && args) {
             const m = document.createElement('div');
             m.id = 'nisa-dynamic-modal';
-            m.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:24px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,0.2);z-index:9999999;max-width:90%;width:400px;font-family:sans-serif;color:#000;';
-            m.innerHTML = `<h3 style="margin-top:0;font-size:18px;">${args.title||''}</h3><p style="white-space:pre-wrap;font-size:14px;color:#333;margin-bottom:0;">${args.content||''}</p><div style="text-align:right;margin-top:16px;"><button onclick="this.parentElement.parentElement.remove()" style="background:#09090b;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;">Close</button></div>`;
+            m.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#09090b;border:1px solid rgba(255,255,255,0.15);padding:24px;border-radius:14px;box-shadow:0 25px 50px rgba(0,0,0,0.5);z-index:9999999;max-width:90%;width:420px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#fff;';
+            m.innerHTML = `<h3 style="margin-top:0;font-size:17px;font-weight:600;color:#f4f4f5;">${args.title||''}</h3><p style="white-space:pre-wrap;font-size:13.5px;color:#d4d4d8;margin-bottom:0;line-height:1.5;">${args.content||''}</p><div style="text-align:right;margin-top:20px;"><button onclick="this.parentElement.parentElement.remove()" style="background:#2563eb;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-weight:500;cursor:pointer;font-size:13px;">Close</button></div>`;
             document.body.appendChild(m);
             return;
           }
@@ -355,55 +489,88 @@
             window.scrollBy({ top: value || 400, behavior: 'smooth' });
             return;
           }
-          
-          if ((command === 'clickElement' || command === 'spotlightElement' || command === 'fillFormField' || command === 'selectOption' || command === 'submitForm') && targetKey) {
-            const el = findElement(targetKey);
-            
-            if (el) {
-              if (command === 'clickElement') {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
-                el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-                el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
-                el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
-                el.click();
 
-                const oldBg = el.style.backgroundColor;
-                const oldTransition = el.style.transition;
-                el.style.transition = 'background-color 0.2s ease';
-                el.style.backgroundColor = 'rgba(59, 130, 246, 0.5)';
+          if (command === 'controlSidebar') {
+            const sbToggle = document.querySelector('[data-sidebar-toggle], .sidebar-toggle, #sidebar-toggle, [aria-label*="sidebar" i], [aria-label*="menu" i], button.menu-btn');
+            if (sbToggle) sbToggle.click();
+            return;
+          }
+
+          if (command === 'toggleWorkspaceControl') {
+            const ctrl = (args?.control || value || '').toLowerCase();
+            if (ctrl.includes('theme')) {
+              document.documentElement.classList.toggle('dark');
+            }
+            return;
+          }
+
+          if (command === 'spotlightElement' && targetKey) {
+            const el = findElement(targetKey);
+            if (el) {
+              showVisualSpotlight(el, args?.label);
+            }
+            return;
+          }
+
+          if (command === 'clickElement' && targetKey) {
+            const el = findElement(targetKey);
+            if (el) {
+              const interactive = el.closest('button, a, [role="button"], [onclick], input[type="submit"]') || el;
+              interactive.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              
+              const oldTransition = interactive.style.transition;
+              const oldBoxShadow = interactive.style.boxShadow;
+              interactive.style.transition = 'box-shadow 0.2s ease';
+              interactive.style.boxShadow = '0 0 0 4px #3b82f6, 0 0 20px rgba(59, 130, 246, 0.7)';
+              setTimeout(() => {
+                interactive.style.boxShadow = oldBoxShadow;
+                setTimeout(() => { interactive.style.transition = oldTransition; }, 200);
+              }, 350);
+
+              interactive.focus?.();
+              interactive.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+              interactive.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+              interactive.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
+              interactive.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+              interactive.click();
+
+              if (interactive.tagName === 'A' && interactive.href && !interactive.getAttribute('href')?.startsWith('#')) {
                 setTimeout(() => {
-                  el.style.backgroundColor = oldBg;
-                  setTimeout(() => { el.style.transition = oldTransition; }, 200);
+                  if (window.location.href !== interactive.href) {
+                    window.location.href = interactive.href;
+                  }
                 }, 300);
-              } else if (command === 'fillFormField') {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                el.focus();
-                el.value = value || '';
-                el.dispatchEvent(new Event('input', { bubbles: true }));
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-              } else if (command === 'selectOption') {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                el.value = value;
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-              } else if (command === 'submitForm') {
-                const form = el.tagName === 'FORM' ? el : el.closest('form');
-                if (form) {
-                  if (form.requestSubmit) form.requestSubmit();
-                  else form.submit();
+              }
+              if (interactive.type === 'submit' || interactive.closest('form')) {
+                const f = interactive.tagName === 'FORM' ? interactive : interactive.closest('form');
+                if (f && f.requestSubmit) {
+                  try { f.requestSubmit(); } catch (err) {}
                 }
-              } else if (command === 'spotlightElement') {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                const oldBoxShadow = el.style.boxShadow;
-                const oldTransition = el.style.transition;
-                el.style.transition = 'box-shadow 0.3s ease';
-                el.style.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.8), 0 0 16px rgba(59, 130, 246, 0.5)';
-                setTimeout(() => {
-                  el.style.boxShadow = oldBoxShadow;
-                  setTimeout(() => { el.style.transition = oldTransition; }, 300);
-                }, 2000);
               }
             }
+            return;
+          }
+
+          if (command === 'fillFormField' && targetKey) {
+            const el = findElement(targetKey);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              el.focus?.();
+              const proto = (window.HTMLTextAreaElement && el instanceof window.HTMLTextAreaElement) ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+              const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set || Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set || Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
+              if (setter) {
+                setter.call(el, value || '');
+              } else {
+                el.value = value || '';
+              }
+              el.dispatchEvent(new Event('input', { bubbles: true }));
+              el.dispatchEvent(new Event('change', { bubbles: true }));
+
+              const oldBoxShadow = el.style.boxShadow;
+              el.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.5)';
+              setTimeout(() => { el.style.boxShadow = oldBoxShadow; }, 400);
+            }
+            return;
           }
         }
       };
@@ -417,6 +584,7 @@
       }, 1500);
     };
     
+    body.appendChild(desc);
     body.appendChild(callButton);
     chatPanel.appendChild(header);
     chatPanel.appendChild(body);
