@@ -78,7 +78,7 @@ app.use(["/api/analytics", "/analytics"], analyticsRoutes);
 app.use(["/api/dashboard", "/dashboard"], dashboardRoutes);
 app.use(["/api/live", "/live"], liveRoutes);
 app.use(["/api/tools", "/tools"], toolRoutes);
-app.use("/api/client", clientManager);
+app.use(["/api/client", "/client"], clientManager);
 
 app.use(errorHandler);
 

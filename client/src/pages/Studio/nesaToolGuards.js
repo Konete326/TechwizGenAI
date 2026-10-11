@@ -90,7 +90,6 @@ export function evaluateToolCall(call, now = Date.now()) {
   if (!hasUserActivity(USER_ACTIVITY_WINDOW_MS, now)) {
     return { run: false, respond: true, reason: "no_user_request_recently" };
   }
-  if (now - lastDispatchAt < DISPATCH_MIN_GAP_MS) return { run: false, respond: true, reason: "tool_rate_limited_1500ms" };
   const sig = signatureOf(call);
   if (sig === lastSignature && now - lastSignatureAt < REPEAT_WINDOW_MS) {
     return { run: false, respond: true, reason: "identical_call_within_5_seconds" };

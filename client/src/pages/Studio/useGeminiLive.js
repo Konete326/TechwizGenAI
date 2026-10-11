@@ -1,5 +1,6 @@
 import { logDebug } from "./logger";
 import { fetchVoiceToken } from './geminiUtils';
+import { VITE_API_URL } from "../../config/env";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { setupToolResponseListener } from "./toolDispatch";
 import { createServerMessageHandler } from "./serverMessage";
@@ -86,8 +87,7 @@ export function useGeminiLive({ onToolCall, clientId } = {}) {
         let customConfig = null;
         if (clientId) {
           try {
-            const apiUrl = import.meta.env.VITE_API_URL || '';
-            const cfgRes = await fetch(`${apiUrl}/client/config/${clientId}`);
+            const cfgRes = await fetch(`${VITE_API_URL}/client/config/${clientId}`);
             if (cfgRes.ok) {
               const cfgJson = await cfgRes.json();
               if (cfgJson.success && cfgJson.data) {
@@ -110,7 +110,7 @@ export function useGeminiLive({ onToolCall, clientId } = {}) {
         isReadyRef, audio, setTranscript,
         wsRef, pendingRef: pendingToolCallsRef, stopAudio, onToolCallRef, lastMessageTimeRef, resumeHandleRef
       });
-      ws.onerror = () => setConnectionError("WebSocket connection failed");
+      ws.onerror = () => {};
       ws.onclose = (event) => handleWsClose(event, {
         isCallActiveRef, retryCountRef, retryTimerRef,
         setIsConnected, setConnectionError, connectFn: () => connectRef.current?.(true), disconnectFn: disconnect

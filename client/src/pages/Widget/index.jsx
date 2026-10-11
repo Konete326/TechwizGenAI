@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { VITE_API_URL } from "../../config/env";
 import { NesaCallProvider, useNesaCallContext } from "../../context/NesaCallContext";
 import { NesaCallInterface } from "../Studio/NesaCallInterface";
 
@@ -26,15 +27,15 @@ function WidgetApp() {
       }
       if (e.data?.type === 'NISA_ELEMENT_DEMONSTRATED') {
         const { action, element } = e.data;
-        if (element && c.sendContextTurn) {
+        if (element && c.forceReply) {
           const textLabel = element.text ? `"${element.text}"` : `<${element.element}>`;
-          c.sendContextTurn(`[SYSTEM EVENT: User demonstrated manual ${action || 'interaction'} on element ${textLabel} with XPath "${element.xpath}". Nisa has now learned this element and its selector! Acknowledge warmly in your verbal reply in the user's language that you observed their action, understood it, and have now learned this element, and can click or perform this action for them whenever requested.]`);
+          c.forceReply(`[SYSTEM EVENT: User demonstrated manual ${action || 'interaction'} on element ${textLabel} with XPath "${element.xpath}". Nisa has now learned this element and its selector! Acknowledge warmly in your verbal reply in the user's language that you observed their action, understood it, and have now learned this element, and can click or perform this action for them whenever requested.]`);
         }
       }
     };
     window.addEventListener('message', handleParentMsg);
     return () => window.removeEventListener('message', handleParentMsg);
-  }, [c.isCallActive, c.startCall, c.sendContextTurn]);
+  }, [c.isCallActive, c.startCall, c.forceReply]);
 
   useEffect(() => {
     if (window.parent) {
@@ -69,25 +70,22 @@ function WidgetApp() {
 
     const pollDom = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/client/dom/${clientId}`);
+        const res = await fetch(`${VITE_API_URL}/client/dom/${clientId}`);
         if (res.ok) {
            const json = await res.json();
            const domString = JSON.stringify(json.data);
            const hash = getHash(domString);
            if (hash !== lastDomHash) {
                setLastDomHash(hash);
-               if (c.sendContextTurn) {
-                   c.sendContextTurn(`[SYSTEM EVENT: Client DOM State Updated. The user's screen currently contains these actionable elements: ${domString}. Do not verbally acknowledge this update. Just keep it in mind.]`);
-               }
            }
         }
       } catch (e) {}
     };
 
-    const interval = setInterval(pollDom, 3000);
+    const interval = setInterval(pollDom, 5000);
     pollDom();
     return () => clearInterval(interval);
-  }, [clientId, c.isCallActive, c.sendContextTurn, lastDomHash]);
+  }, [clientId, c.isCallActive, lastDomHash]);
 
   useEffect(() => {
     const handleToolCall = (e) => {

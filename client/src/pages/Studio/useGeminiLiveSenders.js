@@ -16,7 +16,7 @@ export function useGeminiLiveSenders(wsRef) {
   };
 
   const sendContextTurn = (t) => {
-    sendTurn(wsRef, t, false);
+    sendTurn(wsRef, t, true);
   };
 
   return { forceReply, sendContextTurn };

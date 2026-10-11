@@ -481,7 +481,15 @@
           }
           
           if (command === 'navigatePage' && route) {
-            window.location.href = route;
+            const link = document.querySelector(`a[href="${route}"], a[href="${route}/"], a[href="#${route}"]`);
+            if (link) {
+              link.click();
+            } else if (window.history && window.history.pushState) {
+              window.history.pushState({}, '', route);
+              window.dispatchEvent(new PopStateEvent('popstate'));
+            } else {
+              window.location.href = route;
+            }
             return;
           }
 
@@ -533,20 +541,6 @@
               interactive.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
               interactive.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
               interactive.click();
-
-              if (interactive.tagName === 'A' && interactive.href && !interactive.getAttribute('href')?.startsWith('#')) {
-                setTimeout(() => {
-                  if (window.location.href !== interactive.href) {
-                    window.location.href = interactive.href;
-                  }
-                }, 300);
-              }
-              if (interactive.type === 'submit' || interactive.closest('form')) {
-                const f = interactive.tagName === 'FORM' ? interactive : interactive.closest('form');
-                if (f && f.requestSubmit) {
-                  try { f.requestSubmit(); } catch (err) {}
-                }
-              }
             }
             return;
           }
