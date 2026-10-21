@@ -9,14 +9,24 @@ export function createPlayback() {
   let cushion = 0.06;
   const MAX_CUSHION = 0.5;
 
+  let turnActive = false;
   let speakingInterval = null;
   const MAX_LOOKAHEAD_SEC = 600;
 
   function checkSpeaking(onSpeakingChange) {
-    const active = srcs.length > 0 || nextTime > ctx.currentTime;
+    const active = turnActive || srcs.length > 0 || nextTime > ctx.currentTime;
     onSpeakingChange?.(active);
   }
 
+  function startTurn(onSpeakingChange) {
+    turnActive = true;
+    checkSpeaking(onSpeakingChange);
+  }
+
+  function endTurn(onSpeakingChange) {
+    turnActive = false;
+    checkSpeaking(onSpeakingChange);
+  }
 
   function scheduleChunk(f32, onSpeakingChange) {
     if (!f32?.length) return;
@@ -54,7 +64,7 @@ export function createPlayback() {
     
     checkSpeaking(onSpeakingChange);
     if (!speakingInterval) {
-      speakingInterval = setInterval(() => checkSpeaking(onSpeakingChange), 100);
+      speakingInterval = setInterval(() => checkSpeaking(onSpeakingChange), 80);
     }
     
     markFirstAudioPlay();
@@ -62,7 +72,7 @@ export function createPlayback() {
       const i = srcs.indexOf(src);
       if (i > -1) srcs.splice(i, 1);
       try { src.disconnect(); } catch(err) { logDebug("Audio playback error", err); }
-      if (srcs.length > 0) {
+      if (srcs.length > 0 || turnActive || nextTime > ctx.currentTime) {
         checkSpeaking(onSpeakingChange);
         return;
       }
@@ -73,11 +83,13 @@ export function createPlayback() {
     };
   }
 
-  function stopAll() {
+  function stopAll(onSpeakingChange) {
+    turnActive = false;
     srcs.forEach(s => { try { s.stop(); } catch(err) { logDebug("Audio playback error", err); } try { s.disconnect(); } catch(err) { logDebug("Audio playback error", err); } });
     srcs.length = 0;
     nextTime = 0;
     if (speakingInterval) { clearInterval(speakingInterval); speakingInterval = null; }
+    onSpeakingChange?.(false);
   }
 
   function resume() {
@@ -89,5 +101,5 @@ export function createPlayback() {
     try { ctx.close(); } catch(err) { logDebug("Audio playback error", err); }
   }
 
-  return { scheduleChunk, stopAll, close, resume };
+  return { scheduleChunk, stopAll, close, resume, startTurn, endTurn };
 }

@@ -4,6 +4,7 @@ import { dispatchToolCall } from "./toolDispatch";
 import { noteUserActivity } from "./nesaToolGuards";
 import { noteUserFrame } from "./userFrameWatch";
 import { logServerMessage, markFirstAudioRecv } from "./logger";
+import { isHalfDuplex } from "./micGate";
 
 const USER_SPEECH_EVENTS = new Set(["ACTIVITY_START", "ACTIVITY_END"]);
 
@@ -86,11 +87,16 @@ export function createServerMessageHandler({
           }
           return;
         }
+        if (isHalfDuplex()) {
+          logServerMessage("ignoreInterruptedInHalfDuplex");
+          return;
+        }
         stopAudio();
         return;
       }
       if (sc.turnComplete || sc.turn_complete) {
         logServerMessage("serverContent.turnComplete");
+        audio.endTurn?.();
         return;
       }
 
@@ -98,6 +104,7 @@ export function createServerMessageHandler({
       if (parts.length > 0) {
         logServerMessage("serverContent.modelTurn");
         markFirstAudioRecv();
+        audio.startTurn?.();
       }
       for (const part of parts) {
         if (part.text) setTranscript(prev => prev ? prev + " " + part.text : part.text);

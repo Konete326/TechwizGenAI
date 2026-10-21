@@ -37,7 +37,7 @@ export function NesaCallBody({
           <div className="w-16 flex flex-col items-start gap-1">
             {callPhase === "connected" && forceReply && <button type="button" onClick={() => forceReply("Hello Nisa")} className="text-[10px] font-mono text-zinc-400 hover:text-accent transition-colors cursor-pointer px-1.5 py-0.5 rounded border border-zinc-800 hover:border-accent/40 bg-zinc-900/60 whitespace-nowrap" title="Force model reply">Say Hello</button>}
             {callPhase === "connected" && toggleMicMode && (
-              <button type="button" onClick={toggleMicMode} title={halfDuplex ? "Half-duplex: mic is muted while Nisa speaks and for 400ms after. Tap to allow interrupting her." : "Full-duplex: you can interrupt Nisa. Tap to mute the mic while she speaks."} className="flex items-center gap-1 text-[10px] font-mono text-zinc-400 hover:text-accent transition-colors cursor-pointer px-1.5 py-0.5 rounded border border-zinc-800 hover:border-accent/40 bg-zinc-900/60 whitespace-nowrap">
+              <button type="button" onClick={toggleMicMode} title={halfDuplex ? "Half-duplex: mic is muted while Nisa speaks and for 650ms after. Tap to allow interrupting her." : "Full-duplex: you can interrupt Nisa. Tap to mute the mic while she speaks."} className="flex items-center gap-1 text-[10px] font-mono text-zinc-400 hover:text-accent transition-colors cursor-pointer px-1.5 py-0.5 rounded border border-zinc-800 hover:border-accent/40 bg-zinc-900/60 whitespace-nowrap">
                 {halfDuplex ? <SpeakerHigh size={11} /> : <Headset size={11} />}
                 <span>{halfDuplex ? "Half" : "Full"}</span>
               </button>

@@ -18,8 +18,15 @@ export function createLiveAudio(setIsSpeaking) {
     schedule(chunk) {
       playback?.scheduleChunk(chunk, report);
     },
+    startTurn() {
+      playback?.startTurn?.(report);
+      report(true);
+    },
+    endTurn() {
+      playback?.endTurn?.(report);
+    },
     stopAll() {
-      playback?.stopAll();
+      playback?.stopAll?.(report);
       report(false);
     },
     resume() {

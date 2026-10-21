@@ -84,6 +84,15 @@ export function buildSetupMessage(resumeHandle = null, customConfig = null) {
       responseModalities: ["AUDIO"],
       speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
     },
+    realtimeInputConfig: {
+      automaticActivityDetection: {
+        disabled: false,
+        startOfSpeechSensitivity: "START_SENSITIVITY_LOW",
+        endOfSpeechSensitivity: "END_SENSITIVITY_LOW",
+        prefixPaddingMs: 40,
+        silenceDurationMs: 650
+      }
+    },
     contextWindowCompression: { slidingWindow: {} },
     inputAudioTranscription: {},
     outputAudioTranscription: {},
