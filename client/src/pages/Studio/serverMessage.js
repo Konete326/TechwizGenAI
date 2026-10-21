@@ -10,7 +10,7 @@ const USER_SPEECH_EVENTS = new Set(["ACTIVITY_START", "ACTIVITY_END"]);
 
 export function createServerMessageHandler({
   isReadyRef, audio, setTranscript,
-  wsRef, pendingRef, stopAudio, onToolCallRef, lastMessageTimeRef, resumeHandleRef
+  wsRef, pendingRef, stopAudio, onToolCallRef, lastMessageTimeRef, resumeHandleRef, onSetupComplete
 }) {
   return async (event) => {
     if (lastMessageTimeRef) lastMessageTimeRef.current = Date.now();
@@ -29,6 +29,7 @@ export function createServerMessageHandler({
       if (data.setupComplete || data.setup_complete) {
         logServerMessage("setupComplete");
         isReadyRef.current = true;
+        if (onSetupComplete) onSetupComplete();
         return;
       }
 
@@ -85,10 +86,6 @@ export function createServerMessageHandler({
           if (import.meta.env.VITE_DEBUG === "true") {
             console.log(`[DEBUG] ${performance.now().toFixed(1)} ignoring interrupted because a tool is pending`);
           }
-          return;
-        }
-        if (isHalfDuplex()) {
-          logServerMessage("ignoreInterruptedInHalfDuplex");
           return;
         }
         stopAudio();

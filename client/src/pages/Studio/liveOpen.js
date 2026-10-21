@@ -6,13 +6,18 @@ import { noteUserActivity } from "./nesaToolGuards";
 
 const MIC_MIME = "audio/pcm;rate=16000";
 
-export function sendSetupAndReconnectContext(ws, { resumeHandleRef, transcript, isReconnect, customConfig }) {
-  ws.send(JSON.stringify(buildSetupMessage(resumeHandleRef.current, customConfig)));
-  if (isReconnect && transcript) {
+export function sendSetupMessage(ws, { resumeHandleRef, customConfig }) {
+  ws.send(JSON.stringify(buildSetupMessage(resumeHandleRef?.current, customConfig)));
+}
+
+export function sendReconnectContext(ws, transcript) {
+  if (transcript && ws?.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text: "Context from before reconnect: " + transcript.slice(-1000) }] }], turnComplete: false } }));
-  } else if (!isReconnect) {
-    ws.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text: "Hello Nisa, I just connected. Briefly greet me and let me know you are ready." }] }], turnComplete: true } }));
   }
+}
+
+export function sendSetupAndReconnectContext(ws, { resumeHandleRef, customConfig }) {
+  sendSetupMessage(ws, { resumeHandleRef, customConfig });
 }
 
 export function startInputStream(ws, { audio, isReadyRef, isCallActiveRef, setIsUserSpeaking, userSpeakingTimerRef }) {

@@ -6,7 +6,7 @@ import { setupToolResponseListener } from "./toolDispatch";
 import { createServerMessageHandler } from "./serverMessage";
 import { handleWsClose } from "./wsManager";
 import { createLiveAudio } from "./liveAudio";
-import { sendSetupAndReconnectContext, startInputStream, ensureCallTimer } from "./liveOpen";
+import { sendSetupAndReconnectContext, sendReconnectContext, startInputStream, ensureCallTimer } from "./liveOpen";
 import { resetToolGuards } from "./nesaToolGuards";
 import { useConnectionQuality } from "./useConnectionQuality";
 import { useNetworkEvents } from "./useNetworkEvents";
@@ -96,7 +96,7 @@ export function useGeminiLive({ onToolCall, clientId } = {}) {
             }
           } catch (e) {}
         }
-        sendSetupAndReconnectContext(ws, { resumeHandleRef, transcript, isReconnect, customConfig });
+        sendSetupAndReconnectContext(ws, { resumeHandleRef, customConfig });
         try {
           await startInputStream(ws, { audio, isReadyRef, isCallActiveRef, setIsUserSpeaking, userSpeakingTimerRef });
           setIsConnected(true);
@@ -108,7 +108,12 @@ export function useGeminiLive({ onToolCall, clientId } = {}) {
       };
       ws.onmessage = createServerMessageHandler({
         isReadyRef, audio, setTranscript,
-        wsRef, pendingRef: pendingToolCallsRef, stopAudio, onToolCallRef, lastMessageTimeRef, resumeHandleRef
+        wsRef, pendingRef: pendingToolCallsRef, stopAudio, onToolCallRef, lastMessageTimeRef, resumeHandleRef,
+        onSetupComplete: () => {
+          if (isReconnect && transcript) {
+            sendReconnectContext(ws, transcript);
+          }
+        }
       });
       ws.onerror = () => {};
       ws.onclose = (event) => handleWsClose(event, {
