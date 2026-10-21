@@ -1,4 +1,4 @@
-const SILENCE_HOLD_MS = 650;
+const SILENCE_HOLD_MS = 220;
 
 const HEADSET_PATTERN = /(head[\s_-]?phone|headset|ear[\s_-]?phone|ear[\s_-]?bud|airpods?\b|buds\b|hands[\s_-]?free)/i;
 const SPEAKER_PATTERN = /(speaker|speakers|realtek|conexant|maxx[\s_-]?audio|smart[a-z]*audio|laptop|internal|built[\s_-]?in|ida\d|da\d\d|pnpa|high[\s_-]?definition|hdmi|displayport|monitor|tv|projector)/i;

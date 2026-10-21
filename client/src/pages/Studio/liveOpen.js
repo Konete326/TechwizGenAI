@@ -17,29 +17,19 @@ export function sendSetupAndReconnectContext(ws, { resumeHandleRef, transcript, 
 
 export function startInputStream(ws, { audio, isReadyRef, isCallActiveRef, setIsUserSpeaking, userSpeakingTimerRef }) {
   noteUserActivity("call_started");
-  let wasBlocked = false;
   return audio.startCapture({
     onChunk: (pcmBuf, peak) => {
       if (ws.readyState !== WebSocket.OPEN || !isReadyRef.current) return;
-      if (audio.micBlocked()) {
-        if (!wasBlocked) {
-          wasBlocked = true;
-          try {
-            ws.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
-          } catch (_) {}
-        }
-        return;
-      }
-      wasBlocked = false;
+      if (audio.micBlocked()) return;
 
-      if (peak > 0.012) {
+      if (peak > 0.008) {
         startUserFrameWatchdog();
         noteUserFrame("mic.audio");
         noteUserActivity("");
         if (setIsUserSpeaking && userSpeakingTimerRef) {
           setIsUserSpeaking(true);
           if (userSpeakingTimerRef.current) clearTimeout(userSpeakingTimerRef.current);
-          userSpeakingTimerRef.current = setTimeout(() => setIsUserSpeaking(false), 500);
+          userSpeakingTimerRef.current = setTimeout(() => setIsUserSpeaking(false), 450);
         }
       }
 

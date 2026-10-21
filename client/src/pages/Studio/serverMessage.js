@@ -94,12 +94,6 @@ export function createServerMessageHandler({
         stopAudio();
         return;
       }
-      if (sc.turnComplete || sc.turn_complete) {
-        logServerMessage("serverContent.turnComplete");
-        audio.endTurn?.();
-        return;
-      }
-
       const parts = (sc.modelTurn || sc.model_turn)?.parts || [];
       if (parts.length > 0) {
         logServerMessage("serverContent.modelTurn");
@@ -113,6 +107,12 @@ export function createServerMessageHandler({
         if (inline?.data && (mime?.startsWith("audio/") || !mime)) {
           audio.schedule(base64DecodeAudio(inline.data));
         }
+      }
+
+      if (sc.turnComplete || sc.turn_complete) {
+        logServerMessage("serverContent.turnComplete");
+        audio.endTurn?.();
+        return;
       }
     } catch(err) { logDebug("JSON parse error", err); }
   };

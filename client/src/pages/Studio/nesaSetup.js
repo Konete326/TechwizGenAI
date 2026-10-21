@@ -87,10 +87,10 @@ export function buildSetupMessage(resumeHandle = null, customConfig = null) {
     realtimeInputConfig: {
       automaticActivityDetection: {
         disabled: false,
-        startOfSpeechSensitivity: "START_SENSITIVITY_LOW",
+        startOfSpeechSensitivity: "START_SENSITIVITY_HIGH",
         endOfSpeechSensitivity: "END_SENSITIVITY_LOW",
-        prefixPaddingMs: 40,
-        silenceDurationMs: 650
+        prefixPaddingMs: 20,
+        silenceDurationMs: 400
       }
     },
     contextWindowCompression: { slidingWindow: {} },
