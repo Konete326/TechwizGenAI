@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { VITE_API_URL } from "@/config/env";
+import { isTokenValid, clearAuth } from "@/utils/auth";
 
 export function useDashboardData() {
   const [stats, setStats] = useState(null);
@@ -11,9 +12,18 @@ export function useDashboardData() {
       setLoading(true);
       setError(null);
       const token = localStorage.getItem("token");
+      if (!token || !isTokenValid(token)) {
+        clearAuth();
+        return;
+      }
       const res = await fetch(`${VITE_API_URL}/dashboard/stats`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+        headers: { Authorization: `Bearer ${token}` }
       });
+
+      if (res.status === 401) {
+        clearAuth();
+        return;
+      }
 
       if (!res.ok) {
         throw new Error(`Failed to load dashboard telemetry (${res.status})`);

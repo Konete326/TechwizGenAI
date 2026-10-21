@@ -1,8 +1,13 @@
 import { VITE_API_URL } from "@/config/env";
+import { isTokenValid, clearAuth } from "@/utils/auth";
 
 export async function fetchAnalyticsData() {
   const token = localStorage.getItem("token");
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  if (!token || !isTokenValid(token)) {
+    clearAuth();
+    return null;
+  }
+  const headers = { Authorization: `Bearer ${token}` };
 
   let history = [];
   let assets = [];
@@ -12,6 +17,11 @@ export async function fetchAnalyticsData() {
       fetch(`${VITE_API_URL}/ai/history`, { headers }).catch(() => null),
       fetch(`${VITE_API_URL}/assets`, { headers }).catch(() => null),
     ]);
+
+    if (histRes?.status === 401 || assetRes?.status === 401) {
+      clearAuth();
+      return null;
+    }
 
     if (histRes && histRes.ok) {
       const histData = await histRes.json();

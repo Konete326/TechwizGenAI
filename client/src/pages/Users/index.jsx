@@ -3,6 +3,7 @@ import { MagnifyingGlass } from "@phosphor-icons/react";
 import { VITE_API_URL } from "@/config/env";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/context/ToastContext";
+import { isTokenValid, clearAuth } from "@/utils/auth";
 import { UserProfileModal } from "./UserProfileModal";
 import { UserTableRow } from "./UserTableRow";
 
@@ -27,12 +28,19 @@ export function UsersView() {
 
   const fetchUsers = async () => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token || !isTokenValid(token)) {
+      clearAuth();
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch(`${VITE_API_URL}/admin/users`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (res.status === 401) {
+        clearAuth();
+        return;
+      }
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
         setUsers(data.data);
@@ -50,7 +58,10 @@ export function UsersView() {
 
   const handleStatusChange = async (userId, newStatus) => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token || !isTokenValid(token)) {
+      clearAuth();
+      return;
+    }
     setIsUpdating(true);
     try {
       const res = await fetch(`${VITE_API_URL}/admin/users/${userId}/status`, {
@@ -61,6 +72,10 @@ export function UsersView() {
         },
         body: JSON.stringify({ status: newStatus })
       });
+      if (res.status === 401) {
+        clearAuth();
+        return;
+      }
       const data = await res.json();
       if (data.success) {
         setUsers((prev) =>

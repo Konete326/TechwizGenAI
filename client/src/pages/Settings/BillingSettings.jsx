@@ -3,6 +3,7 @@ import { Coins, HardDrive, ArrowClockwise, CheckCircle } from "@phosphor-icons/r
 import { VITE_API_URL } from "@/config/env";
 import { useToast } from "@/context/ToastContext";
 import { Loader } from "@/components/ui/Loader";
+import { isTokenValid, clearAuth } from "@/utils/auth";
 
 export function BillingSettings() {
   const toast = useToast();
@@ -12,12 +13,19 @@ export function BillingSettings() {
 
   const fetchMetrics = async (isManual = false) => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token || !isTokenValid(token)) {
+      clearAuth();
+      return;
+    }
     if (isManual) setIsRefreshing(true); else setIsLoading(true);
     try {
       const res = await fetch(`${VITE_API_URL}/analytics/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (res.status === 401) {
+        clearAuth();
+        return;
+      }
       const data = await res.json();
       if (data.success && data.data) {
         setMetrics(data.data);

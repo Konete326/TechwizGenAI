@@ -1,11 +1,16 @@
 import { VITE_API_URL } from "@/config/env";
 import { logDebug } from "@/pages/Studio/logger";
 import { respondToTool } from "@/pages/Studio/nesaTools";
+import { clearAuth } from "@/utils/auth";
 
 const DATA_TOOLS = new Set(["deleteAsset", "previewAsset", "exportCallSummary", "getDashboardMetrics", "generateImage", "queryDocument"]);
 
 async function authedGet(path, token) {
   const res = await fetch(`${VITE_API_URL}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (res.status === 401) {
+    clearAuth();
+    return null;
+  }
   return res.json();
 }
 

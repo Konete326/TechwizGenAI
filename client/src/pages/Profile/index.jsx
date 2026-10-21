@@ -6,6 +6,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { ProfileForm } from "./ProfileForm";
 import { useToast } from "@/context/ToastContext";
 import { VITE_API_URL } from "@/config/env";
+import { isTokenValid, clearAuth } from "@/utils/auth";
 
 export function Profile() {
   const toast = useToast();
@@ -24,11 +25,20 @@ export function Profile() {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token || !isTokenValid(token)) {
+      clearAuth();
+      return;
+    }
     fetch(`${VITE_API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
+      .then((r) => {
+        if (r.status === 401) {
+          clearAuth();
+          return null;
+        }
+        return r.json();
+      })
       .then((data) => {
-        if (data.success && data.user) {
+        if (data && data.success && data.user) {
           setCurrentUser(data.user);
           setName(data.user.name);
           setProfileImage(data.user.profileImage || "");

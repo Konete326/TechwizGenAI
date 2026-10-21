@@ -3,6 +3,7 @@ import { ShieldCheck, UserCheck, UserMinus, ArrowClockwise, MagnifyingGlass, Use
 import { VITE_API_URL } from "@/config/env";
 import { useToast } from "@/context/ToastContext";
 import { Loader } from "@/components/ui/Loader";
+import { isTokenValid, clearAuth } from "@/utils/auth";
 
 export function UserManagementView() {
   const [users, setUsers] = useState([]);
@@ -13,10 +14,17 @@ export function UserManagementView() {
 
   const fetchUsers = async () => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token || !isTokenValid(token)) {
+      clearAuth();
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch(`${VITE_API_URL}/admin/users`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401) {
+        clearAuth();
+        return;
+      }
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) setUsers(data.data);
     } catch {
@@ -30,13 +38,20 @@ export function UserManagementView() {
 
   const handleToggleStatus = async (userId) => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token || !isTokenValid(token)) {
+      clearAuth();
+      return;
+    }
     setUpdatingId(userId);
     try {
       const res = await fetch(`${VITE_API_URL}/admin/users/${userId}/status`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (res.status === 401) {
+        clearAuth();
+        return;
+      }
       const data = await res.json();
       if (data.success) {
         setUsers((prev) => prev.map((u) => ((u.id || u._id) === userId ? { ...u, status: data.data.status } : u)));

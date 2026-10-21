@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { VITE_API_URL } from "@/config/env";
+import { isTokenValid, clearAuth } from "@/utils/auth";
 import { DashboardHeader } from "./DashboardHeader"; import { DashboardSidebar } from "./DashboardSidebar"; import { InstallPrompt } from "@/components/ui/InstallPrompt"; import { ApiFallbackModal } from "@/components/ui/ApiFallbackModal"; import { ErrorBoundary } from "@/components/common/ErrorBoundary"; import { VisualSpotlight } from "@/components/common/VisualSpotlight"; import { DynamicModalHost } from "@/components/common/DynamicModalHost"; import { NesaCallProvider, useNesaCallContext } from "@/context/NesaCallContext"; import { NesaCallInterface } from "@/pages/Studio/NesaCallInterface"; import { registerNesaActions } from "./nesaToolActions"; import { logDebug } from "@/pages/Studio/logger";
 
 const PersistentNesaCallHost = () => { const c = useNesaCallContext(); return <NesaCallInterface isActive={c.isCallActive} callPhase={c.callPhase} isMinimized={c.isMinimized} onToggleMinimize={c.toggleMinimize} onEndCall={c.endCall} nesaState={c.nesaState} isListening={c.isListening} isUserSpeaking={c.isUserSpeaking} transcript={c.transcript} connectionError={c.connectionError} onRetry={c.startCall} forceReply={(cp) => c.forceReply(cp)} position={c.widgetPosition} onPositionChange={c.setWidgetPosition} widgetSide={c.widgetSide} dockCorner={c.dockCorner} onReposition={c.reposition} />; };
@@ -21,8 +22,11 @@ function DashboardLayoutContent() {
   useEffect(() => {
     const fetchStorage = async () => {
       try {
-        const token = localStorage.getItem("token"); if (!token) return;
-        const res = await fetch(VITE_API_URL + "/assets", { headers: { Authorization: "Bearer " + token } }), data = await res.json();
+        const token = localStorage.getItem("token");
+        if (!token || !isTokenValid(token)) { clearAuth(); return; }
+        const res = await fetch(VITE_API_URL + "/assets", { headers: { Authorization: "Bearer " + token } });
+        if (res.status === 401) { clearAuth(); return; }
+        const data = await res.json();
         if (data.success && Array.isArray(data.data)) { const total = data.data.reduce((sum, item) => sum + (item.bytes || 0), 0); localStorage.setItem("platform_usage_bytes", String(total)); setPlatformBytes(total); }
       } catch (err) { logDebug("storage usage refresh failed", err); }
     };

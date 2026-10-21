@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { VITE_API_URL } from "@/config/env";
 import { useChatSessionsMutations } from "./useChatSessionsMutations";
+import { isTokenValid, clearAuth } from "@/utils/auth";
 export function useChatSessions({ isStreaming = false } = {}) {
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
@@ -23,10 +24,17 @@ export function useChatSessions({ isStreaming = false } = {}) {
   }, [isStreaming]);
 
   const fetchSessions = useCallback(async (isSilent = false) => {
-    if (!token) return;
+    if (!token || !isTokenValid(token)) {
+      clearAuth();
+      return null;
+    }
     if (!isSilent) setIsLoading(true);
     try {
       const res = await fetch(`${VITE_API_URL}/ai/sessions`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401) {
+        clearAuth();
+        return null;
+      }
       if (!res.ok) return null;
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
@@ -51,9 +59,17 @@ export function useChatSessions({ isStreaming = false } = {}) {
 
   const fetchMessages = useCallback(async (sessionId, force = false) => {
     if (!token || !sessionId) return;
+    if (!isTokenValid(token)) {
+      clearAuth();
+      return;
+    }
     if (isStreamingRef.current && !force) return;
     try {
       const res = await fetch(`${VITE_API_URL}/ai/sessions/${sessionId}/messages`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401) {
+        clearAuth();
+        return;
+      }
       if (!res.ok) return;
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {

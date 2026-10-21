@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { ToastContainer } from "@/components/ui/Toast";
 import { VITE_API_URL } from "@/config/env";
+import { isTokenValid, clearAuth } from "@/utils/auth";
 
 const ToastContext = createContext(null);
 const NotificationContext = createContext(null);
@@ -26,12 +27,20 @@ const formatRelativeTime = (d) => {
 
 const apiCall = async (endpoint, method) => {
   const token = localStorage.getItem("token");
-  if (!token) return null;
+  if (!token || !isTokenValid(token)) {
+    clearAuth();
+    return null;
+  }
   try {
-    return await fetch(`${VITE_API_URL}${endpoint}`, {
+    const res = await fetch(`${VITE_API_URL}${endpoint}`, {
       method,
       headers: { Authorization: `Bearer ${token}` }
     });
+    if (res.status === 401) {
+      clearAuth();
+      return null;
+    }
+    return res;
   } catch {
     return null;
   }
@@ -84,15 +93,21 @@ export function ToastProvider({ children }) {
     setNotifications((prev) => [newLocalNotif, ...prev.slice(0, 19)]);
 
     const token = localStorage.getItem("token");
-    if (token) {
+    if (token && isTokenValid(token)) {
       fetch(`${VITE_API_URL}/notifications`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ title: resolvedTitle, message, type, href: resolvedHref })
       })
-        .then((r) => r.json())
+        .then((r) => {
+          if (r.status === 401) {
+            clearAuth();
+            return null;
+          }
+          return r.json();
+        })
         .then((data) => {
-          if (data.success && data.data?.id) {
+          if (data && data.success && data.data?.id) {
             setNotifications((prev) =>
               prev.map((n) => (n.id === id ? { ...n, id: data.data.id } : n))
             );

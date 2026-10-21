@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { clsx } from "clsx";
 import { Typewriter } from "@/components/ui/Typewriter";
+import { isTokenValid } from "@/utils/auth";
 import { AuthFormContainer } from "./AuthForms";
 
 const signInQuotes = [
@@ -22,6 +24,13 @@ const signUpQuotes = [
 export function AuthLayout({ defaultIsSignIn }) {
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token && isTokenValid(token)) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [navigate]);
 
   const isSignIn =
     location.pathname === "/register"

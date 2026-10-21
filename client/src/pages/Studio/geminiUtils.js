@@ -1,4 +1,5 @@
 import { VITE_API_URL } from "@/config/env";
+import { isTokenValid, clearAuth } from "@/utils/auth";
 
 export async function fetchVoiceToken(clientId = null) {
   if (import.meta.env.DEV) {
@@ -16,6 +17,10 @@ export async function fetchVoiceToken(clientId = null) {
       headers["Content-Type"] = "application/json";
       body = JSON.stringify({ clientId });
     } else {
+      if (!token || !isTokenValid(token)) {
+        clearAuth();
+        throw new Error("Authentication required");
+      }
       headers["Authorization"] = `Bearer ${token}`;
     }
 
@@ -25,6 +30,10 @@ export async function fetchVoiceToken(clientId = null) {
       body
     });
     
+    if (res.status === 401 && !clientId) {
+      clearAuth();
+    }
+
     const text = await res.text();
     let data;
     try {

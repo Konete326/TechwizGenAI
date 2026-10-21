@@ -3,6 +3,7 @@ import { Camera, Check, Trash } from "@phosphor-icons/react";
 import { useToast } from "@/context/ToastContext";
 import { VITE_API_URL } from "@/config/env";
 import { Loader } from "@/components/ui/Loader";
+import { isTokenValid, clearAuth } from "@/utils/auth";
 
 export function ProfileSettings() {
   const toast = useToast();
@@ -18,11 +19,20 @@ export function ProfileSettings() {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token || !isTokenValid(token)) {
+      clearAuth();
+      return;
+    }
     fetch(`${VITE_API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
+      .then((r) => {
+        if (r.status === 401) {
+          clearAuth();
+          return null;
+        }
+        return r.json();
+      })
       .then((d) => {
-        if (d.success && d.user) {
+        if (d && d.success && d.user) {
           setUser(d.user); setName(d.user.name || ""); setTitle(d.user.title || d.user.role || ""); setBio(d.user.bio || ""); setProfileImage(d.user.profileImage || "");
           localStorage.setItem("user", JSON.stringify(d.user));
         }

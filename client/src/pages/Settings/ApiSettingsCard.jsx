@@ -3,6 +3,7 @@ import { Key, Sparkle, CloudCheck, Check, Eye, EyeSlash, Broadcast } from "@phos
 import { Loader } from "@/components/ui/Loader";
 import { useToast } from "@/context/ToastContext";
 import { VITE_API_URL } from "@/config/env";
+import { isTokenValid, clearAuth } from "@/utils/auth";
 
 function CornerBracket() {
   return (
@@ -34,6 +35,11 @@ export function ApiSettingsCard({
 
     setIsTesting(true);
     const token = localStorage.getItem("token");
+    if (!token || !isTokenValid(token)) {
+      clearAuth();
+      setIsTesting(false);
+      return;
+    }
 
     try {
       const res = await fetch(`${VITE_API_URL}/ai/verify`, {
@@ -46,6 +52,11 @@ export function ApiSettingsCard({
         },
         body: JSON.stringify({ apiKey: customApiKey.trim(), provider: aiProvider })
       });
+
+      if (res.status === 401 && !customApiKey.trim()) {
+        clearAuth();
+        return;
+      }
 
       const data = await res.json();
       if (res.ok && data.success) {

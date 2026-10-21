@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { VITE_API_URL } from "@/config/env";
+import { isTokenValid, clearAuth } from "@/utils/auth";
 
 export function useAnalytics() {
   const user = (() => {
@@ -21,9 +22,17 @@ export function useAnalytics() {
     if (!isAdmin) return;
     try {
       const token = localStorage.getItem("token");
+      if (!token || !isTokenValid(token)) {
+        clearAuth();
+        return;
+      }
       const res = await fetch(`${VITE_API_URL}/analytics/admin/users`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (res.status === 401) {
+        clearAuth();
+        return;
+      }
       const json = await res.json();
       if (json.success) setUserList(json.data || []);
     } catch {}
@@ -34,6 +43,10 @@ export function useAnalytics() {
     setError(null);
     try {
       const token = localStorage.getItem("token");
+      if (!token || !isTokenValid(token)) {
+        clearAuth();
+        return;
+      }
       let url = `${VITE_API_URL}/analytics/me`;
       if (isAdmin) {
         url = `${VITE_API_URL}/analytics/admin${selectedUserId !== "all" ? `?userId=${selectedUserId}` : ""}`;
@@ -41,6 +54,10 @@ export function useAnalytics() {
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (res.status === 401) {
+        clearAuth();
+        return;
+      }
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to load metrics");
       setMetrics(json.data);

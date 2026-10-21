@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { VITE_API_URL } from "@/config/env";
+import { isTokenValid, clearAuth } from "@/utils/auth";
 
 export function useAssets() {
   const [assets, setAssets] = useState([]);
@@ -8,11 +9,18 @@ export function useAssets() {
 
   const fetchAssets = async () => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token || !isTokenValid(token)) {
+      clearAuth();
+      return;
+    }
     try {
       const res = await fetch(`${VITE_API_URL}/assets`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (res.status === 401) {
+        clearAuth();
+        return;
+      }
       if (!res.ok) return;
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {

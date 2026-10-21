@@ -1,4 +1,5 @@
 import { VITE_API_URL } from "@/config/env";
+import { isTokenValid, clearAuth } from "@/utils/auth";
 
 export function getFriendlyErrorMessage(error) {
   if (!error) return "AI service is temporarily unavailable. Please try again shortly.";
@@ -38,8 +39,9 @@ export async function streamCompletion({
 }) {
   try {
     const token = localStorage.getItem("token");
-    if (!token) {
-      throw new Error("Authentication token is missing. Please sign in.");
+    if (!token || !isTokenValid(token)) {
+      clearAuth();
+      throw new Error("Authentication token is missing or expired. Please sign in.");
     }
 
     const customApiKey = localStorage.getItem("techwiz_custom_api_key") || localStorage.getItem("custom_api_key") || "";
@@ -87,6 +89,9 @@ export async function streamCompletion({
       if (errData.error === "CUSTOM_API_FAILED" || (response.status === 401 && customApiKey)) {
         window.dispatchEvent(new CustomEvent("api_key_failed"));
         throw new Error("Custom API key authentication failed or quota exceeded. Please check Settings.");
+      }
+      if (response.status === 401) {
+        clearAuth();
       }
       const candidate = errData.message || "";
       if (!candidate || candidate.toLowerCase().includes("server error") || response.status >= 500) {
