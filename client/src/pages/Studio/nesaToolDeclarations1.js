@@ -63,9 +63,24 @@ export const NESA_TOOL_DECLARATIONS = [
         modalType: { type: "STRING", description: "upload_asset, text_note, translation, input_prompt, logout_confirm" },
         title: { type: "STRING", description: "Modal title" },
         content: { type: "STRING", description: "Rich text explanation, translation, or prompt details" },
-        inputPlaceholder: { type: "STRING", description: "Placeholder text for input field" }
+        inputPlaceholder: { type: "STRING", description: "Placeholder text for input field" },
+        width: { type: "STRING", description: "Target width: e.g. 'fullscreen', 'small', 'normal', 'large', '600px', '80vw', '15cm'" },
+        height: { type: "STRING", description: "Target height: e.g. 'fullscreen', 'small', 'normal', 'large', '500px', '80vh', '20cm'" },
+        preset: { type: "STRING", enum: ["fullscreen", "compact", "normal", "large", "expanded"], description: "Size preset" }
       },
       required: ["modalType"]
+    }
+  },
+  {
+    name: "resizeModal",
+    description: "Resize, expand, shrink, or adjust the dimensions of the active open modal dialog (width, height, size preset).",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        width: { type: "STRING", description: "Target width: e.g. 'fullscreen', 'small', 'normal', 'large', '500px', '800px', '80vw', '20cm'" },
+        height: { type: "STRING", description: "Target height: e.g. 'fullscreen', 'small', 'normal', 'large', '400px', '700px', '80vh', '15cm'" },
+        preset: { type: "STRING", enum: ["fullscreen", "compact", "normal", "large", "expanded"], description: "Size preset" }
+      }
     }
   },
   {

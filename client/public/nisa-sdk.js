@@ -450,6 +450,8 @@
             if (command === 'navigatePage' && clientConfig.powers.navigation === false) return;
             if (command === 'spotlightElement' && clientConfig.powers.spotlightGuidance === false) return;
             if (command === 'openDynamicModal' && clientConfig.powers.dynamicModals === false) return;
+            if (command === 'resizeModal' && clientConfig.powers.dynamicModals === false) return;
+            if (command === 'closeModal' && clientConfig.powers.dynamicModals === false) return;
           }
           
           if (command === 'repositionWidget') {
@@ -476,17 +478,184 @@
             return;
           }
 
+          function resolveModalDims(w, h, p) {
+            p = (p || '').toLowerCase().trim();
+            if (p === 'fullscreen' || p === 'max' || p === 'maximize' || p === 'full') {
+              w = 'calc(100vw - 32px)';
+              h = 'calc(100vh - 32px)';
+            } else if (p === 'large' || p === 'expanded' || p === 'bada') {
+              w = w || '800px';
+              h = h || '620px';
+            } else if (p === 'compact' || p === 'small' || p === 'chota') {
+              w = w || '360px';
+              h = h || '280px';
+            } else if (p === 'normal' || p === 'default') {
+              w = w || '480px';
+              h = h || 'auto';
+            }
+            if (w && typeof w === 'number') w = w + 'px';
+            if (h && typeof h === 'number') h = h + 'px';
+            if (w && /^\d+$/.test(w)) w = w + 'px';
+            if (h && /^\d+$/.test(h)) h = h + 'px';
+            return {
+              width: w || '480px',
+              maxWidth: p === 'fullscreen' ? 'calc(100vw - 32px)' : (w || '480px'),
+              height: h || 'auto',
+              maxHeight: 'calc(100vh - 32px)'
+            };
+          }
+
           if (command === 'openDynamicModal' && args) {
-            const m = document.createElement('div');
-            m.id = 'nisa-dynamic-modal';
-            m.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#09090b;border:1px solid rgba(255,255,255,0.15);padding:24px;border-radius:14px;box-shadow:0 25px 50px rgba(0,0,0,0.5);z-index:9999999;max-width:90%;width:420px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#fff;';
-            m.innerHTML = `<h3 style="margin-top:0;font-size:17px;font-weight:600;color:#f4f4f5;">${args.title||''}</h3><p style="white-space:pre-wrap;font-size:13.5px;color:#d4d4d8;margin-bottom:0;line-height:1.5;">${args.content||''}</p><div style="text-align:right;margin-top:20px;"><button onclick="this.parentElement.parentElement.remove()" style="background:#2563eb;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-weight:500;cursor:pointer;font-size:13px;">Close</button></div>`;
-            document.body.appendChild(m);
+            const oldModal = document.getElementById('nisa-dynamic-modal');
+            if (oldModal) oldModal.remove();
+
+            const dims = resolveModalDims(args.width, args.height, args.preset);
+            const overlay = document.createElement('div');
+            overlay.id = 'nisa-dynamic-modal';
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;transition:opacity 0.25s ease;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;box-sizing:border-box;';
+
+            const card = document.createElement('div');
+            card.id = 'nisa-dynamic-modal-card';
+            card.style.cssText = `background:#18181b;border:1px solid rgba(255,255,255,0.12);border-radius:16px;box-shadow:0 25px 60px -15px rgba(0,0,0,0.8),0 0 0 1px rgba(255,255,255,0.05);color:#f4f4f5;display:flex;flex-direction:column;overflow:hidden;transform:scale(0.95);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1),width 0.3s cubic-bezier(0.16,1,0.3,1),height 0.3s cubic-bezier(0.16,1,0.3,1),max-width 0.3s cubic-bezier(0.16,1,0.3,1);box-sizing:border-box;width:${dims.width};max-width:${dims.maxWidth};height:${dims.height};max-height:${dims.maxHeight};`;
+
+            const header = document.createElement('div');
+            header.style.cssText = 'padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;box-sizing:border-box;';
+
+            const headerLeft = document.createElement('div');
+            headerLeft.style.cssText = 'display:flex;align-items:center;gap:12px;min-width:0;flex:1;';
+
+            const iconBadge = document.createElement('div');
+            iconBadge.style.cssText = 'width:34px;height:34px;border-radius:10px;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);display:flex;align-items:center;justify-content:center;color:#3b82f6;flex-shrink:0;';
+            iconBadge.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>';
+
+            const titleBox = document.createElement('div');
+            titleBox.style.cssText = 'min-width:0;flex:1;';
+            const titleEl = document.createElement('div');
+            titleEl.style.cssText = 'font-size:14px;font-weight:600;color:#f4f4f5;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+            titleEl.textContent = args.title || 'Dynamic Action';
+            const subTitleEl = document.createElement('div');
+            subTitleEl.style.cssText = 'font-size:11px;color:#a1a1aa;margin-top:2px;';
+            subTitleEl.textContent = 'Nesa Dynamic Runtime Modal';
+            titleBox.appendChild(titleEl);
+            titleBox.appendChild(subTitleEl);
+
+            headerLeft.appendChild(iconBadge);
+            headerLeft.appendChild(titleBox);
+
+            const closeBtn = document.createElement('button');
+            closeBtn.setAttribute('data-nesa-target', 'modal_close_btn');
+            closeBtn.setAttribute('aria-label', 'Close modal');
+            closeBtn.style.cssText = 'background:transparent;border:none;color:#a1a1aa;cursor:pointer;padding:6px;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;outline:none;flex-shrink:0;';
+            closeBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+            closeBtn.onmouseenter = () => { closeBtn.style.color = '#f4f4f5'; closeBtn.style.background = 'rgba(255,255,255,0.06)'; };
+            closeBtn.onmouseleave = () => { closeBtn.style.color = '#a1a1aa'; closeBtn.style.background = 'transparent'; };
+
+            header.appendChild(headerLeft);
+            header.appendChild(closeBtn);
+
+            const body = document.createElement('div');
+            body.style.cssText = 'padding:20px;display:flex;flex-direction:column;gap:16px;flex:1;min-height:0;overflow:hidden;box-sizing:border-box;';
+
+            const textBox = document.createElement('div');
+            textBox.id = 'nisa-modal-text-content';
+            textBox.style.cssText = 'padding:14px 16px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);font-size:13px;color:#f4f4f5;line-height:1.6;white-space:pre-wrap;flex:1;min-height:100px;overflow-y:auto;box-sizing:border-box;';
+            textBox.textContent = args.content || 'No details provided.';
+
+            const footer = document.createElement('div');
+            footer.style.cssText = 'display:flex;align-items:center;justify-content:flex-end;gap:10px;padding-top:4px;flex-shrink:0;';
+
+            const copyBtn = document.createElement('button');
+            copyBtn.textContent = 'Copy Text';
+            copyBtn.style.cssText = 'padding:7px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:#a1a1aa;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.15s;outline:none;';
+            copyBtn.onmouseenter = () => { copyBtn.style.color = '#f4f4f5'; copyBtn.style.borderColor = 'rgba(255,255,255,0.3)'; };
+            copyBtn.onmouseleave = () => { copyBtn.style.color = '#a1a1aa'; copyBtn.style.borderColor = 'rgba(255,255,255,0.15)'; };
+            copyBtn.onclick = async () => {
+              const textToCopy = args.content || '';
+              let ok = false;
+              try {
+                if (navigator?.clipboard?.writeText) {
+                  await navigator.clipboard.writeText(textToCopy);
+                  ok = true;
+                }
+              } catch {}
+              if (!ok) {
+                try {
+                  const ta = document.createElement('textarea');
+                  ta.value = textToCopy;
+                  ta.style.position = 'fixed';
+                  ta.style.left = '-9999px';
+                  document.body.appendChild(ta);
+                  ta.select();
+                  document.execCommand('copy');
+                  document.body.removeChild(ta);
+                } catch {}
+              }
+              copyBtn.textContent = 'Copied!';
+              copyBtn.style.color = '#34d399';
+              copyBtn.style.borderColor = 'rgba(52,211,153,0.4)';
+              setTimeout(() => {
+                copyBtn.textContent = 'Copy Text';
+                copyBtn.style.color = '#a1a1aa';
+                copyBtn.style.borderColor = 'rgba(255,255,255,0.15)';
+              }, 2000);
+            };
+
+            const confirmBtn = document.createElement('button');
+            confirmBtn.setAttribute('data-nesa-target', 'modal_confirm_btn');
+            confirmBtn.textContent = 'Understood';
+            confirmBtn.style.cssText = 'padding:7px 18px;border-radius:8px;border:none;background:#2563eb;color:#ffffff;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.3);transition:background 0.15s;outline:none;';
+            confirmBtn.onmouseenter = () => { confirmBtn.style.background = '#1d4ed8'; };
+            confirmBtn.onmouseleave = () => { confirmBtn.style.background = '#2563eb'; };
+
+            footer.appendChild(copyBtn);
+            footer.appendChild(confirmBtn);
+
+            body.appendChild(textBox);
+            body.appendChild(footer);
+
+            card.appendChild(header);
+            card.appendChild(body);
+            overlay.appendChild(card);
+
+            const closeModal = () => {
+              overlay.style.opacity = '0';
+              card.style.transform = 'scale(0.95)';
+              setTimeout(() => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 220);
+            };
+
+            overlay.onclick = closeModal;
+            card.onclick = (e) => e.stopPropagation();
+            closeBtn.onclick = closeModal;
+            confirmBtn.onclick = closeModal;
+
+            document.body.appendChild(overlay);
+            requestAnimationFrame(() => {
+              overlay.style.opacity = '1';
+              card.style.transform = 'scale(1)';
+            });
             return;
           }
+
+          if (command === 'resizeModal') {
+            const card = document.getElementById('nisa-dynamic-modal-card');
+            if (card) {
+              const dims = resolveModalDims(args?.width, args?.height, args?.preset);
+              card.style.width = dims.width;
+              card.style.maxWidth = dims.maxWidth;
+              card.style.height = dims.height;
+              card.style.maxHeight = dims.maxHeight;
+            }
+            return;
+          }
+
           if (command === 'closeModal') {
             const m = document.getElementById('nisa-dynamic-modal');
-            if (m) m.remove();
+            if (m) {
+              const c = document.getElementById('nisa-dynamic-modal-card');
+              m.style.opacity = '0';
+              if (c) c.style.transform = 'scale(0.95)';
+              setTimeout(() => { if (m.parentNode) m.parentNode.removeChild(m); }, 220);
+            }
             return;
           }
           
