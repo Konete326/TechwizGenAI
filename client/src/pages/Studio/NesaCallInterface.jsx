@@ -12,28 +12,22 @@ export function NesaCallInterface({
   isListening = false, isUserSpeaking = false, connectionError = null, connectionQuality = "good", onRetry,
   forceReply, position, onPositionChange, widgetSide = "right", dockCorner = "bottom-right", onReposition
 }) {
-  const [duration, setDuration] = useState(0), [showRinging, setShowRinging] = useState(callPhase === "ringing");
-  const [isFadingRinging, setIsFadingRinging] = useState(false), nodeRef = useRef(null);
+  const [duration, setDuration] = useState(0);
+  const [showRinging, setShowRinging] = useState(callPhase === "ringing");
+  const [isFadingRinging, setIsFadingRinging] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  const nodeRef = useRef(null);
 
-  const [prevCallPhase, setPrevCallPhase] = useState(callPhase);
-  if (callPhase !== prevCallPhase) {
-    setPrevCallPhase(callPhase);
-    if (callPhase === "ringing") {
-      setShowRinging(true);
-      setIsFadingRinging(false);
-    } else if (callPhase === "connected") {
-      setIsFadingRinging(true);
-    } else {
-      setShowRinging(false);
-      setIsFadingRinging(false);
-      setDuration(0);
-    }
-  }
-
-
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     if (callPhase === "ringing") {
+      setShowRinging(true);
+      setIsFadingRinging(false);
       const stopTone = playRingingTone();
       const isTopWindow = typeof window !== "undefined" && window.self === window.top;
       const hasVib = isTopWindow && typeof navigator !== "undefined" && Boolean(navigator.vibrate);
@@ -43,10 +37,14 @@ export function NesaCallInterface({
       return () => { stopTone(); if (vibId) clearInterval(vibId); if (hasVib) { try { navigator.vibrate(0); } catch (_) {} } };
     }
     if (callPhase === "connected") {
+      setIsFadingRinging(true);
       const fadeTimer = setTimeout(() => { setShowRinging(false); setIsFadingRinging(false); }, 700);
       const timer = setInterval(() => setDuration((p) => p + 1), 1000);
       return () => { clearTimeout(fadeTimer); clearInterval(timer); };
     }
+    setShowRinging(false);
+    setIsFadingRinging(false);
+    setDuration(0);
   }, [callPhase]);
 
   useEffect(() => {
@@ -67,10 +65,10 @@ export function NesaCallInterface({
         return;
       }
 
-        const isColliding = !(t.right < w.left || t.left > w.right || t.bottom < w.top || t.top > w.bottom);
-        if (isColliding && onReposition) {
-          onReposition(widgetSide === "right" ? "left" : "right");
-        }
+      const isColliding = !(t.right < w.left || t.left > w.right || t.bottom < w.top || t.top > w.bottom);
+      if (isColliding && onReposition) {
+        onReposition(widgetSide === "right" ? "left" : "right");
+      }
     };
 
     window.addEventListener("nesa:toolcall", handleCollision);
@@ -82,17 +80,6 @@ export function NesaCallInterface({
   const formatDuration = (sec) => `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
   const isSpeaking = nesaState === "speaking", isRinging = callPhase === "ringing", durationText = formatDuration(duration);
   const currentPos = position || { x: typeof window !== "undefined" ? Math.max(20, window.innerWidth - 370) : 800, y: typeof window !== "undefined" ? Math.max(20, window.innerHeight - 560) : 200 };
-
-
-
-
-  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   if (isMobile) {
     return (
