@@ -13,14 +13,15 @@ export function createLiveAudio(setIsSpeaking) {
 
   return {
     open() {
-      playback = createPlayback();
+      if (!playback) playback = createPlayback();
+      playback?.resume?.();
     },
     schedule(chunk) {
+      if (!playback) playback = createPlayback();
       playback?.scheduleChunk(chunk, report);
     },
     startTurn() {
       playback?.startTurn?.(report);
-      report(true);
     },
     endTurn() {
       playback?.endTurn?.(report);
@@ -30,6 +31,7 @@ export function createLiveAudio(setIsSpeaking) {
       report(false);
     },
     resume() {
+      if (!playback) playback = createPlayback();
       playback?.resume?.();
     },
     micBlocked() {

@@ -86,22 +86,66 @@ export function NesaCallInterface({
 
 
 
-  return (
-    <>
-      <NesaCallWidgetMobile isMinimized={isMinimized} durationText={durationText} isSpeaking={isSpeaking} isListening={isListening} isUserSpeaking={isUserSpeaking} onToggleMinimize={onToggleMinimize} onEndCall={onEndCall} connectionQuality={connectionQuality} showRinging={showRinging} isFadingRinging={isFadingRinging} connectionError={connectionError} onRetry={onRetry} isRinging={isRinging} callPhase={callPhase} forceReply={forceReply} cornerClasses={cornerClasses} dockCorner={dockCorner} />
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
 
-      <Draggable
-        nodeRef={nodeRef}
-        handle=".call-drag-handle"
-        bounds="body"
-        position={currentPos}
-        onDrag={(e, d) => onPositionChange && onPositionChange({ x: d.x, y: d.y })}
-      >
-        <div id="nesa-call-widget" ref={nodeRef} className="fixed top-0 left-0 z-50 hidden md:block">
-          <NesaCallWidgetDesktop isMinimized={isMinimized} durationText={durationText} isSpeaking={isSpeaking} isListening={isListening} isUserSpeaking={isUserSpeaking} onToggleMinimize={onToggleMinimize} onEndCall={onEndCall} connectionQuality={connectionQuality} showRinging={showRinging} isFadingRinging={isFadingRinging} connectionError={connectionError} onRetry={onRetry} isRinging={isRinging} callPhase={callPhase} forceReply={forceReply} />
-        </div>
-      </Draggable>
-    </>
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  if (isMobile) {
+    return (
+      <NesaCallWidgetMobile
+        isMinimized={isMinimized}
+        durationText={durationText}
+        isSpeaking={isSpeaking}
+        isListening={isListening}
+        isUserSpeaking={isUserSpeaking}
+        onToggleMinimize={onToggleMinimize}
+        onEndCall={onEndCall}
+        connectionQuality={connectionQuality}
+        showRinging={showRinging}
+        isFadingRinging={isFadingRinging}
+        connectionError={connectionError}
+        onRetry={onRetry}
+        isRinging={isRinging}
+        callPhase={callPhase}
+        forceReply={forceReply}
+        cornerClasses={cornerClasses}
+        dockCorner={dockCorner}
+      />
+    );
+  }
+
+  return (
+    <Draggable
+      nodeRef={nodeRef}
+      handle=".call-drag-handle"
+      bounds="body"
+      position={currentPos}
+      onDrag={(e, d) => onPositionChange && onPositionChange({ x: d.x, y: d.y })}
+    >
+      <div id="nesa-call-widget" ref={nodeRef} className="fixed top-0 left-0 z-50">
+        <NesaCallWidgetDesktop
+          isMinimized={isMinimized}
+          durationText={durationText}
+          isSpeaking={isSpeaking}
+          isListening={isListening}
+          isUserSpeaking={isUserSpeaking}
+          onToggleMinimize={onToggleMinimize}
+          onEndCall={onEndCall}
+          connectionQuality={connectionQuality}
+          showRinging={showRinging}
+          isFadingRinging={isFadingRinging}
+          connectionError={connectionError}
+          onRetry={onRetry}
+          isRinging={isRinging}
+          callPhase={callPhase}
+          forceReply={forceReply}
+        />
+      </div>
+    </Draggable>
   );
 }
 

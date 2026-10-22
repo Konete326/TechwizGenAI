@@ -1,40 +1,67 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function NesaCallVideos({ isSpeaking }) {
   const listenRef = useRef(null);
   const talkRef = useRef(null);
+  const [listenLoaded, setListenLoaded] = useState(false);
 
   useEffect(() => {
-    const playSafe = (video) => {
-      if (video && video.paused) {
-        video.play().catch(() => {});
-      }
+    const setup = (el, onLoaded) => {
+      if (!el) return;
+      el.muted = true;
+      el.defaultMuted = true;
+      el.playsInline = true;
+      const play = () => {
+        el.muted = true;
+        if (el.paused) {
+          el.play().then(() => onLoaded?.(true)).catch(() => {});
+        } else {
+          onLoaded?.(true);
+        }
+      };
+      play();
+      el.addEventListener("loadeddata", play);
+      el.addEventListener("canplay", play);
+      el.addEventListener("playing", play);
+      return () => {
+        el.removeEventListener("loadeddata", play);
+        el.removeEventListener("canplay", play);
+        el.removeEventListener("playing", play);
+      };
     };
-    playSafe(listenRef.current);
-    playSafe(talkRef.current);
+    const c1 = setup(listenRef.current, setListenLoaded);
+    const c2 = setup(talkRef.current);
+    return () => {
+      c1?.();
+      c2?.();
+    };
   }, []);
+
+  useEffect(() => {
+    const v = isSpeaking ? talkRef.current : listenRef.current;
+    if (v) {
+      v.muted = true;
+      if (v.paused) v.play().catch(() => {});
+    }
+  }, [isSpeaking]);
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none bg-zinc-950">
       <img
         src="/Nesa.png"
         alt="Nesa"
-        className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
+        className={`absolute inset-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-300 ${
+          listenLoaded ? "opacity-0" : "opacity-100"
+        }`}
       />
       <video
         ref={listenRef}
         src="/listening.mp4"
-        poster="/Nesa.png"
         autoPlay
         loop
         muted
         playsInline
         preload="auto"
-        onCanPlay={(e) => {
-          if (e.currentTarget.paused) {
-            e.currentTarget.play().catch(() => {});
-          }
-        }}
         className={`transition-opacity duration-300 ease-in-out absolute inset-0 w-full h-full object-cover object-center pointer-events-none ${
           isSpeaking ? "opacity-0" : "opacity-100"
         }`}
@@ -42,17 +69,11 @@ export function NesaCallVideos({ isSpeaking }) {
       <video
         ref={talkRef}
         src="/talk.mp4"
-        poster="/Nesa.png"
         autoPlay
         loop
         muted
         playsInline
         preload="auto"
-        onCanPlay={(e) => {
-          if (e.currentTarget.paused) {
-            e.currentTarget.play().catch(() => {});
-          }
-        }}
         className={`transition-opacity duration-300 ease-in-out absolute inset-0 w-full h-full object-cover object-center pointer-events-none ${
           isSpeaking ? "opacity-100" : "opacity-0"
         }`}

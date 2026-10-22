@@ -87,7 +87,7 @@ export function buildSetupMessage(resumeHandle = null, customConfig = null) {
       speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
     },
     realtimeInputConfig: {
-      activityHandling: "NO_INTERRUPTION",
+      activityHandling: "START_OF_ACTIVITY_INTERRUPTS",
       automaticActivityDetection: {
         disabled: false,
         startOfSpeechSensitivity: "START_SENSITIVITY_HIGH",

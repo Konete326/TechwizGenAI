@@ -14,7 +14,15 @@ export function createPlayback() {
   const MAX_LOOKAHEAD_SEC = 600;
 
   function checkSpeaking(onSpeakingChange) {
-    const active = turnActive || srcs.length > 0 || nextTime > ctx.currentTime;
+    const active = srcs.length > 0 || (nextTime > 0 && nextTime > ctx.currentTime);
+    if (!active) {
+      turnActive = false;
+      nextTime = 0;
+      if (speakingInterval) {
+        clearInterval(speakingInterval);
+        speakingInterval = null;
+      }
+    }
     onSpeakingChange?.(active);
   }
 
@@ -72,13 +80,14 @@ export function createPlayback() {
       const i = srcs.indexOf(src);
       if (i > -1) srcs.splice(i, 1);
       try { src.disconnect(); } catch(err) { logDebug("Audio playback error", err); }
-      if (srcs.length > 0 || turnActive || nextTime > ctx.currentTime) {
+      if (srcs.length > 0 || (nextTime > 0 && nextTime > ctx.currentTime)) {
         checkSpeaking(onSpeakingChange);
         return;
       }
       nextTime = 0;
-      onSpeakingChange?.(false);
+      turnActive = false;
       if (speakingInterval) { clearInterval(speakingInterval); speakingInterval = null; }
+      onSpeakingChange?.(false);
       cushion = 0.06;
     };
   }
