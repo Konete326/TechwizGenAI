@@ -5,12 +5,14 @@ import { noteUserActivity } from "./nesaToolGuards";
 import { noteUserFrame } from "./userFrameWatch";
 import { logServerMessage, markFirstAudioRecv } from "./logger";
 import { isHalfDuplex } from "./micGate";
+import { analyzeUtterance } from "./behaviorProfiler";
 
 const USER_SPEECH_EVENTS = new Set(["ACTIVITY_START", "ACTIVITY_END"]);
 
 export function createServerMessageHandler({
   isReadyRef, audio, setTranscript,
-  wsRef, pendingRef, stopAudio, onToolCallRef, lastMessageTimeRef, resumeHandleRef, onSetupComplete
+  wsRef, pendingRef, stopAudio, onToolCallRef, lastMessageTimeRef, resumeHandleRef, onSetupComplete,
+  clientId, customConfig
 }) {
   return async (event) => {
     if (lastMessageTimeRef) lastMessageTimeRef.current = Date.now();
@@ -61,6 +63,9 @@ export function createServerMessageHandler({
         if (userWords.trim()) {
           noteUserFrame(inputTr ? "serverContent.inputTranscription" : "serverContent.interimInputTranscription");
           noteUserActivity(userWords);
+          if (inputTr?.text) {
+            analyzeUtterance(inputTr.text, { wsRef, clientId, customConfig });
+          }
         }
       }
 

@@ -12,6 +12,7 @@ import { useConnectionQuality } from "./useConnectionQuality";
 import { useNetworkEvents } from "./useNetworkEvents";
 import { useGeminiLiveSenders } from "./useGeminiLiveSenders";
 import { useMicMode } from "./useMicMode";
+import { injectInitialBehaviorContext } from "./behaviorProfiler";
 
 const WS_EPHEMERAL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained";
 const WS_DIRECT = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
@@ -36,7 +37,7 @@ export function useGeminiLive({ onToolCall, clientId } = {}) {
   const pendingToolCallsRef = useRef(new Map()), onToolCallRef = useRef(onToolCall);
   const connectRef = useRef(null);
   const lastMessageTimeRef = useRef(null), resumeHandleRef = useRef(null);
-  const userSpeakingTimerRef = useRef(null);
+  const userSpeakingTimerRef = useRef(null), customConfigRef = useRef(null);
   const [audio] = useState(() => createLiveAudio(setIsSpeaking));
   const { micMode, toggleMicMode } = useMicMode({ sessionActive: isConnected });
   useEffect(() => { onToolCallRef.current = onToolCall; }, [onToolCall]);
@@ -92,6 +93,7 @@ export function useGeminiLive({ onToolCall, clientId } = {}) {
               const cfgJson = await cfgRes.json();
               if (cfgJson.success && cfgJson.data) {
                 customConfig = cfgJson.data;
+                customConfigRef.current = customConfig;
               }
             }
           } catch (e) {}
@@ -109,7 +111,9 @@ export function useGeminiLive({ onToolCall, clientId } = {}) {
       ws.onmessage = createServerMessageHandler({
         isReadyRef, audio, setTranscript,
         wsRef, pendingRef: pendingToolCallsRef, stopAudio, onToolCallRef, lastMessageTimeRef, resumeHandleRef,
+        clientId, customConfig: customConfigRef.current,
         onSetupComplete: () => {
+          injectInitialBehaviorContext(ws, clientId, customConfigRef.current);
           if (isReconnect && transcript) {
             sendReconnectContext(ws, transcript);
           }
