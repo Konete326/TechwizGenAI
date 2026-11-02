@@ -382,8 +382,8 @@
       dragHeader.innerHTML = '<span style="opacity:0.7">▤</span>';
       
       const iframe = document.createElement('iframe');
-      iframe.src = `${feUrl}/widget?clientId=${clientId}`;
-      const allowPolicy = "microphone *; camera *; autoplay *; clipboard-read; clipboard-write; display-capture *; screen-wake-lock *";
+      iframe.src = `${feUrl}/widget?clientId=${clientId}&parentOrigin=${encodeURIComponent(window.location.origin)}`;
+      const allowPolicy = "microphone *; camera *; autoplay *; clipboard-write; display-capture *; screen-wake-lock *";
       iframe.allow = allowPolicy;
       iframe.setAttribute('allow', allowPolicy);
       iframe.setAttribute('allowusermedia', 'true');
@@ -423,8 +423,37 @@
         iframe.style.pointerEvents = 'auto';
       });
       
+      const getIframeOrigin = () => {
+        try {
+          const origin = new URL(iframe.src, window.location.href).origin;
+          if (origin && origin !== 'null' && origin !== '*') {
+            const u = new URL(origin);
+            if (u.protocol === 'http:' || u.protocol === 'https:' || u.protocol === 'chrome-extension:') {
+              return origin;
+            }
+          }
+          return '';
+        } catch {
+          return '';
+        }
+      };
+
+      const postToIframe = (msg) => {
+        const targetOrigin = getIframeOrigin();
+        if (!targetOrigin || !iframe || !iframe.contentWindow) return false;
+        try {
+          iframe.contentWindow.postMessage(msg, targetOrigin);
+          return true;
+        } catch {
+          return false;
+        }
+      };
+
       const messageListener = (e) => {
         if (!e.data) return;
+        if (e.source !== iframe.contentWindow) return;
+        const expectedOrigin = getIframeOrigin();
+        if (!expectedOrigin || e.origin !== expectedOrigin) return;
         if (e.data.type === 'NISA_IFRAME_READY') {
           wrapper.style.opacity = '1';
           if (loadingOverlay && loadingOverlay.parentNode) loadingOverlay.remove();
@@ -435,12 +464,64 @@
           chatWidget.style.display = 'flex';
           const oldSpotlight = document.getElementById('nisa-spotlight-container');
           if (oldSpotlight) oldSpotlight.remove();
+          const activeModal = document.getElementById('nisa-dynamic-modal');
+          if (activeModal) {
+            if (typeof activeModal._cleanupModal === 'function') {
+              activeModal._cleanupModal();
+            } else {
+              activeModal.remove();
+            }
+          }
         } else if (e.data.type === 'NISA_MINIMIZE') {
           wrapper.style.width = window.innerWidth < 768 ? '100vw' : '300px';
           wrapper.style.height = '124px';
         } else if (e.data.type === 'NISA_EXPAND') {
           wrapper.style.width = window.innerWidth < 768 ? '100vw' : '370px';
           wrapper.style.height = window.innerWidth < 768 ? '100vh' : '624px';
+        } else if (e.data.type === 'NISA_MODAL_RESULT') {
+          const modal = document.getElementById('nisa-dynamic-modal');
+          if (!modal || modal.dataset.requestId !== e.data.requestId) return;
+          if (typeof modal._clearAcceptanceTimer === 'function') {
+            modal._clearAcceptanceTimer();
+          }
+          const responseBox = document.getElementById('nisa-modal-text-content');
+          const statusLabel = document.getElementById('nisa-modal-status');
+          const input = document.getElementById('nisa-modal-input');
+          const submitBtn = document.getElementById('nisa-modal-submit');
+          const pasteBtn = document.getElementById('nisa-modal-paste-btn');
+          if (e.data.status === 'accepted') {
+            if (statusLabel) statusLabel.textContent = 'Nisa is working on your request...';
+          } else if (e.data.status === 'stream') {
+            if (responseBox) {
+              if (!modal.dataset.hasResponse) responseBox.textContent = '';
+              responseBox.textContent += e.data.text || '';
+              modal.dataset.hasResponse = 'true';
+              responseBox.scrollTop = responseBox.scrollHeight;
+            }
+            if (statusLabel) statusLabel.textContent = 'Working...';
+          } else if (e.data.status === 'complete') {
+            modal.dataset.completed = 'true';
+            modal.dataset.requestId = '';
+            if (!modal.dataset.hasResponse && responseBox) {
+              responseBox.textContent = 'Nisa completed your request.';
+            }
+            if (statusLabel) statusLabel.textContent = 'Completed';
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Close';
+            }
+            if (pasteBtn) pasteBtn.disabled = true;
+          } else if (e.data.status === 'error' || e.data.status === 'interrupted' || e.data.status === 'timeout') {
+            if (statusLabel) statusLabel.textContent = e.data.message || (e.data.status === 'interrupted' ? 'Nisa was interrupted. Please try again.' : 'Nisa could not process this request.');
+            modal.dataset.requestId = '';
+            modal.dataset.hasResponse = '';
+            if (input) input.disabled = false;
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Try Again';
+            }
+            if (pasteBtn) pasteBtn.disabled = false;
+          }
         } else if (e.data.type === 'NISA_TOOL_CALL') {
           const { command, targetKey, value, route, args } = e.data;
 
@@ -507,7 +588,16 @@
 
           if (command === 'openDynamicModal' && args) {
             const oldModal = document.getElementById('nisa-dynamic-modal');
-            if (oldModal) oldModal.remove();
+            if (oldModal) {
+              if (typeof oldModal._cleanupModal === 'function') {
+                oldModal._cleanupModal();
+              } else {
+                if (oldModal.dataset.requestId && oldModal.dataset.completed !== 'true') {
+                  postToIframe({ type: 'NISA_MODAL_CANCEL', requestId: oldModal.dataset.requestId });
+                }
+                oldModal.remove();
+              }
+            }
 
             const dims = resolveModalDims(args.width, args.height, args.preset);
             const overlay = document.createElement('div');
@@ -535,7 +625,7 @@
             titleEl.textContent = args.title || 'Dynamic Action';
             const subTitleEl = document.createElement('div');
             subTitleEl.style.cssText = 'font-size:11px;color:#a1a1aa;margin-top:2px;';
-            subTitleEl.textContent = 'Nesa Dynamic Runtime Modal';
+            subTitleEl.textContent = 'Nisa Dynamic Runtime Modal';
             titleBox.appendChild(titleEl);
             titleBox.appendChild(subTitleEl);
 
@@ -561,8 +651,26 @@
             textBox.style.cssText = 'padding:14px 16px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);font-size:13px;color:#f4f4f5;line-height:1.6;white-space:pre-wrap;flex:1;min-height:100px;overflow-y:auto;box-sizing:border-box;';
             textBox.textContent = args.content || 'No details provided.';
 
+            const isInputPrompt = args.modalType === 'input_prompt';
+            const input = isInputPrompt ? document.createElement('textarea') : null;
+            if (input) {
+              input.id = 'nisa-modal-input';
+              input.setAttribute('aria-label', args.inputPlaceholder || 'Your request');
+              input.placeholder = args.inputPlaceholder || 'Type your request...';
+              input.rows = 3;
+              input.style.cssText = 'width:100%;min-height:88px;max-height:220px;resize:vertical;padding:11px 12px;border-radius:10px;background:#09090b;border:1px solid rgba(255,255,255,0.12);color:#f4f4f5;font:inherit;font-size:13px;line-height:1.5;outline:none;box-sizing:border-box;';
+            }
+
+            const statusLabel = isInputPrompt ? document.createElement('div') : null;
+            if (statusLabel) {
+              statusLabel.id = 'nisa-modal-status';
+              statusLabel.setAttribute('role', 'status');
+              statusLabel.setAttribute('aria-live', 'polite');
+              statusLabel.style.cssText = 'font-size:11px;color:#a1a1aa;min-height:16px;white-space:pre-wrap;';
+            }
+
             const footer = document.createElement('div');
-            footer.style.cssText = 'display:flex;align-items:center;justify-content:flex-end;gap:10px;padding-top:4px;flex-shrink:0;';
+            footer.style.cssText = 'display:flex;align-items:center;justify-content:flex-end;gap:10px;padding-top:4px;flex-shrink:0;flex-wrap:wrap;';
 
             const copyBtn = document.createElement('button');
             copyBtn.textContent = 'Copy Text';
@@ -570,7 +678,7 @@
             copyBtn.onmouseenter = () => { copyBtn.style.color = '#f4f4f5'; copyBtn.style.borderColor = 'rgba(255,255,255,0.3)'; };
             copyBtn.onmouseleave = () => { copyBtn.style.color = '#a1a1aa'; copyBtn.style.borderColor = 'rgba(255,255,255,0.15)'; };
             copyBtn.onclick = async () => {
-              const textToCopy = args.content || '';
+              const textToCopy = textBox.textContent || args.content || '';
               let ok = false;
               try {
                 if (navigator?.clipboard?.writeText) {
@@ -600,38 +708,404 @@
               }, 2000);
             };
 
+            const pasteBtn = (isInputPrompt && input) ? document.createElement('button') : null;
+            let isReadingClipboard = false;
+            let pasteHintTimer = null;
+            if (pasteBtn) {
+              pasteBtn.setAttribute('data-nesa-target', 'modal_paste_btn');
+              pasteBtn.id = 'nisa-modal-paste-btn';
+              pasteBtn.setAttribute('aria-label', 'Clipboard se paste karein');
+              pasteBtn.style.cssText = 'padding:7px 14px;border-radius:8px;border:1px solid rgba(59,130,246,0.35);background:rgba(59,130,246,0.1);color:#93c5fd;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.15s ease;outline:none;display:flex;align-items:center;gap:6px;';
+              pasteBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg><span>Clipboard se paste karein</span>';
+              pasteBtn.onmouseenter = () => { pasteBtn.style.color = '#ffffff'; pasteBtn.style.background = 'rgba(59,130,246,0.2)'; pasteBtn.style.borderColor = 'rgba(59,130,246,0.6)'; };
+              pasteBtn.onmouseleave = () => { pasteBtn.style.color = '#93c5fd'; pasteBtn.style.background = 'rgba(59,130,246,0.1)'; pasteBtn.style.borderColor = 'rgba(59,130,246,0.35)'; };
+
+              pasteBtn.onclick = () => {
+                if (isReadingClipboard) return;
+                if (overlay.dataset.requestId && overlay.dataset.completed !== 'true') return;
+
+                const isSecure = window.isSecureContext || window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                if (!isSecure) {
+                  if (statusLabel) statusLabel.textContent = 'Clipboard access requires HTTPS. Please paste directly with Ctrl+V (or Cmd+V). / Clipboard ke liye HTTPS zaroori hai. Kripya Ctrl+V se paste karein.';
+                  if (input) input.focus();
+                  return;
+                }
+
+                if (!navigator?.clipboard?.readText) {
+                  if (statusLabel) statusLabel.textContent = 'Clipboard reading is not supported by your browser. Please use Ctrl+V (or Cmd+V) to paste. / Browser clipboard read support nahi karta. Kripya Ctrl+V se paste karein.';
+                  if (input) input.focus();
+                  return;
+                }
+
+                isReadingClipboard = true;
+                pasteBtn.disabled = true;
+                const originalHtml = pasteBtn.innerHTML;
+                pasteBtn.textContent = 'Reading...';
+
+                let readPromise;
+                try {
+                  readPromise = navigator.clipboard.readText();
+                } catch (syncErr) {
+                  isReadingClipboard = false;
+                  pasteBtn.disabled = false;
+                  pasteBtn.innerHTML = originalHtml;
+                  if (statusLabel) statusLabel.textContent = 'Could not access clipboard. Please use Ctrl+V to paste manually. / Kripya Ctrl+V se paste karein.';
+                  if (input) input.focus();
+                  return;
+                }
+
+                readPromise
+                  .then((clipboardText) => {
+                    isReadingClipboard = false;
+                    pasteBtn.disabled = false;
+                    pasteBtn.innerHTML = originalHtml;
+
+                    if (!clipboardText || !clipboardText.trim()) {
+                      if (statusLabel) statusLabel.textContent = 'Clipboard is empty. Please copy some text first or type with Ctrl+V. / Clipboard khali hai. Pehle text copy karein ya Ctrl+V se paste karein.';
+                      if (input) input.focus();
+                      return;
+                    }
+
+                    if (input) {
+                      const currentVal = input.value || '';
+                      if (!currentVal) {
+                        input.value = clipboardText;
+                      } else {
+                        const selStart = input.selectionStart;
+                        const selEnd = input.selectionEnd;
+                        if (typeof selStart === 'number' && typeof selEnd === 'number' && selStart !== selEnd) {
+                          input.value = currentVal.slice(0, selStart) + clipboardText + currentVal.slice(selEnd);
+                          input.selectionStart = input.selectionEnd = selStart + clipboardText.length;
+                        } else if (typeof selStart === 'number') {
+                          const needsNl = selStart > 0 && !currentVal[selStart - 1].endsWith?.('\n');
+                          input.value = currentVal.slice(0, selStart) + (needsNl ? '\n' : '') + clipboardText + currentVal.slice(selStart);
+                        } else {
+                          input.value = currentVal + '\n' + clipboardText;
+                        }
+                      }
+                      try {
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                      } catch {}
+                      input.focus();
+                    }
+
+                    if (statusLabel) {
+                      statusLabel.textContent = 'Pasted from clipboard! Review your request and click Submit. / Clipboard se paste ho gaya! Check karke Submit dabayein.';
+                      if (pasteHintTimer) clearTimeout(pasteHintTimer);
+                      pasteHintTimer = setTimeout(() => {
+                        if (statusLabel && statusLabel.textContent.includes('Pasted from clipboard')) {
+                          statusLabel.textContent = '';
+                        }
+                      }, 4000);
+                    }
+                  })
+                  .catch((err) => {
+                    isReadingClipboard = false;
+                    pasteBtn.disabled = false;
+                    pasteBtn.innerHTML = originalHtml;
+
+                    const isPermissionDenied = err?.name === 'NotAllowedError' || err?.name === 'SecurityError';
+                    if (statusLabel) {
+                      if (isPermissionDenied) {
+                        statusLabel.textContent = 'Clipboard permission denied. Please allow clipboard access in browser settings, or use Ctrl+V. / Clipboard permission allow nahi hui. Kripya Ctrl+V se paste karein.';
+                      } else {
+                        statusLabel.textContent = 'Unable to read clipboard. Please use Ctrl+V to paste manually. / Kripya Ctrl+V se paste karein.';
+                      }
+                    }
+                    if (input) input.focus();
+                  });
+              };
+            }
+
             const confirmBtn = document.createElement('button');
             confirmBtn.setAttribute('data-nesa-target', 'modal_confirm_btn');
-            confirmBtn.textContent = 'Understood';
+            confirmBtn.id = 'nisa-modal-submit';
+            confirmBtn.textContent = isInputPrompt ? 'Submit' : 'Understood';
             confirmBtn.style.cssText = 'padding:7px 18px;border-radius:8px;border:none;background:#2563eb;color:#ffffff;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.3);transition:background 0.15s;outline:none;';
             confirmBtn.onmouseenter = () => { confirmBtn.style.background = '#1d4ed8'; };
             confirmBtn.onmouseleave = () => { confirmBtn.style.background = '#2563eb'; };
 
             footer.appendChild(copyBtn);
+            if (pasteBtn) footer.appendChild(pasteBtn);
             footer.appendChild(confirmBtn);
 
             body.appendChild(textBox);
+            if (input) body.appendChild(input);
+            if (statusLabel) body.appendChild(statusLabel);
             body.appendChild(footer);
 
             card.appendChild(header);
             card.appendChild(body);
             overlay.appendChild(card);
 
+            const prefersReducedMotion = Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+            let animFrameId = null;
+            const animTimers = [];
+            let constructionLayer = null;
+
+            const cleanupConstruction = () => {
+              if (animFrameId) {
+                cancelAnimationFrame(animFrameId);
+                animFrameId = null;
+              }
+              while (animTimers.length) {
+                clearTimeout(animTimers.pop());
+              }
+              if (constructionLayer && constructionLayer.parentNode) {
+                constructionLayer.remove();
+                constructionLayer = null;
+              }
+              if (header) { header.style.opacity = '1'; header.style.transform = 'none'; }
+              if (textBox) { textBox.style.opacity = '1'; textBox.style.transform = 'none'; }
+              if (input) { input.style.opacity = '1'; input.style.transform = 'none'; }
+              if (statusLabel) { statusLabel.style.opacity = '1'; }
+              if (footer) { footer.style.opacity = '1'; footer.style.transform = 'none'; }
+              if (pasteBtn) { pasteBtn.style.opacity = '1'; pasteBtn.style.transform = 'none'; }
+            };
+
+            overlay._constructionCleanup = cleanupConstruction;
+
+            const handleEscape = (evt) => {
+              if (evt.key === 'Escape') {
+                closeModal();
+              }
+            };
+            window.addEventListener('keydown', handleEscape);
+
+            let acceptanceTimer = null;
+            const clearAcceptanceTimer = () => {
+              if (acceptanceTimer) {
+                clearTimeout(acceptanceTimer);
+                acceptanceTimer = null;
+              }
+            };
+            overlay._clearAcceptanceTimer = clearAcceptanceTimer;
+
+            const cancelRequest = () => {
+              const requestId = overlay.dataset.requestId;
+              if (!requestId || overlay.dataset.completed === 'true') return;
+              postToIframe({ type: 'NISA_MODAL_CANCEL', requestId });
+            };
+
             const closeModal = () => {
+              window.removeEventListener('keydown', handleEscape);
+              if (pasteHintTimer) {
+                clearTimeout(pasteHintTimer);
+                pasteHintTimer = null;
+              }
+              if (typeof overlay._constructionCleanup === 'function') {
+                overlay._constructionCleanup();
+              }
+              clearAcceptanceTimer();
+              cancelRequest();
+              overlay.dataset.requestId = '';
+              overlay.dataset.hasResponse = '';
+              overlay.dataset.completed = '';
               overlay.style.opacity = '0';
               card.style.transform = 'scale(0.95)';
               setTimeout(() => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 220);
             };
 
+            overlay._cleanupModal = closeModal;
+
+            if (isInputPrompt && input) {
+              const submitPrompt = () => {
+                if (overlay.dataset.completed === 'true') {
+                  closeModal();
+                  return;
+                }
+                if (overlay.dataset.requestId) return;
+                const value = input.value.trim();
+                if (!value) {
+                  if (statusLabel) statusLabel.textContent = 'Please enter a request first.';
+                  input.focus();
+                  return;
+                }
+                const targetOrigin = getIframeOrigin();
+                if (!targetOrigin) {
+                  if (statusLabel) statusLabel.textContent = 'Cannot connect: invalid widget origin.';
+                  return;
+                }
+                const requestId = window.crypto?.randomUUID ? window.crypto.randomUUID() : `nisa_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                overlay.dataset.requestId = requestId;
+                overlay.dataset.hasResponse = '';
+                input.disabled = true;
+                confirmBtn.disabled = true;
+                if (pasteBtn) pasteBtn.disabled = true;
+                confirmBtn.textContent = 'Sending...';
+                if (statusLabel) statusLabel.textContent = 'Sending your request to Nisa...';
+
+                clearAcceptanceTimer();
+                acceptanceTimer = setTimeout(() => {
+                  if (overlay.dataset.requestId === requestId && overlay.dataset.completed !== 'true') {
+                    overlay.dataset.requestId = '';
+                    overlay.dataset.hasResponse = '';
+                    input.disabled = false;
+                    confirmBtn.disabled = false;
+                    if (pasteBtn) pasteBtn.disabled = false;
+                    confirmBtn.textContent = 'Try Again';
+                    if (statusLabel) statusLabel.textContent = 'Nisa is taking longer than expected to accept the request. Please try again.';
+                  }
+                }, 8000);
+
+                const posted = postToIframe({ type: 'NISA_MODAL_SUBMIT', requestId, value });
+                if (!posted) {
+                  clearAcceptanceTimer();
+                  overlay.dataset.requestId = '';
+                  overlay.dataset.hasResponse = '';
+                  input.disabled = false;
+                  confirmBtn.disabled = false;
+                  if (pasteBtn) pasteBtn.disabled = false;
+                  confirmBtn.textContent = 'Try Again';
+                  if (statusLabel) statusLabel.textContent = 'Unable to send request to Nisa. Please try again.';
+                }
+              };
+              confirmBtn.onclick = submitPrompt;
+              input.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  submitPrompt();
+                }
+              });
+            } else {
+              confirmBtn.onclick = closeModal;
+            }
+
             overlay.onclick = closeModal;
             card.onclick = (e) => e.stopPropagation();
             closeBtn.onclick = closeModal;
-            confirmBtn.onclick = closeModal;
 
             document.body.appendChild(overlay);
+
+            if (prefersReducedMotion) {
+              requestAnimationFrame(() => {
+                overlay.style.opacity = '1';
+                card.style.transform = 'scale(1)';
+                if (input) input.focus();
+              });
+              return;
+            }
+
+            header.style.opacity = '0';
+            header.style.transform = 'translateY(6px)';
+            header.style.transition = 'opacity 0.22s ease-out, transform 0.22s ease-out';
+
+            textBox.style.opacity = '0';
+            textBox.style.transform = 'translateY(6px)';
+            textBox.style.transition = 'opacity 0.22s ease-out, transform 0.22s ease-out';
+
+            if (input) {
+              input.style.opacity = '0';
+              input.style.transform = 'translateY(6px)';
+              input.style.transition = 'opacity 0.22s ease-out, transform 0.22s ease-out';
+            }
+
+            if (statusLabel) {
+              statusLabel.style.opacity = '0';
+              statusLabel.style.transition = 'opacity 0.22s ease-out';
+            }
+
+            footer.style.opacity = '0';
+            footer.style.transform = 'translateY(6px)';
+            footer.style.transition = 'opacity 0.22s ease-out, transform 0.22s ease-out';
+
+            constructionLayer = document.createElement('div');
+            constructionLayer.id = 'nisa-modal-construction-layer';
+            constructionLayer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2147483647;overflow:hidden;';
+
+            const cursorWrap = document.createElement('div');
+            cursorWrap.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:10;transform:translate3d(-50px,-50px,0);transition:transform 0.18s cubic-bezier(0.2,0,0,1),opacity 0.2s ease;opacity:0;display:flex;align-items:center;gap:6px;';
+            cursorWrap.innerHTML = `
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style="filter:drop-shadow(0 2px 6px rgba(0,0,0,0.5));">
+                <path d="M4 3l15 9.5-6.5 1.5-3 6.5L4 3z" fill="#2563eb" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
+              </svg>
+              <div style="background:#2563eb;color:#ffffff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;box-shadow:0 4px 12px rgba(37,99,235,0.4);border:1px solid rgba(255,255,255,0.3);letter-spacing:0.5px;text-transform:uppercase;white-space:nowrap;">Nisa</div>
+            `;
+
+            const svgCanvas = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svgCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;';
+            const drawPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            drawPath.setAttribute('stroke', '#3b82f6');
+            drawPath.setAttribute('stroke-width', '2');
+            drawPath.setAttribute('fill', 'none');
+            drawPath.setAttribute('stroke-linecap', 'round');
+            drawPath.setAttribute('stroke-linejoin', 'round');
+            drawPath.style.cssText = 'filter:drop-shadow(0 0 6px rgba(59,130,246,0.6));opacity:0.85;transition:opacity 0.25s ease;';
+            svgCanvas.appendChild(drawPath);
+
+            constructionLayer.appendChild(svgCanvas);
+            constructionLayer.appendChild(cursorWrap);
+            overlay.appendChild(constructionLayer);
+
             requestAnimationFrame(() => {
               overlay.style.opacity = '1';
               card.style.transform = 'scale(1)';
+
+              const cardRect = card.getBoundingClientRect();
+              const startX = Math.max(0, cardRect.left - 12);
+              const startY = Math.max(0, cardRect.top - 12);
+              cursorWrap.style.transform = `translate3d(${startX}px, ${startY}px, 0)`;
+              cursorWrap.style.opacity = '1';
+
+              const w = cardRect.width;
+              const h = cardRect.height;
+              const l = cardRect.left;
+              const t = cardRect.top;
+              const r = 16;
+              const pathD = `M ${l + r} ${t} L ${l + w - r} ${t} Q ${l + w} ${t} ${l + w} ${t + r} L ${l + w} ${t + h - r} Q ${l + w} ${t + h} ${l + w - r} ${t + h} L ${l + r} ${t + h} Q ${l} ${t + h} ${l} ${t + h - r} L ${l} ${t + r} Q ${l} ${t} ${l + r} ${t}`;
+              drawPath.setAttribute('d', pathD);
+
+              try {
+                const totalLen = drawPath.getTotalLength ? drawPath.getTotalLength() : 1000;
+                drawPath.style.strokeDasharray = `${totalLen}`;
+                drawPath.style.strokeDashoffset = `${totalLen}`;
+                drawPath.style.transition = 'stroke-dashoffset 0.45s cubic-bezier(0.16, 1, 0.3, 1)';
+                requestAnimationFrame(() => {
+                  drawPath.style.strokeDashoffset = '0';
+                });
+              } catch {}
+
+              animTimers.push(setTimeout(() => {
+                header.style.opacity = '1';
+                header.style.transform = 'none';
+                const hRect = header.getBoundingClientRect();
+                cursorWrap.style.transform = `translate3d(${hRect.left + 24}px, ${hRect.top + 8}px, 0)`;
+              }, 90));
+
+              animTimers.push(setTimeout(() => {
+                textBox.style.opacity = '1';
+                textBox.style.transform = 'none';
+                const tbRect = textBox.getBoundingClientRect();
+                cursorWrap.style.transform = `translate3d(${tbRect.left + 30}px, ${tbRect.top + 16}px, 0)`;
+              }, 200));
+
+              if (input) {
+                animTimers.push(setTimeout(() => {
+                  input.style.opacity = '1';
+                  input.style.transform = 'none';
+                  if (statusLabel) statusLabel.style.opacity = '1';
+                  const inRect = input.getBoundingClientRect();
+                  cursorWrap.style.transform = `translate3d(${inRect.left + 24}px, ${inRect.top + 12}px, 0)`;
+                  input.focus();
+                }, 320));
+              }
+
+              animTimers.push(setTimeout(() => {
+                footer.style.opacity = '1';
+                footer.style.transform = 'none';
+                const fRect = footer.getBoundingClientRect();
+                cursorWrap.style.transform = `translate3d(${fRect.right - 80}px, ${fRect.top + 6}px, 0)`;
+              }, 440));
+
+              animTimers.push(setTimeout(() => {
+                cursorWrap.style.opacity = '0';
+                drawPath.style.opacity = '0';
+              }, 640));
+
+              animTimers.push(setTimeout(() => {
+                cleanupConstruction();
+              }, 880));
             });
             return;
           }
@@ -651,10 +1125,17 @@
           if (command === 'closeModal') {
             const m = document.getElementById('nisa-dynamic-modal');
             if (m) {
-              const c = document.getElementById('nisa-dynamic-modal-card');
-              m.style.opacity = '0';
-              if (c) c.style.transform = 'scale(0.95)';
-              setTimeout(() => { if (m.parentNode) m.parentNode.removeChild(m); }, 220);
+              if (typeof m._cleanupModal === 'function') {
+                m._cleanupModal();
+              } else {
+                const c = document.getElementById('nisa-dynamic-modal-card');
+                if (m.dataset.requestId && m.dataset.completed !== 'true') {
+                  postToIframe({ type: 'NISA_MODAL_CANCEL', requestId: m.dataset.requestId });
+                }
+                m.style.opacity = '0';
+                if (c) c.style.transform = 'scale(0.95)';
+                setTimeout(() => { if (m.parentNode) m.parentNode.removeChild(m); }, 220);
+              }
             }
             return;
           }

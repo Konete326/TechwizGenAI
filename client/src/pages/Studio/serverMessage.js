@@ -94,6 +94,7 @@ export function createServerMessageHandler({
           return;
         }
         stopAudio();
+        window.dispatchEvent(new CustomEvent("nisa:live:turn_interrupted"));
         return;
       }
       const parts = (sc.modelTurn || sc.model_turn)?.parts || [];
@@ -102,8 +103,15 @@ export function createServerMessageHandler({
         markFirstAudioRecv();
         audio.startTurn?.();
       }
+      const outputTranscription = sc.outputTranscription || sc.output_transcription || sc.outputAudioTranscription || sc.output_audio_transcription;
+      const textFromTranscription = typeof outputTranscription === "string" ? outputTranscription : outputTranscription?.text;
+      const textFromParts = parts.map((part) => part.text || part.textDelta || part.delta || "").filter(Boolean).join(" ");
+      const outputText = textFromTranscription || textFromParts;
+      if (outputText) {
+        setTranscript(prev => prev ? `${prev} ${outputText}` : outputText);
+        window.dispatchEvent(new CustomEvent("nisa:live:assistant_text", { detail: { text: outputText } }));
+      }
       for (const part of parts) {
-        if (part.text) setTranscript(prev => prev ? prev + " " + part.text : part.text);
         const inline = part.inlineData || part.inline_data || part.audio;
         const mime = inline?.mimeType || inline?.mime_type;
         if (inline?.data && (mime?.startsWith("audio/") || !mime)) {
@@ -114,6 +122,7 @@ export function createServerMessageHandler({
       if (sc.turnComplete || sc.turn_complete) {
         logServerMessage("serverContent.turnComplete");
         audio.endTurn?.();
+        window.dispatchEvent(new CustomEvent("nisa:live:turn_complete"));
         return;
       }
     } catch(err) { logDebug("JSON parse error", err); }

@@ -111,7 +111,7 @@ export function useNesaCall({ onMicDenied, onToolCall, clientId } = {}) {
 
   return {
     isCallActive, callPhase, isMinimized, setIsMinimized, toggleMinimize, nesaState,
-    isSpeaking: activeSpeaking, isListening: isConnected, isUserSpeaking, transcript, connectionError, connectionQuality,
+    isSpeaking: activeSpeaking, isListening: isConnected, isConnected, isUserSpeaking, transcript, connectionError, connectionQuality,
     micMode, toggleMicMode,
     startCall, endCall, onStreamComplete: () => {}, forceReply, sendContextTurn, lastExecutedTool,
     widgetPosition, setWidgetPosition, widgetSide, dockCorner, reposition

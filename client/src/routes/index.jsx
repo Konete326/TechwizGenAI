@@ -15,6 +15,7 @@ import NotFoundPage from "../pages/NotFound/index.jsx";
 import Integrations from "../pages/Integrations/index.jsx";
 import IntegrationDetails from "../pages/Integrations/IntegrationDetails.jsx";
 import LiveWidget from "../pages/Widget/index.jsx";
+import Workspace from "../pages/Workspace/index.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -48,6 +49,14 @@ export const router = createBrowserRouter([
       {
         path: "studio",
         element: <Studio />
+      },
+      {
+        path: "workspace",
+        element: <Workspace />
+      },
+      {
+        path: "workspace/:projectId",
+        element: <Workspace />
       },
       {
         path: "assets",

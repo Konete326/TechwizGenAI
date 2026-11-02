@@ -17,6 +17,7 @@ import dashboardRoutes from "./src/routes/dashboardRoutes.js";
 import liveRoutes from "./src/routes/liveRoutes.js";
 import toolRoutes from "./src/routes/toolRoutes.js";
 import clientManager from "./src/routes/clientManager.js";
+import workspaceRoutes from "./src/routes/workspaceRoutes.js";
 import { seedAdmin } from "./src/config/seedAdmin.js";
 
 await connectDB();
@@ -79,6 +80,7 @@ app.use(["/api/dashboard", "/dashboard"], dashboardRoutes);
 app.use(["/api/live", "/live"], liveRoutes);
 app.use(["/api/tools", "/tools"], toolRoutes);
 app.use(["/api/client", "/client"], clientManager);
+app.use(["/api/workspace", "/workspace"], workspaceRoutes);
 
 app.use(errorHandler);
 

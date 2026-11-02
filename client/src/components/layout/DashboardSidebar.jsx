@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
-import { House, Sparkle, ImageSquare, ChartLineUp, Gear, Users, User, X, SidebarSimple, HardDrive, Code } from "@phosphor-icons/react";
+import { House, Sparkle, ImageSquare, ChartLineUp, Gear, Users, User, X, SidebarSimple, HardDrive, Code, Browsers } from "@phosphor-icons/react";
 import logoImg from "@/assets/logo.png";
 
 export function DashboardSidebar({ isCollapsed, setIsCollapsed, isDrawerOpen, onCloseDrawer, usageDisplay, percentUsed }) {
@@ -11,6 +11,7 @@ export function DashboardSidebar({ isCollapsed, setIsCollapsed, isDrawerOpen, on
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: House, target: "nav_dashboard" },
     { label: "Studio", href: "/studio", icon: Sparkle, target: "nav_studio" },
+    { label: "Workspace", href: "/workspace", icon: Browsers, target: "nav_workspace" },
     { label: "Assets", href: "/assets", icon: ImageSquare, target: "nav_assets" },
     { label: "Analytics", href: "/analytics", icon: ChartLineUp, target: "nav_analytics" },
     ...(isAdmin ? [{ label: "Users", href: "/admin", icon: Users, target: "nav_users" }] : []),
