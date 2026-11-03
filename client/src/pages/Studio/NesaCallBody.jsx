@@ -1,17 +1,23 @@
+import { useState } from "react";
 import { Headset, Phone, SpeakerHigh, Waveform } from "@phosphor-icons/react";
 import { useNesaCallContext } from "@/context/NesaCallContext";
 import { NesaCallVideos } from "./NesaCallVideos";
 import { NesaCallRinging } from "./NesaCallRinging";
+import { CharacterRenderer } from "@/components/character";
 
 export function NesaCallBody({
   isSpeaking, showRinging, isFadingRinging, onEndCall, connectionError, onRetry,
   isRinging, callPhase, forceReply, isListening, isUserSpeaking
 }) {
   const { micMode, toggleMicMode } = useNesaCallContext();
+  const [avatarMode, setAvatarMode] = useState("vrm"); // "vrm" | "video"
   const halfDuplex = micMode !== "full";
   return (
     <div className="relative flex-1 flex flex-col justify-between overflow-hidden select-none pt-12">
-      <NesaCallVideos isSpeaking={isSpeaking} />
+      {avatarMode === "vrm"
+        ? <CharacterRenderer isSpeaking={isSpeaking} onFallbackToVoice={() => setAvatarMode("video")} />
+        : <NesaCallVideos isSpeaking={isSpeaking} />
+      }
       {showRinging && <NesaCallRinging isFadingRinging={isFadingRinging} onEndCall={onEndCall} />}
       {connectionError && (
         <div className="absolute inset-x-4 top-14 z-30 p-3 rounded-lg bg-rose-950/90 border border-rose-500/50 text-rose-200 backdrop-blur-md shadow-xl flex flex-col items-center gap-1.5 text-center">
@@ -24,7 +30,7 @@ export function NesaCallBody({
         </div>
       )}
       <div className="relative z-10 flex-1" />
-      <div className="relative z-10 w-full px-4 pb-4 md:pb-3 pt-1 flex flex-col items-center gap-2 bg-gradient-to-t from-zinc-950/95 via-zinc-950/75 to-transparent">
+      <div className="relative z-10 w-full px-4 pb-4 md:pb-3 pt-1 flex flex-col items-center gap-2 bg-gradient-to-t from-zinc-950/40 via-zinc-950/15 to-transparent">
         {!isRinging && (
           <div className="flex items-center justify-center transition-opacity duration-700">
             <div className={`w-7 h-7 rounded-full border flex items-center justify-center backdrop-blur-md shadow-md shrink-0 relative transition-all ${isUserSpeaking ? "bg-emerald-950/60 border-emerald-400 text-emerald-400 shadow-emerald-500/25" : "bg-zinc-900/60 border-zinc-700 text-zinc-400"}`}>

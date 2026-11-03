@@ -1,9 +1,16 @@
 import { logDebug } from "./logger";
 import { markFirstAudioPlay } from "./logger";
+import AudioAnalysisBus from "../../services/character/AudioAnalysisBus";
 
 export function createPlayback() {
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   const ctx = new AudioCtx({ sampleRate: 24000, latencyHint: "interactive" });
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 512;
+  analyser.smoothingTimeConstant = 0.3;
+  analyser.connect(ctx.destination);
+  AudioAnalysisBus.setAnalyser(analyser);
+
   const srcs = [];
   let nextTime = 0;
   let cushion = 0.06;
@@ -23,6 +30,7 @@ export function createPlayback() {
         speakingInterval = null;
       }
     }
+    AudioAnalysisBus.setActive(active);
     onSpeakingChange?.(active);
   }
 
@@ -47,7 +55,7 @@ export function createPlayback() {
     buf.copyToChannel(f32, 0);
     const src = ctx.createBufferSource();
     src.buffer = buf;
-    src.connect(ctx.destination);
+    src.connect(analyser);
     
     let isUnderrun = false;
     if (srcs.length === 0 && nextTime > 0) {
@@ -98,6 +106,7 @@ export function createPlayback() {
     srcs.length = 0;
     nextTime = 0;
     if (speakingInterval) { clearInterval(speakingInterval); speakingInterval = null; }
+    AudioAnalysisBus.setActive(false);
     onSpeakingChange?.(false);
   }
 
@@ -107,6 +116,7 @@ export function createPlayback() {
 
   function close() {
     stopAll();
+    AudioAnalysisBus.setAnalyser(null);
     try { ctx.close(); } catch(err) { logDebug("Audio playback error", err); }
   }
 

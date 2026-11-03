@@ -3,6 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { VITE_API_URL } from "../../config/env";
 import { NesaCallProvider, useNesaCallContext } from "../../context/NesaCallContext";
 import { NesaCallInterface } from "../Studio/NesaCallInterface";
+import CharacterRegistry from "../../services/character/CharacterRegistry.js";
+import { PhoneCall, X } from "@phosphor-icons/react";
 
 const MODAL_TIMEOUT_MS = 120000;
 
@@ -45,6 +47,10 @@ function WidgetApp() {
       window.parent.postMessage({ type: 'NISA_MODAL_RESULT', ...result }, validParentOrigin);
     }
   }, [validParentOrigin]);
+
+  useEffect(() => {
+    CharacterRegistry.preloadCharacter("nisa");
+  }, []);
 
   useEffect(() => {
     if (!hasAutoStartedRef.current) {
@@ -117,9 +123,13 @@ function WidgetApp() {
         turnStateRef.current = 'active';
         postModalResult({ requestId, status: 'accepted' });
 
+        const modalTitle = typeof e.data.title === 'string' && e.data.title.trim() ? e.data.title.trim() : 'Modal Form';
+        const modalPrompt = typeof e.data.content === 'string' && e.data.content.trim() ? ` (Context/Question: "${e.data.content.trim()}")` : '';
+        const modalMessage = `[SYSTEM EVENT: User submitted text via Dynamic Modal "${modalTitle}"${modalPrompt}. Submitted text: """${value}"""]. Nisa, immediately acknowledge verbally in the user's language that you have received this exact submission ("Haan, mere paas aapka input pohanch chuka hai!"), read and reference the submitted details, and fulfill what the user asked.`;
+
         let sent = false;
         try {
-          sent = Boolean(c.forceReply(value));
+          sent = Boolean(c.forceReply(modalMessage));
         } catch {
           sent = false;
         }
@@ -302,6 +312,55 @@ function WidgetApp() {
     window.addEventListener("nesa:toolcall", handleToolCall);
     return () => window.removeEventListener("nesa:toolcall", handleToolCall);
   }, [c.reposition, postToParent]);
+
+  const isCallRunning = Boolean(c.isCallActive || c.callPhase === "ringing" || c.callPhase === "connected");
+
+  if (!isCallRunning) {
+    return (
+      <div className="w-screen h-screen bg-transparent overflow-hidden flex items-center justify-center p-4 select-none">
+        <div className="w-full max-w-[340px] rounded-2xl border border-white/10 bg-zinc-950/95 backdrop-blur-xl shadow-2xl p-6 flex flex-col items-center text-center relative">
+          <button
+            type="button"
+            onClick={() => postToParent({ type: "NISA_END_CALL" })}
+            className="absolute top-3.5 right-3.5 p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-white/10 transition-colors cursor-pointer"
+            title="Close"
+            aria-label="Close"
+          >
+            <X size={15} weight="bold" />
+          </button>
+
+          <div className="relative mb-4 mt-2">
+            <div className="w-20 h-20 rounded-full border-2 border-accent/40 p-1 shadow-lg shadow-accent/20 flex items-center justify-center bg-zinc-900">
+              <img src="/Nesa.png" alt="Nisa" className="w-full h-full rounded-full object-cover" />
+            </div>
+            <span className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-zinc-950 shadow" />
+          </div>
+
+          <h3 className="text-base font-semibold text-zinc-100 tracking-tight">Call with Nisa</h3>
+          <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+            Autonomous Voice Assistant. Ready to navigate, click, fill forms, and operate this system by voice.
+          </p>
+
+          {c.connectionError && (
+            <div className="mt-3 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs text-left w-full">
+              {c.connectionError}
+            </div>
+          )}
+
+          <div className="w-full mt-5">
+            <button
+              type="button"
+              onClick={() => c.startCall()}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-semibold shadow-lg shadow-accent/25 transition-all cursor-pointer active:scale-[0.98]"
+            >
+              <PhoneCall size={16} weight="bold" />
+              <span>Start Voice Call</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-screen h-screen bg-transparent overflow-hidden flex items-center justify-center pointer-events-auto">

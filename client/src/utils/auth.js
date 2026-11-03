@@ -34,7 +34,8 @@ export const clearAuth = () => {
     typeof window !== "undefined" &&
     window.location.pathname !== "/login" &&
     window.location.pathname !== "/register" &&
-    window.location.pathname !== "/auth"
+    window.location.pathname !== "/auth" &&
+    !window.location.pathname.startsWith("/widget")
   ) {
     window.location.replace("/login");
   }

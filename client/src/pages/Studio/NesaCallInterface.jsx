@@ -4,6 +4,7 @@ import Draggable from "react-draggable";
 import { NesaCallWidgetDesktop } from "./NesaCallWidgetDesktop";
 import { NesaCallWidgetMobile } from "./NesaCallWidgetMobile";
 import { playRingingTone } from "./audioUtils";
+import { useCharacterActions } from "./useCharacterActions";
 const cornerClasses = { "top-left": "top-4 left-4", "top-right": "top-4 right-4", "bottom-left": "bottom-4 left-4", "bottom-right": "bottom-4 right-4" };
 
 export function NesaCallInterface({
@@ -15,6 +16,7 @@ export function NesaCallInterface({
   const [duration, setDuration] = useState(0);
   const [showRinging, setShowRinging] = useState(callPhase === "ringing");
   const [isFadingRinging, setIsFadingRinging] = useState(false);
+  useCharacterActions();
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
   const nodeRef = useRef(null);
 
@@ -30,8 +32,9 @@ export function NesaCallInterface({
       setIsFadingRinging(false);
       const stopTone = playRingingTone();
       const isTopWindow = typeof window !== "undefined" && window.self === window.top;
-      const hasVib = isTopWindow && typeof navigator !== "undefined" && Boolean(navigator.vibrate);
-      const doVib = () => { try { navigator.vibrate([400, 200, 400, 1000]); } catch (_) {} };
+      const hasUserActive = typeof navigator !== "undefined" && Boolean(navigator.userActivation?.hasBeenActive);
+      const hasVib = isTopWindow && hasUserActive && typeof navigator !== "undefined" && typeof navigator.vibrate === "function";
+      const doVib = () => { try { if (navigator.userActivation?.hasBeenActive) navigator.vibrate([400, 200, 400, 1000]); } catch (_) {} };
       if (hasVib) doVib();
       const vibId = hasVib ? setInterval(doVib, 2000) : null;
       return () => { stopTone(); if (vibId) clearInterval(vibId); if (hasVib) { try { navigator.vibrate(0); } catch (_) {} } };

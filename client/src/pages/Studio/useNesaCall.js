@@ -4,6 +4,7 @@ import { checkMicrophonePermission, stopActiveMicStream } from "@/utils/checkMic
 import { useNesaCallWidget } from "./useNesaCallWidget";
 import { useWakeLock } from "./useWakeLock";
 import { useNesaContextEvent } from "./useNesaContextEvent";
+import CharacterRegistry from "../../services/character/CharacterRegistry.js";
 
 export function useNesaCall({ onMicDenied, onToolCall, clientId } = {}) {
   const [callPhase, setCallPhase] = useState("ended");
@@ -81,14 +82,24 @@ export function useNesaCall({ onMicDenied, onToolCall, clientId } = {}) {
       return false;
     }
     setIsMinimized(false);
+    isCallActiveRef.current = true;
+    setIsCallActive(true);
     setCallPhase("ringing");
 
-    ringTimerRef.current = setTimeout(() => {
-      setCallPhase("connected");
-      isCallActiveRef.current = true;
-      setIsCallActive(true);
-      connect();
-    }, 1000);
+    CharacterRegistry.preloadCharacter("nisa");
+
+    const minRingPromise = new Promise((res) => {
+      ringTimerRef.current = setTimeout(res, 2200);
+    });
+    const charPromise = CharacterRegistry.waitForCharacter("nisa", 6000);
+
+    await Promise.all([minRingPromise, charPromise]);
+    ringTimerRef.current = null;
+
+    if (!isCallActiveRef.current) return false;
+
+    setCallPhase("connected");
+    connect();
     return true;
   }, [connect, onMicDenied, resumeAudio, setIsMinimized]);
 

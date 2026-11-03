@@ -60,6 +60,81 @@ export const NESA_TOOL_DECLARATIONS_2 = [
       },
       required: ["query"]
     }
+  },
+  {
+    name: "executeCharacterAction",
+    description: "Request the 3D character (Nisa) to perform a physical action, spatial movement, or gesture. Actions: move_forward, move_backward, step_back, come_closer, move_away, move_left, move_right, turn_body_left, turn_body_right, turn_around, show_back, face_camera, walk, walk_to, handshake, handshake_greeting, extend_hand, reach_out, clap, wave (right/left/both), point (left/right/up/down), raise_hand, lower_hands, return_to_center, stand_straight, reset_pose, nod, shake_head, adjust_hair, smile, wide_smile, show_teeth, laugh, thinking, greeting.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        actionId: {
+          type: "STRING",
+          description: "Action identifier to execute (e.g. handshake, move_forward, move_backward, turn_around, face_camera, walk, point_left, point_right, return_to_center, stand_straight, show_teeth, laugh, wave, clap)."
+        },
+        parameters: {
+          type: "OBJECT",
+          description: "Optional action parameters (e.g. { direction: 'left' } for point, { z: 0.6 } for walk, { intensity: 0.9 } for smile/teeth)."
+        }
+      },
+      required: ["actionId"]
+    }
+  },
+  {
+    name: "inspectScreenComponent",
+    description: "Look at and explain an on-screen UI component when the user asks 'yahan dekho, ye component kya hai', 'look here', or asks about a UI element. Nisha identifies the component, turns her head and gaze toward its position, points towards it, and explains its purpose.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        target: {
+          type: "STRING",
+          description: "Name, direction, or description of the UI component to inspect (e.g. 'sidebar', 'model_selector', 'chat_input', 'call_nisa_btn', 'left', 'right', 'top', 'bottom', 'center', 'this component')."
+        }
+      },
+      required: ["target"]
+    }
+  },
+  {
+    name: "expressEmotion",
+    description: "Express a genuine emotional reaction matching conversational context on the 3D avatar (Happy, Excited, Sad, Disappointed, Angry, Surprised, Curious, Confused, Shy, Thinking, Neutral, Playful, Empathetic).",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        emotion: {
+          type: "STRING",
+          description: "The emotion to express: happy, excited, sad, disappointed, angry, surprised, curious, confused, shy, thinking, neutral, playful, empathetic."
+        },
+        intensity: {
+          type: "NUMBER",
+          description: "Emotional intensity from 0.1 to 1.0 (default: 0.85)."
+        },
+        reason: {
+          type: "STRING",
+          description: "Brief conversational reason for this emotional reaction."
+        },
+        suggested_gesture: {
+          type: "STRING",
+          description: "Optional accompanying physical gesture to trigger alongside emotion (e.g. smile, nod, laugh, head_tilt)."
+        },
+        duration: {
+          type: "NUMBER",
+          description: "Duration in milliseconds to hold the emotion before gently easing back to neutral (default: 2800)."
+        }
+      },
+      required: ["emotion"]
+    }
+  },
+  {
+    name: "switchCharacter",
+    description: "Switch the active 3D avatar/character in the application (e.g. to another registered character profile).",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        characterId: {
+          type: "STRING",
+          description: "The unique ID of the character to activate (e.g. 'nisa')."
+        }
+      },
+      required: ["characterId"]
+    }
   }
 ];
-

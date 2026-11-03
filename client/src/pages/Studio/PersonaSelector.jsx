@@ -1,16 +1,16 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Sparkle, UserGear, ChartBar, FileText, GitFork, Check, X } from "@phosphor-icons/react";
+import { Sparkle, UserGear, ChartBar, FileText, GitFork, Check, X, CaretDown, Robot } from "@phosphor-icons/react";
 
-const PERSONA_CONFIGS = [
-  { id: "general", label: "General", desc: "Polymath general assistant", icon: Sparkle },
-  { id: "architect", label: "Architect", desc: "Full-stack apps and sandboxes", icon: UserGear },
-  { id: "analyst", label: "Data Analyst", desc: "Quantitative tables and CSV", icon: ChartBar },
-  { id: "writer", label: "Executive Writer", desc: "Formal PDF and DOCX reports", icon: FileText },
-  { id: "diagrammer", label: "Diagrammer", desc: "System flows and Mermaid charts", icon: GitFork }
+export const PERSONA_CONFIGS = [
+  { id: "general", label: "General", desc: "Polymath general assistant for reasoning & questions", icon: Sparkle },
+  { id: "architect", label: "Full-Stack Architect", desc: "Builds full-stack apps, interactive sandboxes, and APIs", icon: UserGear },
+  { id: "analyst", label: "Data Analyst", desc: "Analyzes datasets, financial ARR models, and metrics", icon: ChartBar },
+  { id: "writer", label: "Executive Writer", desc: "Drafts formal proposals, whitepapers, and reports", icon: FileText },
+  { id: "diagrammer", label: "Systems Diagrammer", desc: "Visualizes architectures, flows, and Mermaid charts", icon: GitFork }
 ];
 
-export function PersonaSelector({ selectedPersona = "general", onSelectPersona, disabled = false }) {
+export function PersonaSelector({ selectedPersona = "general", onSelectPersona, disabled = false, compact = false }) {
   const [open, setOpen] = useState(false);
   const modalRef = useRef(null);
 
@@ -33,17 +33,20 @@ export function PersonaSelector({ selectedPersona = "general", onSelectPersona, 
         data-nesa-target="persona_selector"
         disabled={disabled}
         onClick={() => setOpen(true)}
-        className="flex items-center justify-center h-8 w-8 sm:w-auto sm:h-auto gap-1.5 px-2 py-1.5 sm:px-2.5 rounded-lg border border-border bg-surface hover:bg-surface-elevated text-text-primary text-xs font-medium transition-all disabled:opacity-50 cursor-pointer shadow-xs shrink-0"
-        title={`Persona: ${active.label}`}
-        aria-label={`Persona: ${active.label}`}
+        className={`group flex items-center gap-1.5 rounded-full bg-surface-card hover:bg-surface border border-border hover:border-accent/40 text-text-primary font-medium transition-all shadow-xs cursor-pointer disabled:opacity-50 shrink-0 ${
+          compact ? "h-7 px-2.5 text-[11px]" : "h-8 px-3 text-xs"
+        }`}
+        title={`Preset / Agent: ${active.label}`}
+        aria-label={`Preset / Agent: ${active.label}`}
       >
-        <ActiveIcon size={15} className="text-accent shrink-0" />
-        <span className="hidden md:inline max-w-[100px] truncate">{active.label}</span>
+        <ActiveIcon size={14} className="text-accent shrink-0" />
+        <span className="truncate max-w-[110px]">{active.label}</span>
+        <CaretDown size={11} className="text-text-muted group-hover:text-text-primary transition-transform duration-150" />
       </button>
 
       {open && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 z-[120] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
           onClick={(e) => {
             if (e.target === e.currentTarget) setOpen(false);
           }}
@@ -53,54 +56,54 @@ export function PersonaSelector({ selectedPersona = "general", onSelectPersona, 
             className="w-full max-w-sm sm:max-w-md bg-surface-card dark:bg-zinc-950 border border-border dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden p-4 space-y-3 animate-in zoom-in-95 duration-150 select-none"
           >
             <div className="flex items-center justify-between pb-2 border-b border-border/60">
-              <div>
-                <h3 className="text-sm font-semibold text-text-primary">Domain Personas</h3>
-                <p className="text-[11px] text-text-muted">Choose specialized domain instructions</p>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-accent/15 text-accent flex items-center justify-center">
+                  <Robot size={16} weight="bold" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-text-primary">Agent Presets</h3>
+                  <p className="text-[11px] text-text-muted">Choose specialized persona instructions</p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-surface-elevated text-text-muted hover:text-text-primary transition-colors cursor-pointer"
-                title="Close"
-                aria-label="Close"
+                className="p-1 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer"
               >
                 <X size={15} weight="bold" />
               </button>
             </div>
 
-            <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-0.5">
-              {PERSONA_CONFIGS.map((item) => {
-                const Icon = item.icon;
-                const isSelected = item.id === selectedPersona;
+            <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+              {PERSONA_CONFIGS.map((p) => {
+                const Icon = p.icon;
+                const isSelected = p.id === active.id;
                 return (
-                  <button
-                    key={item.id}
-                    type="button"
+                  <div
+                    key={p.id}
                     onClick={() => {
-                      onSelectPersona(item.id);
+                      if (onSelectPersona) onSelectPersona(p.id);
                       setOpen(false);
                     }}
-                    className={`w-full flex items-start gap-3 p-2.5 rounded-xl text-left transition-all cursor-pointer border ${
+                    className={`flex items-start gap-3 p-2.5 rounded-xl border transition-all cursor-pointer ${
                       isSelected
-                        ? "bg-accent/15 border-accent/40 text-text-primary shadow-xs"
-                        : "border-transparent hover:bg-surface-elevated/70 text-text-muted hover:text-text-primary"
+                        ? "bg-accent/10 border-accent/40 shadow-xs"
+                        : "bg-surface/50 hover:bg-surface border-border/60 hover:border-border text-text-muted hover:text-text-primary"
                     }`}
                   >
-                    <div
-                      className={`p-2 rounded-lg shrink-0 mt-0.5 ${
-                        isSelected ? "bg-accent/20 text-accent" : "bg-surface text-text-muted"
-                      }`}
-                    >
-                      <Icon size={18} />
+                    <div className="mt-0.5 p-1.5 rounded-lg bg-surface border border-border text-accent shrink-0">
+                      <Icon size={16} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-text-primary">{item.label}</span>
-                        {isSelected && <Check size={14} className="text-accent" weight="bold" />}
+                        <span className={`text-xs font-semibold ${isSelected ? "text-accent" : "text-text-primary"}`}>
+                          {p.label}
+                        </span>
+                        {isSelected && <Check size={13} weight="bold" className="text-accent" />}
                       </div>
-                      <p className="text-[11px] text-text-muted leading-relaxed mt-0.5">{item.desc}</p>
+                      <p className="text-[11px] text-text-muted mt-0.5 line-clamp-1">{p.desc}</p>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>

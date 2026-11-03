@@ -2,13 +2,37 @@ import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { VITE_API_URL } from "@/config/env";
 import { isTokenValid, clearAuth } from "@/utils/auth";
-import { DashboardHeader } from "./DashboardHeader"; import { DashboardSidebar } from "./DashboardSidebar"; import { InstallPrompt } from "@/components/ui/InstallPrompt"; import { ApiFallbackModal } from "@/components/ui/ApiFallbackModal"; import { ErrorBoundary } from "@/components/common/ErrorBoundary"; import { VisualSpotlight } from "@/components/common/VisualSpotlight"; import { DynamicModalHost } from "@/components/common/DynamicModalHost"; import { NesaCallProvider, useNesaCallContext } from "@/context/NesaCallContext"; import { NesaCallInterface } from "@/pages/Studio/NesaCallInterface"; import { registerNesaActions } from "./nesaToolActions"; import { logDebug } from "@/pages/Studio/logger";
+import { DashboardHeader } from "./DashboardHeader"; import { DashboardSidebar } from "./DashboardSidebar"; import { InstallPrompt } from "@/components/ui/InstallPrompt"; import { ApiFallbackModal } from "@/components/ui/ApiFallbackModal"; import { ErrorBoundary } from "@/components/common/ErrorBoundary"; import { VisualSpotlight } from "@/components/common/VisualSpotlight"; import { DynamicModalHost } from "@/components/common/DynamicModalHost"; import { NesaCallProvider, useNesaCallContext } from "@/context/NesaCallContext"; import { NesaCallInterface } from "@/pages/Studio/NesaCallInterface"; import { registerNesaActions } from "./nesaToolActions"; import { logDebug } from "@/pages/Studio/logger"; import CharacterRegistry from "@/services/character/CharacterRegistry.js";
 
 const PersistentNesaCallHost = () => { const c = useNesaCallContext(); return <NesaCallInterface isActive={c.isCallActive} callPhase={c.callPhase} isMinimized={c.isMinimized} onToggleMinimize={c.toggleMinimize} onEndCall={c.endCall} nesaState={c.nesaState} isListening={c.isListening} isUserSpeaking={c.isUserSpeaking} transcript={c.transcript} connectionError={c.connectionError} onRetry={c.startCall} forceReply={(cp) => c.forceReply(cp)} position={c.widgetPosition} onPositionChange={c.setWidgetPosition} widgetSide={c.widgetSide} dockCorner={c.dockCorner} onReposition={c.reposition} />; };
 
 function DashboardLayoutContent() {
-  const location = useLocation(), navigate = useNavigate(), { sendContextTurn, isCallActive, endCall, startCall, reposition } = useNesaCallContext(), isStudio = location.pathname.startsWith("/studio"), isIntegrationDetail = location.pathname.startsWith("/integrations/") && location.pathname !== "/integrations";
+  const location = useLocation(), navigate = useNavigate(), { sendContextTurn, isCallActive, endCall, startCall, reposition, forceReply } = useNesaCallContext(), isStudio = location.pathname.startsWith("/studio"), isIntegrationDetail = location.pathname.startsWith("/integrations/") && location.pathname !== "/integrations";
   const [isDrawerOpen, setIsDrawerOpen] = useState(false), [isCollapsed, setIsCollapsed] = useState(false), [micErrorNotice, setMicErrorNotice] = useState(false), [limitNotice, setLimitNotice] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const preload = () => CharacterRegistry.preloadCharacter("nisa");
+      if ("requestIdleCallback" in window) {
+        window.requestIdleCallback(preload);
+      } else {
+        setTimeout(preload, 1200);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleModalSubmit = (e) => {
+      const { value, title: modalTitle, content: modalContent } = e?.detail || {};
+      if (!value || typeof forceReply !== "function") return;
+      const t = modalTitle || "Dynamic Modal";
+      const p = modalContent ? ` (Context/Question: "${modalContent}")` : "";
+      const payload = `[SYSTEM EVENT: User submitted text via Dynamic Modal "${t}"${p}. Submitted text: """${value}"""]. Nisa, immediately acknowledge verbally in the user's language that you have received this exact submission ("Haan, mere paas aapka input pohanch chuka hai!"), read and reference the submitted details, and fulfill what the user asked.`;
+      forceReply(payload);
+    };
+    window.addEventListener("nesa:modal:submit", handleModalSubmit);
+    return () => window.removeEventListener("nesa:modal:submit", handleModalSubmit);
+  }, [forceReply]);
 
   useEffect(() => registerNesaActions({
     navigate, pathname: location.pathname, endCall, reposition,

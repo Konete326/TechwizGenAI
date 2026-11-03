@@ -15,7 +15,8 @@ export function ChatCanvas({
   onSendSuggested,
   onOpenArtifact,
   onSelectChoice,
-  isSidebarOpen = false
+  isSidebarOpen = false,
+  selectedModel = "gemini-3.6-flash"
 }) {
   const containerRef = useRef(null);
   const isAtBottomRef = useRef(true);
@@ -61,11 +62,19 @@ export function ChatCanvas({
   }, [messages, streamingText]);
 
   return (
-    <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-      <div className="w-full space-y-4 sm:space-y-6">
+    <div
+      ref={containerRef}
+      onScroll={handleScroll}
+      className="flex-1 overflow-y-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6 space-y-4"
+    >
+      <div className="w-full max-w-4xl mx-auto space-y-4 sm:space-y-6">
         {messages.length === 0 && !isStreaming && (!activeSession || activeSession.title === "New Chat") ? (
           <div className={`w-full ${isSidebarOpen ? "hidden md:block" : "block"}`}>
-            <PersonaStarters persona={activePersona} onSelectStarter={onSendSuggested} />
+            <PersonaStarters
+              persona={activePersona}
+              onSelectStarter={onSendSuggested}
+              selectedModel={selectedModel}
+            />
           </div>
         ) : (
           messages.map((m) => (
@@ -79,6 +88,7 @@ export function ChatCanvas({
               onSpeak={speak}
               isSpeakingThisMessage={speakingMessageId === (m.id || m._id)}
               onSelectChoice={onSelectChoice}
+              selectedModel={selectedModel}
             />
           ))
         )}
@@ -90,9 +100,12 @@ export function ChatCanvas({
               isStreaming={true}
               onOpenArtifact={onOpenArtifact}
               onSelectChoice={onSelectChoice}
+              selectedModel={selectedModel}
             />
           ) : (
-            <AiThinking />
+            <div className="max-w-4xl mx-auto w-full">
+              <AiThinking />
+            </div>
           )
         )}
       </div>

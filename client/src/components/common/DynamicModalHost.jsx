@@ -164,7 +164,7 @@ export function DynamicModalHost() {
               </div>
             </div>
           ) : activeType === "input_prompt" ? (
-            <form onSubmit={(e) => { e.preventDefault(); if (!inputVal.trim()) return; window.dispatchEvent(new CustomEvent("nesa:modal:submit", { detail: { value: inputVal, title } })); close(); }} className="space-y-4 flex-1 flex flex-col justify-between">
+            <form onSubmit={(e) => { e.preventDefault(); if (!inputVal.trim()) return; window.dispatchEvent(new CustomEvent("nesa:modal:submit", { detail: { value: inputVal, title, content } })); close(); }} className="space-y-4 flex-1 flex flex-col justify-between">
               <div>
                 {content && <p className="text-xs text-text-muted leading-relaxed mb-3">{content}</p>}
                 <input type="text" value={inputVal} onChange={(e) => setInputVal(e.target.value)} placeholder={inputPlaceholder} autoFocus className="w-full px-3 py-2 rounded-lg bg-surface border border-border focus:border-accent outline-none text-xs text-text-primary" />

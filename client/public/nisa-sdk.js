@@ -17,7 +17,7 @@
   let retryCount = 0;
   let observer;
   let debounceTimer;
-  let serverFrontendUrl = 'https://techwiz-gen-ai.vercel.app';
+  let serverFrontendUrl = (scriptUrl && scriptUrl.origin && scriptUrl.origin !== 'null') ? scriptUrl.origin : 'https://techwiz-gen-ai.vercel.app';
   let clientConfig = null;
 
   let chatWidget;
@@ -467,7 +467,7 @@
           const activeModal = document.getElementById('nisa-dynamic-modal');
           if (activeModal) {
             if (typeof activeModal._cleanupModal === 'function') {
-              activeModal._cleanupModal();
+              activeModal._cleanupModal(true);
             } else {
               activeModal.remove();
             }
@@ -590,7 +590,7 @@
             const oldModal = document.getElementById('nisa-dynamic-modal');
             if (oldModal) {
               if (typeof oldModal._cleanupModal === 'function') {
-                oldModal._cleanupModal();
+                oldModal._cleanupModal(true);
               } else {
                 if (oldModal.dataset.requestId && oldModal.dataset.completed !== 'true') {
                   postToIframe({ type: 'NISA_MODAL_CANCEL', requestId: oldModal.dataset.requestId });
@@ -888,7 +888,10 @@
               postToIframe({ type: 'NISA_MODAL_CANCEL', requestId });
             };
 
-            const closeModal = () => {
+            let isClosing = false;
+            const closeModal = (immediate = false) => {
+              if (isClosing) return;
+              isClosing = true;
               window.removeEventListener('keydown', handleEscape);
               if (pasteHintTimer) {
                 clearTimeout(pasteHintTimer);
@@ -902,9 +905,15 @@
               overlay.dataset.requestId = '';
               overlay.dataset.hasResponse = '';
               overlay.dataset.completed = '';
+              overlay.removeAttribute('id');
               overlay.style.opacity = '0';
+              overlay.style.pointerEvents = 'none';
               card.style.transform = 'scale(0.95)';
-              setTimeout(() => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 220);
+              if (immediate) {
+                if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+              } else {
+                setTimeout(() => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 220);
+              }
             };
 
             overlay._cleanupModal = closeModal;
@@ -949,7 +958,14 @@
                   }
                 }, 8000);
 
-                const posted = postToIframe({ type: 'NISA_MODAL_SUBMIT', requestId, value });
+                const posted = postToIframe({
+                  type: 'NISA_MODAL_SUBMIT',
+                  requestId,
+                  value,
+                  title: args?.title || '',
+                  content: args?.content || '',
+                  modalType: args?.modalType || 'input_prompt'
+                });
                 if (!posted) {
                   clearAcceptanceTimer();
                   overlay.dataset.requestId = '';

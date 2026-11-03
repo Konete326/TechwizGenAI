@@ -5,7 +5,8 @@ const ASYNC_TOOLS = new Set([
   "spotlightElement", "clickElement", "navigatePage", "fillFormField",
   "deleteAsset", "exportCallSummary", "getDashboardMetrics", "deleteSession",
   "previewAsset", "switchSession", "submitStudioPrompt", "controlSidebar",
-  "toggleWorkspaceControl", "generateImage", "queryDocument"
+  "toggleWorkspaceControl", "generateImage", "queryDocument", "executeCharacterAction",
+  "switchCharacter", "expressEmotion", "inspectScreenComponent"
 ]);
 
 const TOOL_TIMEOUT_MS = 12000;

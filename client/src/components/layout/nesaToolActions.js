@@ -2,6 +2,7 @@ import { respondToTool } from "@/pages/Studio/nesaTools";
 import { isAllowedRoute, userAskedFor } from "@/pages/Studio/nesaToolGuards";
 import { logDebug } from "@/pages/Studio/logger";
 import { runNesaDataTool } from "./nesaDataActions";
+import { GeminiCharacterBridge, CharacterRegistry, EmotionEngine, CharacterController, ScreenTargetManager } from "@/services/character";
 
 function findTarget(targetKey) {
   return document.querySelector(`[data-nesa-target="${targetKey}"]`) || document.getElementById(targetKey);
@@ -85,6 +86,47 @@ export function registerNesaActions(ctx) {
     if (d.name === "switchSession" || d.name === "submitStudioPrompt") {
       if (!pathname.startsWith("/studio")) navigate("/studio", { state: { pendingToolCall: d } });
       respondToTool(cid, d.name, { status: "unsupported", message: `${d.name} has no handler on /studio, only the navigation ran` });
+    }
+    if (d.name === "executeCharacterAction") {
+      const actionId = d.args?.actionId || d.actionId || d.args?.action || d.action;
+      const params = d.args?.parameters || d.parameters || {};
+      const res = await GeminiCharacterBridge.handleRequest({
+        type: "character_action",
+        action: actionId,
+        parameters: params,
+      });
+      respondToTool(cid, "executeCharacterAction", res);
+      return;
+    }
+    if (d.name === "inspectScreenComponent") {
+      const target = d.args?.target || d.target || "this component";
+      const res = await ScreenTargetManager.inspectAndExplain(target, d.args || d);
+      respondToTool(cid, "inspectScreenComponent", res);
+      return;
+    }
+    if (d.name === "switchCharacter") {
+      const characterId = d.args?.characterId || d.characterId;
+      const res = CharacterRegistry.setActiveCharacter(characterId);
+      respondToTool(cid, "switchCharacter", res);
+      return;
+    }
+    if (d.name === "expressEmotion") {
+      const emotion = d.args?.emotion || d.emotion;
+      const intensity = d.args?.intensity ?? d.intensity ?? 0.85;
+      const reason = d.args?.reason || d.reason || "";
+      const suggested_gesture = d.args?.suggested_gesture || d.suggested_gesture;
+      const duration = d.args?.duration || d.duration;
+      const res = EmotionEngine.setEmotion(emotion, {
+        intensity,
+        reason,
+        suggested_gesture,
+        duration,
+      });
+      if (suggested_gesture) {
+        CharacterController.executeAction(suggested_gesture).catch(() => {});
+      }
+      respondToTool(cid, "expressEmotion", res);
+      return;
     }
     await runNesaDataTool(ctx, d, cid);
   };

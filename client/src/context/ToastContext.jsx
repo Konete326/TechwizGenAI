@@ -26,6 +26,7 @@ const formatRelativeTime = (d) => {
 };
 
 const apiCall = async (endpoint, method) => {
+  if (typeof window !== "undefined" && window.location.pathname.startsWith("/widget")) return null;
   const token = localStorage.getItem("token");
   if (!token || !isTokenValid(token)) {
     clearAuth();
@@ -51,6 +52,7 @@ export function ToastProvider({ children }) {
   const [notifications, setNotifications] = useState([]);
 
   const fetchNotifications = useCallback(async () => {
+    if (typeof window !== "undefined" && window.location.pathname.startsWith("/widget")) return;
     const res = await apiCall("/notifications", "GET");
     if (res && res.ok) {
       const data = await res.json();

@@ -8,6 +8,7 @@ import { VitePWA } from "vite-plugin-pwa";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  assetsInclude: ["**/*.vrm", "**/*.vrma"],
   plugins: [
     react(),
     tailwindcss(),
@@ -56,6 +57,7 @@ export default defineConfig({
         enabled: false
       },
       workbox: {
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         navigateFallbackDenylist: [/^\/.*\.mp4$/],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         runtimeCaching: [
