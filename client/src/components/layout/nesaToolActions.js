@@ -108,6 +108,15 @@ export function registerNesaActions(ctx) {
       if (!route) respondToTool(cid, "navigatePage", { status: "error", message: "Missing route" });
       else if (!isAllowedRoute(route)) respondToTool(cid, "navigatePage", { status: "error", message: `Route ${route} is outside the allowed app routes and was not opened` });
       else {
+        const cleanRouteKey = String(route).replace(/^\/+/, "").split("/")[0] || "dashboard";
+        const navTargetKey = `nav_${cleanRouteKey}`;
+        const navEl = findTarget(navTargetKey) || findTarget(cleanRouteKey);
+        if (navEl && FrameAwareCharacterController.isOutsideFrame()) {
+          await FrameAwareCharacterController.navigateToComponent(navTargetKey, { duration: 1.05 });
+        } else if (navEl) {
+          FrameAwareCharacterController.highlightElement(navEl, 2200);
+          ScreenTargetManager.inspectAndExplain(navTargetKey, { duration: 1.0 }).catch(() => {});
+        }
         navigate(route);
         setTimeout(() => respondToTool(cid, "navigatePage", { success: true, route }), 120);
       }
@@ -118,9 +127,15 @@ export function registerNesaActions(ctx) {
       else {
         if (targetKey.startsWith("nav_") || targetKey === "sidebar_toggle") { if (window.innerWidth < 768) setDrawerOpen(true); else setCollapsed(false); }
         if (targetKey === "logout_btn") window.dispatchEvent(new CustomEvent("app:user_menu:open"));
-        setTimeout(() => {
+        setTimeout(async () => {
           const el = findTarget(targetKey);
           if (el) {
+            if (FrameAwareCharacterController.isOutsideFrame()) {
+              await FrameAwareCharacterController.navigateToComponent(targetKey, { duration: 1.05 });
+            } else {
+              FrameAwareCharacterController.highlightElement(el, 2400);
+              ScreenTargetManager.inspectAndExplain(targetKey, { duration: 1.0 }).catch(() => {});
+            }
             try { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.click(); } catch (err) { logDebug("clickElement failed", targetKey, err); }
             respondToTool(cid, "clickElement", { status: "success", clicked: targetKey });
           } else respondToTool(cid, "clickElement", { status: "not_found", target: targetKey });
@@ -222,6 +237,11 @@ export function registerNesaActions(ctx) {
       const resolved = ScreenTargetManager.resolveTarget(target);
       if (resolved?.element) {
         FrameAwareCharacterController.highlightElement(resolved.element, d.args?.duration || 4000);
+        if (FrameAwareCharacterController.isOutsideFrame()) {
+          await FrameAwareCharacterController.navigateToComponent(target, { duration: 1.4 });
+        } else {
+          await ScreenTargetManager.inspectAndExplain(target, { duration: 1.4 });
+        }
       }
       respondToTool(cid, "highlightScreenComponent", { success: Boolean(resolved?.element), target: resolved?.label || target });
       return;

@@ -384,15 +384,24 @@ export function execRaiseHand(ctrl, params = {}) {
 export function execPoint(ctrl, params = {}) {
   const duration = params.duration ? (params.duration > 20 ? params.duration / 1000 : params.duration) : 2.3;
   const dir = String(params.direction || "").toLowerCase();
-  const normX = typeof params.x === "number" ? params.x : dir === "left" ? -0.65 : dir === "right" ? 0.65 : 0.25;
-  const normY = typeof params.y === "number" ? params.y : dir === "up" ? 0.55 : dir === "down" ? -0.55 : 0.12;
+  const normX = typeof params.x === "number" ? params.x : dir === "left" ? -0.65 : dir === "right" ? 0.65 : -0.25;
+  const normY =
+    typeof params.y === "number"
+      ? params.y
+      : dir === "up" || dir === "top"
+      ? 0.55
+      : dir === "down" || dir === "bottom"
+      ? -0.55
+      : 0.12;
 
-  const useLeft = dir === "left" || normX < -0.15;
+  const useLeft = params.hand === "left" ? true : params.hand === "right" ? false : normX > 0.08 || dir === "right";
   const side = useLeft ? "left" : "right";
 
-  const offsetX = THREE.MathUtils.clamp(-normX * 0.34, -0.36, 0.36) || (useLeft ? 0.28 : -0.28);
-  const offsetY = THREE.MathUtils.clamp(normY * 0.28 + 0.04, -0.24, 0.34);
+  const offsetX = THREE.MathUtils.clamp(normX * 0.34, -0.36, 0.36) || (useLeft ? 0.24 : -0.24);
+  const offsetY = THREE.MathUtils.clamp(normY * 0.28 + 0.04, -0.26, 0.34);
   const offsetZ = 0.34;
+  const isUp = normY > 0.25 || dir === "up" || dir === "top";
+  const isDown = normY < -0.25 || dir === "down" || dir === "bottom";
 
   ctrl.setLookTarget(THREE.MathUtils.clamp(normX, -0.85, 0.85), THREE.MathUtils.clamp(normY, -0.75, 0.75));
 
@@ -403,6 +412,9 @@ export function execPoint(ctrl, params = {}) {
       duration,
       resolve: () => {
         ctrl.setLookTarget(0, 0);
+        ctrl._resetLegsToRest();
+        ctrl._rootPositionTarget.y = 0;
+        ctrl._rootRotationTarget.y = 0;
         finishUpperGesture(ctrl, resolve);
       },
       tick: (_delta, progress) => {
@@ -410,11 +422,7 @@ export function execPoint(ctrl, params = {}) {
         const pulse = Math.sin(progress * Math.PI * 3) * 0.02 * env;
         const adapter = ctrl._adapter;
         if (adapter?.getHumanoidBone(useLeft ? "leftUpperArm" : "rightUpperArm")) {
-          const target = BoneControlSystem.getRelativeBodyTarget(adapter, "chest", [
-            offsetX,
-            offsetY,
-            offsetZ + pulse,
-          ]);
+          const target = BoneControlSystem.getRelativeBodyTarget(adapter, "chest", [offsetX, offsetY, offsetZ + pulse]);
           const sol = BoneControlSystem.solveArmIK(adapter, side, target);
           lerpArmToEuler(ctrl, useLeft ? "leftUpperArm" : "rightUpperArm", sol.upperEuler, env);
           lerpArmToEuler(ctrl, useLeft ? "leftLowerArm" : "rightLowerArm", sol.lowerEuler, env);
@@ -425,12 +433,16 @@ export function execPoint(ctrl, params = {}) {
           lerpArmToEuler(ctrl, "rightUpperArm", [0.18, 0.65, 0.42 - offsetY], env);
           lerpArmToEuler(ctrl, "rightLowerArm", [0.06, 0.72, 0.05], env);
         }
-        lerpArmToEuler(
-          ctrl,
-          useLeft ? "leftHand" : "rightHand",
-          [-0.08, useLeft ? -0.18 : 0.18, 0],
-          env
-        );
+        if (isUp) lerpArmToEuler(ctrl, useLeft ? "leftShoulder" : "rightShoulder", [0, 0, useLeft ? 0.16 : -0.16], env);
+        if (isDown) {
+          ctrl._rootPositionTarget.y = -0.06 * env;
+          ctrl._targetLegs.leftUpperLeg.set(-0.22 * env, 0, 0);
+          ctrl._targetLegs.rightUpperLeg.set(-0.22 * env, 0, 0);
+          ctrl._targetLegs.leftLowerLeg.set(0.38 * env, 0, 0);
+          ctrl._targetLegs.rightLowerLeg.set(0.38 * env, 0, 0);
+        }
+        lerpArmToEuler(ctrl, useLeft ? "leftHand" : "rightHand", [-0.08, useLeft ? -0.18 : 0.18, 0], env);
+        ctrl._rootRotationTarget.y = THREE.MathUtils.clamp(normX * 0.22, -0.28, 0.28) * env;
         ctrl._bodyTarget.roll = (useLeft ? 0.035 : -0.035) * env;
       },
     };
@@ -440,9 +452,7 @@ export function execPoint(ctrl, params = {}) {
 export function execLaugh(ctrl, params = {}) {
   const duration = params.duration ? (params.duration > 20 ? params.duration / 1000 : params.duration) : 2.5;
   EmotionEngine.setEmotion(EMOTIONS.EXCITED, { intensity: 1.0, duration: duration * 1000 });
-  if (ctrl._adapter) {
-    ctrl._adapter.setExpression("show_teeth", 0.9);
-  }
+  if (ctrl._adapter) ctrl._adapter.setExpression("show_teeth", 0.9);
 
   return new Promise((resolve) => {
     ctrl._activeGesture = {
@@ -450,9 +460,7 @@ export function execLaugh(ctrl, params = {}) {
       elapsed: 0,
       duration,
       resolve: () => {
-        if (ctrl._adapter) {
-          ctrl._adapter.setExpression("show_teeth", 0);
-        }
+        if (ctrl._adapter) ctrl._adapter.setExpression("show_teeth", 0);
         finishUpperGesture(ctrl, resolve);
       },
       tick: (_delta, progress) => {
@@ -460,11 +468,7 @@ export function execLaugh(ctrl, params = {}) {
         const chuckle = Math.abs(Math.sin(progress * Math.PI * 7)) * env;
         const adapter = ctrl._adapter;
         if (adapter?.getHumanoidBone("rightUpperArm")) {
-          const target = BoneControlSystem.getRelativeBodyTarget(adapter, "chest", [
-            -0.08,
-            0.12 + chuckle * 0.02,
-            0.22,
-          ]);
+          const target = BoneControlSystem.getRelativeBodyTarget(adapter, "chest", [-0.08, 0.12 + chuckle * 0.02, 0.22]);
           const sol = BoneControlSystem.solveArmIK(adapter, "right", target);
           lerpArmToEuler(ctrl, "rightUpperArm", sol.upperEuler, env);
           lerpArmToEuler(ctrl, "rightLowerArm", sol.lowerEuler, env);
@@ -479,6 +483,5 @@ export function execLaugh(ctrl, params = {}) {
   });
 }
 
-export function applyUpperBodyGesture() {
-  return smoothStep(1);
-}
+export function applyUpperBodyGesture() { return smoothStep(1); }
+

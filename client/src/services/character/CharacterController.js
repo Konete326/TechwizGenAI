@@ -36,8 +36,33 @@ class CharacterControllerClass {
     this._targetArms = cloneMap(REST_ARM_POSE);
     this._speakingTime = 0;
     this._isSpeaking = false;
-    this._activeGesture = null;
+    this._activeGestureVal = null;
+    this._fallbackTicker = null;
+    this._lastUpdateAt = 0;
     this._initialized = false;
+  }
+
+  get _activeGesture() {
+    return this._activeGestureVal;
+  }
+
+  set _activeGesture(val) {
+    this._activeGestureVal = val;
+    if (val && !this._fallbackTicker) {
+      this._fallbackTicker = setInterval(() => {
+        if (!this._activeGestureVal) {
+          clearInterval(this._fallbackTicker);
+          this._fallbackTicker = null;
+          return;
+        }
+        if (performance.now() - this._lastUpdateAt > 34) {
+          this.update(0.08);
+        }
+      }, 40);
+    } else if (!val && this._fallbackTicker) {
+      clearInterval(this._fallbackTicker);
+      this._fallbackTicker = null;
+    }
   }
 
   setAdapter(adapter) {
@@ -127,10 +152,13 @@ class CharacterControllerClass {
     reg(["point_down"], (p) => UpperGestures.execPoint(this, { direction: "down", ...p }));
     reg(["inspect_screen_component", "look_at_component"], (p) => this._execInspectScreenComponent(p));
     reg(["click_component"], (p) => FrameAwareCharacterController.clickComponent(p?.target || p?.component || p?.query));
-    reg(["highlight_component"], (p) => {
+    reg(["highlight_component"], async (p) => {
       const t = ScreenTargetManager.resolveTarget(p?.target || p?.component || p?.query);
       if (t?.element) FrameAwareCharacterController.highlightElement(t.element, p?.duration || 4000);
-      return Promise.resolve({ success: Boolean(t?.element) });
+      if (!t?.ambiguous) {
+        await this.lookAndPointAt(t.normX || 0, t.normY || 0, { duration: 1.8, point: true });
+      }
+      return { success: Boolean(t?.element), target: t?.label };
     });
     reg(["blink"], () => this._execBlink());
     reg(["smile", "natural_smile"], (p) => this._execEmotion(EMOTIONS.HAPPY, p));
@@ -214,6 +242,7 @@ class CharacterControllerClass {
   }
 
   update(delta) {
+    this._lastUpdateAt = performance.now();
     const adapter = this._adapter || CharacterRegistry.getActiveAdapter();
     if (!adapter) return;
 
@@ -271,7 +300,19 @@ class CharacterControllerClass {
     this._headCurrent.x += (targetPitch - this._headCurrent.x) * lerpFactor;
     this._headCurrent.y += (targetYaw - this._headCurrent.y) * lerpFactor;
     this._headCurrent.z += (targetRoll - this._headCurrent.z) * lerpFactor;
-    headNode.rotation.set(this._headCurrent.x, this._headCurrent.y, this._headCurrent.z);
+    const neckNode = adapter.getHumanoidBone("neck");
+    if (neckNode) {
+      neckNode.rotation.set(this._headCurrent.x * 0.3, this._headCurrent.y * 0.3, this._headCurrent.z * 0.3);
+      headNode.rotation.set(this._headCurrent.x * 0.7, this._headCurrent.y * 0.7, this._headCurrent.z * 0.7);
+    } else {
+      headNode.rotation.set(this._headCurrent.x, this._headCurrent.y, this._headCurrent.z);
+    }
+    const leftEye = adapter.getHumanoidBone("leftEye");
+    const rightEye = adapter.getHumanoidBone("rightEye");
+    const eyePitch = THREE.MathUtils.clamp(this._headCurrent.x * 0.35, -0.18, 0.18);
+    const eyeYaw = THREE.MathUtils.clamp(this._headCurrent.y * 0.35, -0.22, 0.22);
+    if (leftEye) leftEye.rotation.set(eyePitch, eyeYaw, 0);
+    if (rightEye) rightEye.rotation.set(eyePitch, eyeYaw, 0);
   }
 
   _applyBodyTransform(adapter, delta) {

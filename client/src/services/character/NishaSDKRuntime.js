@@ -126,6 +126,7 @@ class NishaSDKRuntimeClass {
     const resolved = ScreenTargetManager.resolveTarget(selectorOrId);
     if (resolved?.element) {
       FrameAwareCharacterController.highlightElement(resolved.element, durationMs);
+      ScreenTargetManager.inspectAndExplain(selectorOrId, { duration: 1.4 }).catch(() => {});
       return { success: true, target: resolved.label };
     }
     return { success: false, error: "element_not_found" };

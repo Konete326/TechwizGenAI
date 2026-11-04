@@ -214,27 +214,37 @@ class BoneControlSystemClass {
     const cosElbowInterior = clamp((L1 * L1 + L2 * L2 - d * d) / (2 * L1 * L2), -1, 1);
     const elbowBend = Math.PI - Math.acos(cosElbowInterior);
 
-    const cosShoulderOffset = clamp((L1 * L1 + d * d - L2 * L2) / (2 * L1 * d), -1, 1);
-    const alpha = Math.acos(cosShoulderOffset);
-
-    const restDir = new THREE.Vector3(s, 0, 0);
-    const qBase = new THREE.Quaternion().setFromUnitVectors(restDir, dir);
+    const cosAlpha = clamp((L1 * L1 + d * d - L2 * L2) / (2 * L1 * d), -1, 1);
+    const sinAlpha = Math.sqrt(Math.max(0, 1 - cosAlpha * cosAlpha));
 
     const defaultPole = poleDirection
       ? poleDirection.clone().normalize()
-      : new THREE.Vector3(s * 0.28, -0.92, -0.22).normalize();
+      : new THREE.Vector3(s * 0.32, -0.9, -0.25).normalize();
 
-    const bendAxis = new THREE.Vector3().crossVectors(dir, defaultPole);
-    if (bendAxis.lengthSq() < 1e-5) {
-      bendAxis.set(0, 1, 0);
-    } else {
-      bendAxis.normalize();
+    const polePerp = defaultPole.clone().addScaledVector(dir, -defaultPole.dot(dir));
+    if (polePerp.lengthSq() < 1e-5) {
+      polePerp.set(0, -1, 0).addScaledVector(dir, -dir.y);
     }
+    polePerp.normalize();
 
-    const qOffset = new THREE.Quaternion().setFromAxisAngle(bendAxis, alpha);
-    const qUpper = qOffset.multiply(qBase);
+    const elbowVec = dir
+      .clone()
+      .multiplyScalar(cosAlpha)
+      .addScaledVector(polePerp, sinAlpha)
+      .normalize();
 
-    const upperEuler = new THREE.Euler().setFromQuaternion(qUpper, "XYZ");
+    const wTarget = dir
+      .clone()
+      .multiplyScalar(sinAlpha)
+      .addScaledVector(polePerp, -cosAlpha)
+      .normalize();
+
+    const colX = elbowVec.clone().multiplyScalar(s).normalize();
+    const colY = new THREE.Vector3().crossVectors(wTarget, colX).normalize();
+    const colZ = new THREE.Vector3().crossVectors(colX, colY).normalize();
+
+    const basisMat = new THREE.Matrix4().makeBasis(colX, colY, colZ);
+    const upperEuler = new THREE.Euler().setFromRotationMatrix(basisMat, "XYZ");
     const clampedUpper = this.clampBoneEuler(
       upperName,
       upperEuler.x,

@@ -86,6 +86,36 @@ export const KNOWN_UI_COMPONENTS = {
     purpose: "Access account preferences, system configurations, API integrations, and avatar options.",
     defaultSide: "left",
   },
+  dashboard: {
+    selectors: ['[data-nesa-target="nav_dashboard"]', 'a[href*="/dashboard"]'],
+    label: "Dashboard",
+    purpose: "Overview of your workspace activity, recent sessions, and AI usage metrics.",
+    defaultSide: "left",
+  },
+  studio: {
+    selectors: ['[data-nesa-target="nav_studio"]', 'a[href*="/studio"]'],
+    label: "AI Studio",
+    purpose: "Interactive conversational AI workspace with 3D companion and artifact generation.",
+    defaultSide: "left",
+  },
+  assets: {
+    selectors: ['[data-nesa-target="nav_assets"]', 'a[href*="/assets"]'],
+    label: "Assets Library",
+    purpose: "Manage uploaded documents, images, and media files.",
+    defaultSide: "left",
+  },
+  analytics: {
+    selectors: ['[data-nesa-target="nav_analytics"]', 'a[href*="/analytics"]'],
+    label: "Analytics",
+    purpose: "Detailed token usage, model distribution, and performance analytics.",
+    defaultSide: "left",
+  },
+  workspace: {
+    selectors: ['[data-nesa-target="nav_workspace"]', 'a[href*="/workspace"]'],
+    label: "Code Workspace",
+    purpose: "Full-featured project editor and live application preview environment.",
+    defaultSide: "left",
+  },
 };
 
 class ScreenTargetManagerClass {
@@ -172,11 +202,24 @@ class ScreenTargetManagerClass {
             element: el,
             normX: coords.x,
             normY: coords.y,
+            coords,
             direction: this._determineDirection(coords.x, coords.y),
             label: comp.label,
             purpose: comp.purpose,
           };
         }
+        const side = comp.defaultSide || "center";
+        const fbX = side === "left" ? -0.75 : side === "right" ? 0.75 : 0.0;
+        const fbY = side === "top" ? 0.7 : side === "bottom" ? -0.7 : 0.0;
+        return {
+          element: null,
+          normX: fbX,
+          normY: fbY,
+          coords: { x: fbX, y: fbY },
+          direction: side,
+          label: comp.label,
+          purpose: comp.purpose,
+        };
       }
     }
 
@@ -243,19 +286,19 @@ class ScreenTargetManagerClass {
     }
 
     if (q.includes("left") || q.includes("bayein") || q.includes("bayen")) {
-      return { element: null, normX: -0.75, normY: 0.0, direction: "left", label: "Left UI Area", purpose: "The left panel contains navigation and chat history." };
+      return { element: null, normX: -0.75, normY: 0.0, coords: { x: -0.75, y: 0.0 }, direction: "left", label: "Left UI Area", purpose: "The left panel contains navigation and chat history." };
     }
     if (q.includes("right") || q.includes("dayein") || q.includes("dayen")) {
-      return { element: null, normX: 0.75, normY: 0.0, direction: "right", label: "Right UI Area", purpose: "The right side houses action toolbars, controls, and active panels." };
+      return { element: null, normX: 0.75, normY: 0.0, coords: { x: 0.75, y: 0.0 }, direction: "right", label: "Right UI Area", purpose: "The right side houses action toolbars, controls, and active panels." };
     }
     if (q.includes("top") || q.includes("upper") || q.includes("upar")) {
-      return { element: null, normX: 0.0, normY: -0.7, direction: "top", label: "Top Header Bar", purpose: "The top bar provides global search, model switching, and account settings." };
+      return { element: null, normX: 0.0, normY: 0.7, coords: { x: 0.0, y: 0.7 }, direction: "top", label: "Top Header Bar", purpose: "The top bar provides global search, model switching, and account settings." };
     }
     if (q.includes("bottom") || q.includes("down") || q.includes("neeche")) {
-      return { element: null, normX: 0.0, normY: 0.7, direction: "bottom", label: "Bottom Input Area", purpose: "The bottom dock hosts the conversational input box and tool controls." };
+      return { element: null, normX: 0.0, normY: -0.7, coords: { x: 0.0, y: -0.7 }, direction: "bottom", label: "Bottom Input Area", purpose: "The bottom dock hosts the conversational input box and tool controls." };
     }
     if (q.includes("center") || q.includes("beech") || q.includes("middle")) {
-      return { element: null, normX: 0.0, normY: 0.0, direction: "center", label: "Central Canvas", purpose: "The central workspace where conversation, diagrams, and documents appear." };
+      return { element: null, normX: 0.0, normY: 0.0, coords: { x: 0.0, y: 0.0 }, direction: "center", label: "Central Canvas", purpose: "The central workspace where conversation, diagrams, and documents appear." };
     }
 
     const active = typeof document !== "undefined" ? document.activeElement : null;
@@ -266,6 +309,7 @@ class ScreenTargetManagerClass {
         element: active,
         normX: coords.x,
         normY: coords.y,
+        coords,
         direction: this._determineDirection(coords.x, coords.y),
         label,
         purpose: `This is the currently active UI control: ${label}.`,
@@ -276,6 +320,7 @@ class ScreenTargetManagerClass {
       element: null,
       normX: 0,
       normY: 0,
+      coords: { x: 0, y: 0 },
       direction: "center",
       label: null,
       ambiguous: true,
@@ -373,7 +418,7 @@ class ScreenTargetManagerClass {
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
     const normX = (cx / Math.max(1, window.innerWidth)) * 2 - 1;
-    const normY = (cy / Math.max(1, window.innerHeight)) * 2 - 1;
+    const normY = 1 - (cy / Math.max(1, window.innerHeight)) * 2;
     return {
       x: Math.max(-1.0, Math.min(1.0, normX)),
       y: Math.max(-1.0, Math.min(1.0, normY)),
@@ -383,8 +428,8 @@ class ScreenTargetManagerClass {
   _determineDirection(normX, normY) {
     if (normX < -0.35) return "left";
     if (normX > 0.35) return "right";
-    if (normY < -0.35) return "top";
-    if (normY > 0.35) return "bottom";
+    if (normY > 0.35) return "top";
+    if (normY < -0.35) return "bottom";
     return "center";
   }
 }

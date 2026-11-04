@@ -218,6 +218,95 @@ class CharacterPhysicsEngineClass {
     };
   }
 
+  findComponentAbove(element, charWidth = 240, charHeight = 400) {
+    this.scanScreenEnvironment(false);
+    if (!element || typeof element.getBoundingClientRect !== "function") {
+      return null;
+    }
+    const r = element.getBoundingClientRect();
+    const centerX = r.left + r.width * 0.5;
+    let best = null;
+    let bestScore = Infinity;
+
+    for (let i = 0; i < this._surfaces.length; i++) {
+      const s = this._surfaces[i];
+      if (!s.element || s.element === element || s.type === "ground") continue;
+      if (s.bottom > r.top + 8) continue;
+      const dy = r.top - s.top;
+      if (dy < 24 || dy > JUMP_MAX_HEIGHT_PX) continue;
+      const sCenter = s.left + s.width * 0.5;
+      const dx = Math.abs(sCenter - centerX);
+      const score = dy + dx * 0.65;
+      if (score < bestScore) {
+        bestScore = score;
+        best = s;
+      }
+    }
+
+    if (!best) return null;
+    return this.findLandingSurfaceForElement(best.element, charWidth, charHeight);
+  }
+
+  computeSafePath(startPos, endPos, charWidth = 240, charHeight = 400) {
+    const sx = Number.isFinite(startPos?.x) ? startPos.x : 100;
+    const sy = Number.isFinite(startPos?.y) ? startPos.y : 350;
+    const ex = Number.isFinite(endPos?.x) ? endPos.x : sx;
+    const ey = Number.isFinite(endPos?.y) ? endPos.y : sy;
+
+    this.scanScreenEnvironment(false);
+    const minPathX = Math.min(sx, ex);
+    const maxPathX = Math.max(sx, ex) + charWidth;
+    const minPathY = Math.min(sy, ey);
+    const maxPathY = Math.max(sy, ey) + charHeight;
+
+    let blockingObstacle = null;
+    for (let i = 0; i < this._obstacles.length; i++) {
+      const obs = this._obstacles[i];
+      const horizCross =
+        (sx + charWidth <= obs.left + 20 && ex + charWidth > obs.left + 12) ||
+        (sx >= obs.right - 20 && ex < obs.right - 12);
+      const vertOverlap = minPathY < obs.bottom - 12 && maxPathY > obs.top + 12;
+      if (horizCross && vertOverlap && minPathX < obs.right && maxPathX > obs.left) {
+        blockingObstacle = obs;
+        break;
+      }
+    }
+
+    const isGravityDrop = ey - sy > 32 && !blockingObstacle;
+    const obstacleApexY = blockingObstacle
+      ? Math.max(12, blockingObstacle.top - charHeight + 10)
+      : Math.min(sy, ey);
+
+    return {
+      startX: sx,
+      startY: sy,
+      endX: ex,
+      endY: ey,
+      hasObstacle: Boolean(blockingObstacle),
+      obstacle: blockingObstacle,
+      isGravityDrop,
+      sampleAt(progress) {
+        const t = Math.max(0, Math.min(1, progress));
+        const smoothT = t * t * (3 - 2 * t);
+        const x = sx + (ex - sx) * smoothT;
+        if (blockingObstacle) {
+          const baseLinearY = sy + (ey - sy) * smoothT;
+          const clearance = Math.max(60, baseLinearY - obstacleApexY);
+          const y = Math.max(12, baseLinearY - Math.sin(t * Math.PI) * clearance);
+          return { x: Math.round(x), y: Math.round(y) };
+        }
+        if (isGravityDrop) {
+          const dropT = t * t;
+          const arcLift = Math.sin(t * Math.PI) * 28;
+          const y = sy + (ey - sy) * dropT - arcLift;
+          return { x: Math.round(x), y: Math.round(y) };
+        }
+        const y = sy + (ey - sy) * smoothT;
+        return { x: Math.round(x), y: Math.round(y) };
+      },
+    };
+  }
+
   computeJumpTrajectory(startPos, endPos, durationSec = 1.15) {
     const sx = Number(startPos?.x) || 100;
     const sy = Number(startPos?.y) || 350;

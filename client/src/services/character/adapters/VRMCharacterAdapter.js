@@ -266,14 +266,13 @@ export class VRMCharacterAdapter extends ICharacterAdapter {
   }
 
   getHumanoidBone(boneName) {
-    if (!this.vrm?.humanoid) return null;
+    const h = this.vrm?.humanoid;
+    if (!h) return null;
     try {
-      return (
-        this.vrm.humanoid.getNormalizedBoneNode?.(boneName) ||
-        this.vrm.humanoid.getBoneNode?.(boneName) ||
-        this.vrm.humanoid.getRawBoneNode?.(boneName) ||
-        null
-      );
+      if (typeof h.getNormalizedBoneNode === "function" || typeof h.getRawBoneNode === "function") {
+        return h.getNormalizedBoneNode?.(boneName) || h.getRawBoneNode?.(boneName) || null;
+      }
+      return h.getBoneNode?.(boneName) || null;
     } catch {
       return null;
     }

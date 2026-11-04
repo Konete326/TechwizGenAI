@@ -51,11 +51,17 @@ export function useCharacterActions() {
       } else if (call.name === "clickScreenComponent") {
         result = await FrameAwareCharacterController.clickComponent(args.target || args.targetComponent);
       } else if (call.name === "highlightScreenComponent") {
-        const resolved = ScreenTargetManager.resolveTarget(args.target || args.targetComponent);
+        const target = args.target || args.targetComponent;
+        const resolved = ScreenTargetManager.resolveTarget(target);
         if (resolved?.element) {
           FrameAwareCharacterController.highlightElement(resolved.element, args.duration || 4000);
+          if (FrameAwareCharacterController.isOutsideFrame()) {
+            await FrameAwareCharacterController.navigateToComponent(target, { duration: 1.4 });
+          } else {
+            await ScreenTargetManager.inspectAndExplain(target, { duration: 1.4 });
+          }
         }
-        result = { success: Boolean(resolved?.element), target: resolved?.label || args.target };
+        result = { success: Boolean(resolved?.element), target: resolved?.label || target };
       } else if (call.name === "expressEmotion") {
         result = EmotionEngine.setEmotion(args.emotion, {
           intensity: args.intensity ?? 0.85,

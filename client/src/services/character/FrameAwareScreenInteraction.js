@@ -3,7 +3,7 @@ import ScreenTargetManager from "./ScreenTargetManager.js";
 import EmotionEngine, { EMOTIONS } from "./EmotionEngine.js";
 import { FRAME_STATES } from "./FrameAwareStates.js";
 
-function computeRelativeTargetVector(controller, targetElement, fallbackDir = "right") {
+export function computeRelativeTargetVector(controller, targetElement, fallbackDir = "right") {
   const pos = controller.getOutsidePosition();
   const nishaCenterX = (pos.x || 200) + (pos.width || 250) * 0.5;
   const nishaChestY = (pos.y || 320) + (pos.height || 400) * 0.38;
@@ -87,6 +87,8 @@ export async function navigateToComponent(controller, queryOrKey, options = {}) 
       y: rel.relY,
       duration: options.duration || 2.4,
     });
+  } else {
+    CharacterController.setLookTarget(0, 0);
   }
 
   controller._setState(FRAME_STATES.OUTSIDE_FRAME, {

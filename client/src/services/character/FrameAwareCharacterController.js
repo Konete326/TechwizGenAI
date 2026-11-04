@@ -208,6 +208,13 @@ class FrameAwareCharacterControllerClass {
     const endX = Number.isFinite(targetPos.x) ? targetPos.x : startX;
     const endY = Number.isFinite(targetPos.y) ? targetPos.y : startY;
 
+    const safePath = CharacterPhysicsEngine.computeSafePath(
+      { x: startX, y: startY },
+      { x: endX, y: endY },
+      outW,
+      outH
+    );
+
     const distPx = Math.hypot(endX - startX, endY - startY);
     const speedKey = options.speed && WALK_SPEED_PX[options.speed] ? options.speed : "normal";
     const computedDur = Math.max(1.25, Math.min(3.8, distPx / WALK_SPEED_PX[speedKey]));
@@ -223,15 +230,17 @@ class FrameAwareCharacterControllerClass {
     let rafId = null;
     const stepFrame = (now) => {
       const p = Math.min(1, (now - startTime) / (durationSec * 1000));
-      const smoothP = p * p * (3 - 2 * p);
-      const curX = Math.round(startX + (endX - startX) * smoothP);
-      const curY = Math.round(startY + (endY - startY) * smoothP);
-      this._emitContinuousMove({ x: curX, y: curY, width: outW, height: outH }, true);
+      const pt = safePath.sampleAt(p);
+      this._emitContinuousMove({ x: pt.x, y: pt.y, width: outW, height: outH }, true);
       if (p < 1) rafId = requestAnimationFrame(stepFrame);
     };
     if (typeof requestAnimationFrame === "function") rafId = requestAnimationFrame(stepFrame);
 
-    await CharacterController._execWalk({ duration: durationSec, direction: walkDir, speed: speedKey, z: 0.08 });
+    if (safePath.hasObstacle) {
+      await CharacterController._execJump({ duration: durationSec });
+    } else {
+      await CharacterController._execWalk({ duration: durationSec, direction: walkDir, speed: speedKey, z: 0.08 });
+    }
     if (rafId && typeof cancelAnimationFrame === "function") cancelAnimationFrame(rafId);
     this._emitContinuousMove({ x: endX, y: endY, width: outW, height: outH }, true);
   }
@@ -361,36 +370,61 @@ class FrameAwareCharacterControllerClass {
   async climbOntoTarget(queryOrKey, options = {}) {
     if (!this.isOutsideFrame()) await this.exitFrameAndNavigate({ walkBottom: false });
     const { width: outW, height: outH } = getResponsiveOutsideDimensions();
-    const target = ScreenTargetManager.resolveTarget(queryOrKey || "chat_input");
+    const rawQuery = typeof queryOrKey === "string" ? queryOrKey : "chat_input";
+    const wantsAbove = Boolean(options.climbAbove || options.nextTarget || /\b(above|upper|upar)\b/i.test(rawQuery));
+    const cleanedQuery = rawQuery.replace(/\band\s+(go|climb|jump)\s+to\s+the\s+component\s+above\s+it\b/i, "").trim() || "chat_input";
+    const target = ScreenTargetManager.resolveTarget(cleanedQuery);
     const landing = CharacterPhysicsEngine.findLandingSurfaceForElement(target?.element, outW, outH);
 
-    const groundApproach = CharacterPhysicsEngine.getGroundPosition(outW, outH, Math.max(16, landing.x - 36));
-    await this.animateOutsideMove(groundApproach, { speed: "normal" });
+    const curPos = this.getOutsidePosition();
+    const groundBase = CharacterPhysicsEngine.getGroundPosition(outW, outH, Math.max(16, landing.x - 36));
+    const isAlreadyElevatedBelowTarget = curPos.y < groundBase.y - 20 && landing.y < curPos.y;
+    const launchPos = isAlreadyElevatedBelowTarget ? curPos : groundBase;
 
-    const traj = CharacterPhysicsEngine.computeJumpTrajectory(groundApproach, landing, 1.35);
-    const startTime = performance.now();
-    let rafId = null;
-    const stepArc = (now) => {
-      const p = Math.min(1, (now - startTime) / (traj.durationSec * 1000));
-      const pt = traj.sampleAt(p);
-      this._emitContinuousMove({ x: pt.x, y: pt.y, width: outW, height: outH }, true);
-      if (p < 1) rafId = requestAnimationFrame(stepArc);
+    if (!isAlreadyElevatedBelowTarget && Math.hypot(curPos.x - groundBase.x, curPos.y - groundBase.y) > 20) {
+      await this.animateOutsideMove(groundBase, { speed: "normal" });
+    }
+
+    const executeArcClimb = async (fromPos, toLanding) => {
+      const traj = CharacterPhysicsEngine.computeJumpTrajectory(fromPos, toLanding, 1.35);
+      const startTime = performance.now();
+      let rafId = null;
+      const stepArc = (now) => {
+        const p = Math.min(1, (now - startTime) / (traj.durationSec * 1000));
+        const pt = traj.sampleAt(p);
+        this._emitContinuousMove({ x: pt.x, y: pt.y, width: outW, height: outH }, true);
+        if (p < 1) rafId = requestAnimationFrame(stepArc);
+      };
+      if (typeof requestAnimationFrame === "function") rafId = requestAnimationFrame(stepArc);
+
+      if (toLanding.surfaceType === "step_up") await CharacterController._execClimb({ duration: traj.durationSec });
+      else await CharacterController._execJump({ duration: traj.durationSec });
+
+      if (rafId && typeof cancelAnimationFrame === "function") cancelAnimationFrame(rafId);
+      this._emitContinuousMove(toLanding, true);
+      this._setState(FRAME_STATES.OUTSIDE_FRAME, { position: toLanding, target });
     };
-    if (typeof requestAnimationFrame === "function") rafId = requestAnimationFrame(stepArc);
 
-    if (landing.surfaceType === "step_up") await CharacterController._execClimb({ duration: traj.durationSec });
-    else await CharacterController._execJump({ duration: traj.durationSec });
+    await executeArcClimb(launchPos, landing);
 
-    if (rafId && typeof cancelAnimationFrame === "function") cancelAnimationFrame(rafId);
-    this._emitContinuousMove(landing, true);
-    this._setState(FRAME_STATES.OUTSIDE_FRAME, { position: landing, target });
+    let finalLanding = landing;
+    if (wantsAbove) {
+      const nextEl = options.nextTarget ? ScreenTargetManager.resolveTarget(options.nextTarget)?.element : null;
+      const nextSurface = options.nextTarget
+        ? CharacterPhysicsEngine.findLandingSurfaceForElement(nextEl, outW, outH)
+        : CharacterPhysicsEngine.findComponentAbove(target?.element, outW, outH);
+      if (nextSurface && nextSurface.y < landing.y) {
+        await executeArcClimb(landing, nextSurface);
+        finalLanding = nextSurface;
+      }
+    }
 
     if (options.sit) await CharacterController._execSit({ duration: 2.5 });
     return {
       success: true,
       target: target?.label || "surface",
-      canStandOnTop: landing.canStandOnTop,
-      position: landing,
+      canStandOnTop: finalLanding.canStandOnTop,
+      position: finalLanding,
       spokenExplanation: `Main ${target?.label || "is hisse"} par aa gayi hoon!`,
     };
   }

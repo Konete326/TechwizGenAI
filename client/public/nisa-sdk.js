@@ -1,17 +1,12 @@
 (function() {
   const scriptTag = document.currentScript || document.querySelector('script[src*="nisa-sdk.js"]');
-  const clientId = scriptTag ? scriptTag.getAttribute('data-client-id') : null;
-  
-  if (!clientId) {
-    console.error('Nisa SDK: Missing data-client-id on script tag');
-    return;
-  }
+  let clientId = scriptTag ? scriptTag.getAttribute('data-client-id') : null;
 
   const scriptUrl = scriptTag && scriptTag.src ? new URL(scriptTag.src) : new URL(window.location.origin);
   const protocol = scriptUrl.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = scriptUrl.host;
-  const wsUrl = `${protocol}//${host}/tunnel?clientId=${clientId}`;
-  const syncHttpUrl = `${scriptUrl.protocol}//${host}/api/client/sync`;
+  let wsUrl = clientId ? `${protocol}//${host}/tunnel?clientId=${clientId}` : `${protocol}//${host}/tunnel`;
+  let syncHttpUrl = `${scriptUrl.protocol}//${host}/api/client/sync`;
   
   let ws;
   let retryCount = 0;
@@ -19,6 +14,9 @@
   let debounceTimer;
   let serverFrontendUrl = (scriptUrl && scriptUrl.origin && scriptUrl.origin !== 'null') ? scriptUrl.origin : 'https://techwiz-gen-ai.vercel.app';
   let clientConfig = null;
+  let sdkPaused = false;
+  let customProjectAdapter = null;
+  let activeModelUrl = '/models/nisa.vrm';
 
   let chatWidget;
   let chatPanel;
@@ -61,25 +59,37 @@
 
   function findElement(targetKey) {
     if (!targetKey) return null;
-    let el = null;
+    if (customProjectAdapter && typeof customProjectAdapter.resolveElement === 'function') {
+      try {
+        const customEl = customProjectAdapter.resolveElement(targetKey);
+        if (customEl) return customEl;
+      } catch {
+        void 0;
+      }
+    }
 
     if (targetKey.startsWith('/') || targetKey.startsWith('//')) {
       try {
         const result = document.evaluate(targetKey, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-        el = result.singleNodeValue;
-        if (el) return el;
-      } catch (err) {}
+        if (result.singleNodeValue) return result.singleNodeValue;
+      } catch {
+        void 0;
+      }
     }
 
     try {
-      el = document.querySelector(`[data-nesa-target="${targetKey}"], [data-nisa-id="${targetKey}"], [data-testid="${targetKey}"], [data-action="${targetKey}"], #${CSS.escape(targetKey)}, [name="${CSS.escape(targetKey)}"]`);
+      const el = document.querySelector(`[data-nesa-target="${targetKey}"], [data-nisa-id="${targetKey}"], [data-testid="${targetKey}"], [data-action="${targetKey}"], #${CSS.escape(targetKey)}, [name="${CSS.escape(targetKey)}"]`);
       if (el) return el;
-    } catch (err) {}
+    } catch {
+      void 0;
+    }
 
     try {
-      el = document.querySelector(targetKey);
+      const el = document.querySelector(targetKey);
       if (el) return el;
-    } catch (err) {}
+    } catch {
+      void 0;
+    }
 
     const lowerTarget = targetKey.toLowerCase().trim();
     const actionables = document.querySelectorAll('button, a, input, select, textarea, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [role="switch"], [role="checkbox"], .btn, .button, [onclick], [data-action]');
@@ -96,7 +106,9 @@
         try {
           const res = document.evaluate(learned.xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
           if (res.singleNodeValue) return res.singleNodeValue;
-        } catch (e) {}
+        } catch {
+          void 0;
+        }
       }
     }
 
@@ -106,7 +118,9 @@
         try {
           const res = document.evaluate(xp, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
           if (res.singleNodeValue) return res.singleNodeValue;
-        } catch (e) {}
+        } catch {
+          void 0;
+        }
       }
     }
 
@@ -685,7 +699,9 @@
                   await navigator.clipboard.writeText(textToCopy);
                   ok = true;
                 }
-              } catch {}
+              } catch {
+                void 0;
+              }
               if (!ok) {
                 try {
                   const ta = document.createElement('textarea');
@@ -696,7 +712,9 @@
                   ta.select();
                   document.execCommand('copy');
                   document.body.removeChild(ta);
-                } catch {}
+                } catch {
+                  void 0;
+                }
               }
               copyBtn.textContent = 'Copied!';
               copyBtn.style.color = '#34d399';
@@ -745,7 +763,7 @@
                 let readPromise;
                 try {
                   readPromise = navigator.clipboard.readText();
-                } catch (syncErr) {
+                } catch {
                   isReadingClipboard = false;
                   pasteBtn.disabled = false;
                   pasteBtn.innerHTML = originalHtml;
@@ -785,7 +803,9 @@
                       }
                       try {
                         input.dispatchEvent(new Event('input', { bubbles: true }));
-                      } catch {}
+                      } catch {
+                        void 0;
+                      }
                       input.focus();
                     }
 
@@ -1080,7 +1100,9 @@
                 requestAnimationFrame(() => {
                   drawPath.style.strokeDashoffset = '0';
                 });
-              } catch {}
+              } catch {
+                void 0;
+              }
 
               animTimers.push(setTimeout(() => {
                 header.style.opacity = '1';
@@ -1336,7 +1358,9 @@
             action: 'click',
             element: item
           }));
-        } catch (err) {}
+        } catch {
+          void 0;
+        }
       }
 
       showLearnedPulse(interactiveEl);
@@ -1395,7 +1419,7 @@
 
   function connect() {
     createChatWidget();
-    if (host.includes('vercel.app') || host.includes('now.sh')) {
+    if (!clientId || host.includes('vercel.app') || host.includes('now.sh')) {
       return;
     }
     if (retryCount >= 2) {
@@ -1403,7 +1427,7 @@
     }
     try {
       ws = new WebSocket(wsUrl);
-    } catch (_) {
+    } catch {
       return;
     }
     
@@ -1437,7 +1461,9 @@
           const el = findElement(msg.selector || msg.xpath || msg.targetKey);
           if (el) el.click();
         }
-      } catch (e) {}
+      } catch {
+        void 0;
+      }
     };
   }
 
@@ -1513,7 +1539,9 @@
           }
         }
       });
-    } catch (e) {}
+    } catch {
+      void 0;
+    }
 
     const readableSelector = 'h1, h2, h3, h4, h5, h6, p, label, td, th, li, .badge, .status, .card-title';
     const readables = document.querySelectorAll(readableSelector);
@@ -1577,6 +1605,7 @@
   }
 
   async function syncDOM(force = false) {
+    if (sdkPaused || !clientId) return;
     if (clientConfig && clientConfig.powers && clientConfig.powers.autoCapture === false) return;
     const map = parseDOM();
     const mapString = JSON.stringify(map);
@@ -1587,7 +1616,9 @@
     if (ws && ws.readyState === 1) {
       try {
         ws.send(JSON.stringify({ type: 'dom_sync', elementsCount: map.length, data: map }));
-      } catch (err) {}
+      } catch {
+        void 0;
+      }
     }
     
     try {
@@ -1602,13 +1633,14 @@
       } else {
         updateIndicator('disconnected');
       }
-    } catch (e) {
+    } catch {
       updateIndicator('disconnected');
     }
   }
 
   function setupObserver() {
     if (observer) observer.disconnect();
+    if (!document.body) return;
     
     observer = new MutationObserver((mutations) => {
       let shouldSync = false;
@@ -1627,7 +1659,28 @@
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
   }
 
-  async function initSDK() {
+  async function initSDK(options = {}) {
+    if (options && typeof options === 'object') {
+      if (options.clientId) {
+        clientId = options.clientId;
+        wsUrl = `${protocol}//${host}/tunnel?clientId=${clientId}`;
+      }
+      if (options.backendUrl) {
+        serverFrontendUrl = options.backendUrl;
+        syncHttpUrl = `${options.backendUrl.replace(/\/+$/, '')}/api/client/sync`;
+      }
+      if (options.modelUrl) {
+        activeModelUrl = options.modelUrl;
+      }
+      if (options.projectAdapter) {
+        customProjectAdapter = options.projectAdapter;
+      }
+    }
+
+    if (!clientId) {
+      return { success: true, initialized: true, mode: 'standalone_sdk' };
+    }
+
     if (typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
       console.warn('Nisa SDK: Host page is running in an insecure context (HTTP). Browsers require HTTPS to remember microphone permissions permanently.');
     }
@@ -1643,7 +1696,7 @@
           }
         }
       }
-    } catch (e) {
+    } catch {
       console.warn("Nisa SDK: Could not fetch remote config, using fallback.");
     }
     
@@ -1651,11 +1704,134 @@
     setupInteractionLearner();
     setupObserver();
     connect();
+    return { success: true, initialized: true, clientId };
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initSDK);
-  } else {
-    initSDK();
+  const cdnApi = {
+    init(config = {}) {
+      return initSDK(config);
+    },
+    configure(config = {}) {
+      clientConfig = { ...(clientConfig || {}), ...(config || {}) };
+      if (config.clientId) clientId = config.clientId;
+      if (config.frontendUrl || config.backendUrl) {
+        serverFrontendUrl = config.frontendUrl || config.backendUrl;
+      }
+      return { success: true, config: clientConfig };
+    },
+    connectBackend(config = {}) {
+      if (typeof config === 'string') {
+        serverFrontendUrl = config;
+      } else if (config && typeof config === 'object') {
+        if (config.clientId) clientId = config.clientId;
+        if (config.url || config.backendUrl) serverFrontendUrl = config.url || config.backendUrl;
+      }
+      wsUrl = clientId ? `${protocol}//${host}/tunnel?clientId=${clientId}` : wsUrl;
+      connect();
+      return { success: true, backendUrl: serverFrontendUrl, clientId };
+    },
+    loadModel(modelUrl, metadata = {}) {
+      if (!modelUrl) return { success: false, error: 'Missing modelUrl' };
+      activeModelUrl = modelUrl;
+      window.dispatchEvent(new CustomEvent('nisa:sdk_load_model', { detail: { modelUrl, metadata } }));
+      return { success: true, modelUrl: activeModelUrl, metadata };
+    },
+    setProjectAdapter(adapter = {}) {
+      customProjectAdapter = adapter;
+      return { success: true };
+    },
+    discoverComponents() {
+      const elements = parseDOM();
+      return { components: elements, count: elements.length };
+    },
+    getCapabilities() {
+      return {
+        modelUrl: activeModelUrl,
+        powers: clientConfig?.powers || {
+          elementClicking: true,
+          formFilling: true,
+          navigation: true,
+          spotlightGuidance: true,
+          dynamicModals: true,
+          selfLearning: true,
+        },
+        learnedElementsCount: learnedElements.size,
+      };
+    },
+    executeAction(actionOrPlan, parameters = {}) {
+      if (sdkPaused) return { success: false, error: 'runtime_paused' };
+      const detail = typeof actionOrPlan === 'string'
+        ? { name: 'executeCharacterAction', args: { action: actionOrPlan, parameters } }
+        : { name: 'executeCharacterAction', args: actionOrPlan };
+      window.dispatchEvent(new CustomEvent('nesa:toolcall', { detail }));
+      return { success: true, dispatched: detail };
+    },
+    navigateToElement(targetKey, options = {}) {
+      if (sdkPaused) return { success: false, error: 'runtime_paused' };
+      const el = findElement(targetKey);
+      if (el) {
+        showVisualSpotlight(el, options.label || targetKey);
+        return { success: true, target: targetKey };
+      }
+      return { success: false, error: 'element_not_found' };
+    },
+    highlightElement(targetKey, label = '') {
+      const el = findElement(targetKey);
+      if (el) {
+        showVisualSpotlight(el, label || targetKey);
+        return { success: true, target: targetKey };
+      }
+      return { success: false, error: 'element_not_found' };
+    },
+    clickElement(targetKey) {
+      if (sdkPaused) return { success: false, error: 'runtime_paused' };
+      const el = findElement(targetKey);
+      if (!el) return { success: false, error: 'element_not_found' };
+      showVisualSpotlight(el, targetKey);
+      el.click();
+      return { success: true, clicked: targetKey };
+    },
+    exitFrame(options = {}) {
+      if (sdkPaused) return { success: false, error: 'runtime_paused' };
+      window.dispatchEvent(new CustomEvent('nesa:toolcall', { detail: { name: 'exitFrameAndNavigate', args: options } }));
+      return { success: true };
+    },
+    returnToFrame() {
+      window.dispatchEvent(new CustomEvent('nesa:toolcall', { detail: { name: 'returnToFrame', args: {} } }));
+      return { success: true };
+    },
+    pause() {
+      sdkPaused = true;
+      return { paused: true };
+    },
+    resume() {
+      sdkPaused = false;
+      return { paused: false };
+    },
+    dispose() {
+      sdkPaused = true;
+      if (observer) observer.disconnect();
+      if (ws) {
+        try { ws.close(); } catch { void 0; }
+      }
+      if (chatWidget && chatWidget.parentNode) chatWidget.remove();
+      if (chatPanel && chatPanel.parentNode) chatPanel.remove();
+      chatWidget = null;
+      chatPanel = null;
+      return { disposed: true };
+    }
+  };
+
+  if (typeof window !== 'undefined') {
+    if (!window.NishaSDK) window.NishaSDK = cdnApi;
+    window.NisaSDK = cdnApi;
+  }
+
+  if (clientId) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => initSDK());
+    } else {
+      initSDK();
+    }
   }
 })();
