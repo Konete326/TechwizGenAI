@@ -5,11 +5,11 @@ import CharacterRegistry from "./CharacterRegistry.js";
 
 const LOCOMOTION_KEY = "locomotion";
 const SPEED_TO_CLIP = {
-  slow: { name: "ladies_walk_002", fallback: "walk", timeScale: 0.85 },
-  normal: { name: "ladies_walk_002", fallback: "walk", timeScale: 1 },
-  quick: { name: "ladies_jog_001", fallback: "jog", timeScale: 1 },
-  fast: { name: "ladies_run_001", fallback: "run", timeScale: 1 },
-  run: { name: "ladies_run_001", fallback: "run", timeScale: 1 },
+  slow: { name: "walk", fallback: "walk", timeScale: 0.85 },
+  normal: { name: "walk", fallback: "walk", timeScale: 1 },
+  quick: { name: "jog", fallback: "jog", timeScale: 1 },
+  fast: { name: "run", fallback: "run", timeScale: 1 },
+  run: { name: "run", fallback: "run", timeScale: 1 },
 };
 
 function baseUrl() {
@@ -124,15 +124,22 @@ class BVHActionLibraryClass {
     const flip = adapter.vrm?.meta?.metaVersion === "0";
     const tracks = [];
     const times = Float32Array.from(raw.times);
+    const rotZ = new THREE.Quaternion(0, 0, 1, 0);
+    const tempQ = new THREE.Quaternion();
     for (const [bone, q] of Object.entries(raw.bones)) {
       const node = adapter.getHumanoidBone(bone);
       if (!node) continue;
+      const isUpperLeg = bone === "leftUpperLeg" || bone === "rightUpperLeg";
       const values = new Float32Array(q.length);
       for (let i = 0; i < q.length; i += 4) {
-        values[i] = flip ? -q[i] : q[i];
-        values[i + 1] = q[i + 1];
-        values[i + 2] = flip ? -q[i + 2] : q[i + 2];
-        values[i + 3] = q[i + 3];
+        tempQ.set(q[i], q[i + 1], q[i + 2], q[i + 3]);
+        if (isUpperLeg && Math.abs(tempQ.z) > 0.7) {
+          tempQ.multiply(rotZ);
+        }
+        values[i] = flip ? -tempQ.x : tempQ.x;
+        values[i + 1] = tempQ.y;
+        values[i + 2] = flip ? -tempQ.z : tempQ.z;
+        values[i + 3] = tempQ.w;
       }
       tracks.push(new THREE.QuaternionKeyframeTrack(`${node.name}.quaternion`, times, values));
     }

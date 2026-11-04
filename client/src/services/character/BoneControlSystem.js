@@ -310,6 +310,29 @@ class BoneControlSystemClass {
     }
   }
 
+  enforceLegSafety(adapter) {
+    if (!adapter) return;
+    const rotZ = this._tempQuatA.set(0, 0, 1, 0);
+    for (const bName of ["leftUpperLeg", "rightUpperLeg"]) {
+      const node = adapter.getHumanoidBone(bName);
+      if (!node) continue;
+      if (Math.abs(node.quaternion.z) > 0.75) {
+        node.quaternion.multiply(rotZ);
+      }
+      if (Math.abs(node.rotation.z) > 0.85) {
+        node.rotation.z = clamp(node.rotation.z, -0.45, 0.45);
+      }
+      node.rotation.x = clamp(node.rotation.x, -1.05, 0.75);
+    }
+    for (const bName of ["leftLowerLeg", "rightLowerLeg"]) {
+      const node = adapter.getHumanoidBone(bName);
+      if (!node) continue;
+      node.rotation.x = clamp(node.rotation.x, 0.0, 1.85);
+      node.rotation.y = clamp(node.rotation.y, -0.15, 0.15);
+      node.rotation.z = clamp(node.rotation.z, -0.15, 0.15);
+    }
+  }
+
   inspectRigState(adapter) {
     if (!adapter) return { available: false, bones: {} };
     if (adapter.root) adapter.root.updateMatrixWorld(true);

@@ -276,6 +276,7 @@ class CharacterControllerClass {
       BoneControlSystem.enforceForwardHandSafety(adapter, this._activeGesture?.name?.toUpperCase() || "");
     }
     AnimationManager.update(delta);
+    BoneControlSystem.enforceLegSafety(adapter);
     adapter.update(delta);
   }
 
@@ -368,6 +369,12 @@ class CharacterControllerClass {
       cur.x += (tgt.x - cur.x) * lerpFactor;
       cur.y += (tgt.y - cur.y) * lerpFactor;
       cur.z += (tgt.z - cur.z) * lerpFactor;
+      if (bName.includes("UpperLeg")) {
+        cur.x = Math.max(-0.95, Math.min(0.65, cur.x));
+        cur.z = Math.max(-0.35, Math.min(0.35, cur.z));
+      } else if (bName.includes("LowerLeg")) {
+        cur.x = Math.max(0, Math.min(1.85, cur.x));
+      }
       boneNode.rotation.set(cur.x, cur.y, cur.z);
     }
   }
