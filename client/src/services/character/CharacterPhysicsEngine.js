@@ -135,15 +135,17 @@ class CharacterPhysicsEngineClass {
   getGroundPosition(charWidth = 240, charHeight = 400, preferredX = null) {
     const vw = typeof window !== "undefined" ? window.innerWidth || 1280 : 1280;
     const vh = typeof window !== "undefined" ? window.innerHeight || 800 : 800;
-    const groundTop = Math.max(16, vh - charHeight - 6);
+    const minHeadroom = 24;
+    const safeHeight = Math.min(charHeight, Math.max(200, vh - minHeadroom - 12));
+    const groundTop = Math.max(minHeadroom, vh - safeHeight - 6);
     const defaultX = Math.max(24, vw - charWidth - 390);
     const rawX = Number.isFinite(preferredX) ? preferredX : defaultX;
-    const safeX = this.resolveObstacleFreeX(rawX, groundTop, charWidth, charHeight);
+    const safeX = this.resolveObstacleFreeX(rawX, groundTop, charWidth, safeHeight);
     return {
       x: Math.round(safeX),
       y: Math.round(groundTop),
       width: Math.round(charWidth),
-      height: Math.round(charHeight),
+      height: Math.round(safeHeight),
     };
   }
 
@@ -187,20 +189,22 @@ class CharacterPhysicsEngineClass {
       };
     }
 
+    const minHeadroom = 24;
+    const safeHeight = Math.min(charHeight, Math.max(200, vh - minHeadroom - 12));
     const r = element.getBoundingClientRect();
-    const topLandingY = Math.round(r.top - charHeight + 14);
-    const canStandOnTop = topLandingY >= 12 && r.width >= 90 && r.top <= vh - 40;
+    const topLandingY = Math.round(r.top - safeHeight + 14);
+    const canStandOnTop = topLandingY >= minHeadroom && r.width >= 90 && r.top <= vh - 40;
 
     if (canStandOnTop) {
       const centerX = r.left + r.width * 0.5 - charWidth * 0.5;
       const clampedX = Math.round(Math.max(12, Math.min(vw - charWidth - 12, centerX)));
       return {
         canStandOnTop: true,
-        surfaceType: r.top > vh - charHeight - STEP_UP_MAX_PX ? "step_up" : "jump_climb",
+        surfaceType: r.top > vh - safeHeight - STEP_UP_MAX_PX ? "step_up" : "jump_climb",
         x: clampedX,
         y: topLandingY,
         width: Math.round(charWidth),
-        height: Math.round(charHeight),
+        height: Math.round(safeHeight),
         surfaceRect: r,
       };
     }

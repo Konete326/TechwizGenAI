@@ -402,6 +402,9 @@ export function execPoint(ctrl, params = {}) {
   const offsetZ = 0.34;
   const isUp = normY > 0.25 || dir === "up" || dir === "top";
   const isDown = normY < -0.25 || dir === "down" || dir === "bottom";
+  const isSweep = params.gestureType === "wide_sweep" || params.gestureType === "sweep";
+  const spanX = Number.isFinite(params.spanX) ? params.spanX : 0.16;
+  const spanY = Number.isFinite(params.spanY) ? params.spanY : 0.08;
 
   ctrl.setLookTarget(THREE.MathUtils.clamp(normX, -0.85, 0.85), THREE.MathUtils.clamp(normY, -0.75, 0.75));
 
@@ -420,17 +423,23 @@ export function execPoint(ctrl, params = {}) {
       tick: (_delta, progress) => {
         const env = envelopeWeights(progress, 0.18, 0.22);
         const pulse = Math.sin(progress * Math.PI * 3) * 0.02 * env;
+        const sweepX = isSweep ? Math.sin(progress * Math.PI * 2) * spanX * env : 0;
+        const sweepY = params.gestureType === "wide_sweep" ? Math.cos(progress * Math.PI * 2) * spanY * env : 0;
         const adapter = ctrl._adapter;
         if (adapter?.getHumanoidBone(useLeft ? "leftUpperArm" : "rightUpperArm")) {
-          const target = BoneControlSystem.getRelativeBodyTarget(adapter, "chest", [offsetX, offsetY, offsetZ + pulse]);
+          const target = BoneControlSystem.getRelativeBodyTarget(adapter, "chest", [
+            offsetX + (useLeft ? sweepX : -sweepX),
+            offsetY + sweepY,
+            offsetZ + pulse,
+          ]);
           const sol = BoneControlSystem.solveArmIK(adapter, side, target);
           lerpArmToEuler(ctrl, useLeft ? "leftUpperArm" : "rightUpperArm", sol.upperEuler, env);
           lerpArmToEuler(ctrl, useLeft ? "leftLowerArm" : "rightLowerArm", sol.lowerEuler, env);
         } else if (useLeft) {
-          lerpArmToEuler(ctrl, "leftUpperArm", [0.18, -0.65, -0.42 + offsetY], env);
+          lerpArmToEuler(ctrl, "leftUpperArm", [0.18, -0.65 - sweepX * 0.4, -0.42 + offsetY + sweepY], env);
           lerpArmToEuler(ctrl, "leftLowerArm", [0.06, -0.72, -0.05], env);
         } else {
-          lerpArmToEuler(ctrl, "rightUpperArm", [0.18, 0.65, 0.42 - offsetY], env);
+          lerpArmToEuler(ctrl, "rightUpperArm", [0.18, 0.65 + sweepX * 0.4, 0.42 - offsetY - sweepY], env);
           lerpArmToEuler(ctrl, "rightLowerArm", [0.06, 0.72, 0.05], env);
         }
         if (isUp) lerpArmToEuler(ctrl, useLeft ? "leftShoulder" : "rightShoulder", [0, 0, useLeft ? 0.16 : -0.16], env);

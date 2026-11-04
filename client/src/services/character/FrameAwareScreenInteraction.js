@@ -31,7 +31,13 @@ export function computeRelativeTargetVector(controller, targetElement, fallbackD
     direction = dy > 0 ? "up" : "down";
   }
 
-  return { direction, relX, relY, rect: r };
+  const isWide = r.width > 220 || r.height > 160;
+  const isLargePanel = r.width > 380 || (r.width > 260 && r.height > 200);
+  const gestureType = isLargePanel ? "wide_sweep" : isWide ? "sweep" : "sharp_point";
+  const spanX = Math.min(0.42, Math.max(0.08, (r.width / 500) * 0.35));
+  const spanY = Math.min(0.36, Math.max(0.06, (r.height / 500) * 0.3));
+
+  return { direction, relX, relY, rect: r, gestureType, spanX, spanY };
 }
 
 export async function navigateToComponent(controller, queryOrKey, options = {}) {
@@ -85,7 +91,10 @@ export async function navigateToComponent(controller, queryOrKey, options = {}) 
       direction: rel.direction,
       x: rel.relX,
       y: rel.relY,
-      duration: options.duration || 2.4,
+      gestureType: rel.gestureType,
+      spanX: rel.spanX,
+      spanY: rel.spanY,
+      duration: options.duration || (rel.gestureType === "wide_sweep" ? 3.0 : 2.4),
     });
   } else {
     CharacterController.setLookTarget(0, 0);
