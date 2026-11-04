@@ -1,19 +1,3 @@
-/**
- * HardwareDiagnostics — Real-time WebGL, GPU, and Hardware Capability Assessment.
- *
- * Requirements:
- * - Detects WebGL 1.0 / WebGL 2.0 availability.
- * - Queries GPU vendor and renderer information via WEBGL_debug_renderer_info (when allowed by browser privacy).
- * - Distinguishes between:
- *   1. WebGL unavailable
- *   2. WebGL available with integrated graphics
- *   3. Hardware acceleration available
- *   4. Dedicated GPU info available (NVIDIA, AMD, Apple Silicon)
- *   5. Browser privacy masked GPU info (honestly reported)
- *   6. WebGL context lost
- * - Measures runtime FPS and recommends optimal pixel ratio & quality tier.
- */
-
 export const GPU_TIERS = {
   UNAVAILABLE: "UNAVAILABLE",
   INTEGRATED: "INTEGRATED",
@@ -30,10 +14,6 @@ class HardwareDiagnosticsClass {
     this._currentFps = 60;
   }
 
-  /**
-   * Run a comprehensive diagnostic check of the client's GPU & WebGL environment.
-   * @returns {object} Diagnostic report
-   */
   checkCapabilities() {
     if (this._cachedReport) return this._cachedReport;
 
@@ -46,26 +26,29 @@ class HardwareDiagnosticsClass {
       isDedicated: false,
       isHardwareAccelerated: false,
       isPrivacyMasked: false,
-      recommendedPixelRatio: 1.5,
+      recommendedPixelRatio: 1.25,
       maxTextureSize: 0,
       maxAnisotropy: 1,
       warnings: [],
       diagnosticMessage: "",
     };
 
-    // 1. Test Canvas & WebGL Creation
     const canvas = document.createElement("canvas");
     let gl = null;
 
     try {
       gl = canvas.getContext("webgl2");
       if (gl) report.webgl2Available = true;
-    } catch (_) {}
+    } catch {
+      void 0;
+    }
 
     if (!gl) {
       try {
         gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-      } catch (_) {}
+      } catch {
+        void 0;
+      }
     }
 
     if (!gl) {
@@ -78,7 +61,6 @@ class HardwareDiagnosticsClass {
 
     report.webglAvailable = true;
 
-    // 2. Query GPU Parameters
     try {
       report.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 2048;
 
@@ -100,12 +82,10 @@ class HardwareDiagnosticsClass {
     } catch (err) {
       report.warnings.push(`Could not query extended GL info: ${err.message}`);
     } finally {
-      // Clean up test context
       const loseExt = gl.getExtension("WEBGL_lose_context");
       if (loseExt) loseExt.loseContext();
     }
 
-    // 3. Classify GPU Tier
     const rLower = report.renderer.toLowerCase();
     const vLower = report.vendor.toLowerCase();
 
@@ -113,7 +93,7 @@ class HardwareDiagnosticsClass {
       report.tier = GPU_TIERS.SOFTWARE_EMULATED;
       report.isHardwareAccelerated = false;
       report.recommendedPixelRatio = 1.0;
-      report.diagnosticMessage = "Software rasterizer detected (no GPU hardware acceleration). Reduced quality mode active.";
+      report.diagnosticMessage = "Software rasterizer detected. Lightweight rendering active.";
     } else if (
       rLower.includes("nvidia") || rLower.includes("geforce") || rLower.includes("rtx") || rLower.includes("gtx") ||
       rLower.includes("radeon") || rLower.includes("rx ") ||
@@ -122,24 +102,24 @@ class HardwareDiagnosticsClass {
       report.tier = GPU_TIERS.DEDICATED;
       report.isDedicated = true;
       report.isHardwareAccelerated = true;
-      report.recommendedPixelRatio = Math.min(window.devicePixelRatio || 1, 2.0);
-      report.diagnosticMessage = `High-performance GPU detected (${report.renderer}). Full fidelity rendering active.`;
+      report.recommendedPixelRatio = Math.min(window.devicePixelRatio || 1, 1.25);
+      report.diagnosticMessage = `High-performance GPU detected (${report.renderer}). Lightweight high-FPS rendering active.`;
     } else if (rLower.includes("intel") || rLower.includes("uhd") || rLower.includes("iris") || rLower.includes("hd graphics")) {
       report.tier = GPU_TIERS.INTEGRATED;
       report.isDedicated = false;
       report.isHardwareAccelerated = true;
-      report.recommendedPixelRatio = Math.min(window.devicePixelRatio || 1, 1.75);
-      report.diagnosticMessage = `Integrated graphics detected (${report.renderer}). Balanced high-quality mode active.`;
+      report.recommendedPixelRatio = 1.0;
+      report.diagnosticMessage = `Integrated graphics detected (${report.renderer}). Lightweight balanced mode active.`;
     } else if (report.isPrivacyMasked || rLower.includes("angle") || rLower.includes("direct3d") || rLower.includes("opengl")) {
       report.tier = GPU_TIERS.HARDWARE_ACCELERATED_GENERIC;
       report.isHardwareAccelerated = true;
       report.isPrivacyMasked = true;
-      report.recommendedPixelRatio = Math.min(window.devicePixelRatio || 1, 1.75);
-      report.diagnosticMessage = `Hardware acceleration active. Specific GPU name is masked by browser privacy (${report.renderer}).`;
+      report.recommendedPixelRatio = Math.min(window.devicePixelRatio || 1, 1.15);
+      report.diagnosticMessage = `Hardware acceleration active (${report.renderer}).`;
     } else {
       report.tier = GPU_TIERS.HARDWARE_ACCELERATED_GENERIC;
       report.isHardwareAccelerated = true;
-      report.recommendedPixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+      report.recommendedPixelRatio = Math.min(window.devicePixelRatio || 1, 1.15);
       report.diagnosticMessage = "Hardware acceleration active.";
     }
 
@@ -147,10 +127,6 @@ class HardwareDiagnosticsClass {
     return report;
   }
 
-  /**
-   * Monitor frame rate on each render tick.
-   * @param {number} now
-   */
   tick(now = performance.now()) {
     const delta = now - this._lastFrameTime;
     this._lastFrameTime = now;

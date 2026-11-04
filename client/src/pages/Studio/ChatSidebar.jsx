@@ -66,6 +66,18 @@ export function ChatSidebar({
     }
   }, []);
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const list = (sessions || []).filter((s) => (s.title || "New Chat").toLowerCase().includes(q));
+    return [...list].sort((a, b) => {
+      const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return timeB - timeA;
+    });
+  }, [sessions, search]);
+
+  const grouped = useMemo(() => groupSessionsByDate(filtered), [filtered]);
+
   if (!isOpen) return null;
 
   const handleStartRename = (e, s) => {
@@ -87,24 +99,10 @@ export function ChatSidebar({
     }
   };
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const list = sessions.filter((s) => (s.title || "New Chat").toLowerCase().includes(q));
-    return [...list].sort((a, b) => {
-      const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
-      const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
-      return timeB - timeA;
-    });
-  }, [sessions, search]);
-
-  const grouped = useMemo(() => groupSessionsByDate(filtered), [filtered]);
-
   return (
     <>
       <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden" onClick={onClose} />
-      <aside className="w-68 max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:bg-surface-card max-md:shadow-2xl md:relative border-r border-border/80 flex flex-col bg-surface/60 dark:bg-zinc-950/80 backdrop-blur h-full shrink-0 animate-in slide-in-from-left-4 duration-200">
-        
-        {/* Top: New Chat & Close Sidebar */}
+      <aside data-nesa-target="sidebar" className="w-68 max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:bg-surface-card max-md:shadow-2xl md:relative border-r border-border/80 flex flex-col bg-surface/60 dark:bg-zinc-950/80 backdrop-blur h-full shrink-0 animate-in slide-in-from-left-4 duration-200">
         <div className="p-3 border-b border-border/70 flex items-center gap-2 shrink-0">
           <button
             type="button"
@@ -137,7 +135,6 @@ export function ChatSidebar({
           </button>
         </div>
 
-        {/* Search Conversations */}
         <div className="px-3 pt-2.5 pb-1 shrink-0">
           <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-surface border border-border/70 focus-within:border-accent transition-all">
             <MagnifyingGlass size={13} className="text-text-muted shrink-0" />
@@ -160,7 +157,6 @@ export function ChatSidebar({
           </div>
         </div>
 
-        {/* History Grouped by Timeline */}
         <div className="flex-1 overflow-y-auto px-2 py-2 space-y-4">
           {filtered.length === 0 ? (
             <div className="py-12 px-4 text-center text-xs text-text-muted space-y-1">
@@ -274,7 +270,6 @@ export function ChatSidebar({
           )}
         </div>
 
-        {/* Bottom User Profile Card */}
         <div className="p-3 border-t border-border/70 bg-surface/40 shrink-0">
           <div className="flex items-center justify-between gap-2 p-1.5 rounded-xl bg-surface-card/60 border border-border/60">
             <div className="flex items-center gap-2 min-w-0 flex-1">

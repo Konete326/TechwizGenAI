@@ -5,6 +5,7 @@ import { useNesaCallWidget } from "./useNesaCallWidget";
 import { useWakeLock } from "./useWakeLock";
 import { useNesaContextEvent } from "./useNesaContextEvent";
 import CharacterRegistry from "../../services/character/CharacterRegistry.js";
+import FrameAwareCharacterController from "../../services/character/FrameAwareCharacterController.js";
 
 export function useNesaCall({ onMicDenied, onToolCall, clientId } = {}) {
   const [callPhase, setCallPhase] = useState("ended");
@@ -64,6 +65,7 @@ export function useNesaCall({ onMicDenied, onToolCall, clientId } = {}) {
   const endCall = useCallback(() => {
     clearRingTimer();
     stopActiveMicStream();
+    FrameAwareCharacterController.resetImmediate();
     if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
     setDebouncedSpeaking(false);
     isCallActiveRef.current = false;

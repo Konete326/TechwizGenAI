@@ -4,6 +4,7 @@ import { VITE_API_URL } from "../../config/env";
 import { NesaCallProvider, useNesaCallContext } from "../../context/NesaCallContext";
 import { NesaCallInterface } from "../Studio/NesaCallInterface";
 import CharacterRegistry from "../../services/character/CharacterRegistry.js";
+import CharacterActionLearner from "../../services/character/CharacterActionLearner.js";
 import { PhoneCall, X } from "@phosphor-icons/react";
 
 const MODAL_TIMEOUT_MS = 120000;
@@ -57,7 +58,7 @@ function WidgetApp() {
       hasAutoStartedRef.current = true;
       c.startCall();
     }
-  }, [c.startCall]);
+  }, [c]);
 
   useEffect(() => {
     const isLive = Boolean(c.isCallActive && (c.isListening || c.isConnected));
@@ -127,7 +128,7 @@ function WidgetApp() {
         const modalPrompt = typeof e.data.content === 'string' && e.data.content.trim() ? ` (Context/Question: "${e.data.content.trim()}")` : '';
         const modalMessage = `[SYSTEM EVENT: User submitted text via Dynamic Modal "${modalTitle}"${modalPrompt}. Submitted text: """${value}"""]. Nisa, immediately acknowledge verbally in the user's language that you have received this exact submission ("Haan, mere paas aapka input pohanch chuka hai!"), read and reference the submitted details, and fulfill what the user asked.`;
 
-        let sent = false;
+        let sent;
         try {
           sent = Boolean(c.forceReply(modalMessage));
         } catch {
@@ -163,6 +164,15 @@ function WidgetApp() {
 
       if (e.data?.type === 'NISA_ELEMENT_DEMONSTRATED') {
         const { action, element } = e.data;
+        if (element) {
+          const key = element.id || element.text || element.xpath || element.element || 'learned_element';
+          CharacterActionLearner.learnUIElement(key, {
+            selector: element.id ? `#${element.id}` : null,
+            xpath: element.xpath || null,
+            text: element.text || key,
+            tagName: element.element || 'button',
+          });
+        }
         if (element && c.forceReply) {
           const textLabel = element.text ? `"${element.text}"` : `<${element.element}>`;
           c.forceReply(`[SYSTEM EVENT: User demonstrated manual ${action || 'interaction'} on element ${textLabel} with XPath "${element.xpath}". Nisa has now learned this element and its selector! Acknowledge warmly in your verbal reply in the user's language that you observed their action, understood it, and have now learned this element, and can click or perform this action for them whenever requested.]`);
@@ -172,7 +182,7 @@ function WidgetApp() {
 
     window.addEventListener('message', handleParentMsg);
     return () => window.removeEventListener('message', handleParentMsg);
-  }, [validParentOrigin, c.isCallActive, c.isListening, c.isConnected, c.forceReply, c.startCall, postModalResult]);
+  }, [validParentOrigin, c, postModalResult]);
 
   useEffect(() => {
     const handleAssistantText = (e) => {
@@ -276,7 +286,9 @@ function WidgetApp() {
                setLastDomHash(hash);
            }
         }
-      } catch (e) {}
+      } catch {
+        void 0;
+      }
     };
 
     const interval = setInterval(pollDom, 5000);
@@ -311,7 +323,7 @@ function WidgetApp() {
     };
     window.addEventListener("nesa:toolcall", handleToolCall);
     return () => window.removeEventListener("nesa:toolcall", handleToolCall);
-  }, [c.reposition, postToParent]);
+  }, [c, postToParent]);
 
   const isCallRunning = Boolean(c.isCallActive || c.callPhase === "ringing" || c.callPhase === "connected");
 

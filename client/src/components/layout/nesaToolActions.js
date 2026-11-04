@@ -2,14 +2,60 @@ import { respondToTool } from "@/pages/Studio/nesaTools";
 import { isAllowedRoute, userAskedFor } from "@/pages/Studio/nesaToolGuards";
 import { logDebug } from "@/pages/Studio/logger";
 import { runNesaDataTool } from "./nesaDataActions";
-import { GeminiCharacterBridge, CharacterRegistry, EmotionEngine, CharacterController, ScreenTargetManager } from "@/services/character";
+import {
+  GeminiCharacterBridge,
+  CharacterRegistry,
+  EmotionEngine,
+  CharacterController,
+  ScreenTargetManager,
+  FrameAwareCharacterController,
+  CharacterActionLearner,
+} from "@/services/character";
 
 function findTarget(targetKey) {
-  return document.querySelector(`[data-nesa-target="${targetKey}"]`) || document.getElementById(targetKey);
+  if (!targetKey || typeof document === "undefined") return null;
+  const direct =
+    document.querySelector(`[data-nesa-target="${targetKey}"]`) ||
+    document.getElementById(targetKey);
+  if (direct) return direct;
+
+  const learned = CharacterActionLearner.getLearnedUIElement(targetKey);
+  if (learned) {
+    if (learned.selector) {
+      try {
+        const el = document.querySelector(learned.selector);
+        if (el) return el;
+      } catch {
+        void 0;
+      }
+    }
+    if (learned.xpath) {
+      try {
+        const res = document.evaluate(learned.xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+        if (res.singleNodeValue) return res.singleNodeValue;
+      } catch {
+        void 0;
+      }
+    }
+  }
+
+  const q = String(targetKey).toLowerCase().trim();
+  const candidates = document.querySelectorAll("button, a, input, textarea, [role='button'], [data-nesa-target]");
+  for (const el of candidates) {
+    const text = (el.innerText || el.getAttribute("aria-label") || el.getAttribute("title") || el.getAttribute("placeholder") || "").toLowerCase();
+    if (text && (text.includes(q) || q.includes(text.trim()))) {
+      return el;
+    }
+  }
+  return null;
 }
 
 export function registerNesaActions(ctx) {
   const { navigate, pathname, endCall, reposition, setDrawerOpen, setCollapsed, setMicNotice, setLimitNotice } = ctx;
+
+  if (typeof window !== "undefined") {
+    window.__nesaDashboardActionsActive = true;
+  }
 
   const handleLogout = () => { if (endCall) endCall(); localStorage.removeItem("token"); localStorage.removeItem("user"); localStorage.removeItem("techwiz_custom_api_key"); navigate("/login"); };
   const handleMicLost = () => {
@@ -19,9 +65,45 @@ export function registerNesaActions(ctx) {
   const handleLimitReached = () => { if (endCall) endCall(); setLimitNotice(true); };
   const handleSidebarOpen = () => { if (window.innerWidth < 768) setDrawerOpen(true); else setCollapsed(false); };
 
+  const handleManualUserClick = (evt) => {
+    const el = evt.target?.closest?.("button, a, [role='button'], [data-nesa-target]");
+    if (!el) return;
+    const targetAttr = el.getAttribute("data-nesa-target");
+    const aria = el.getAttribute("aria-label");
+    const title = el.getAttribute("title");
+    const key = targetAttr || el.id || (el.innerText || aria || title || "").trim().slice(0, 32);
+    if (key) {
+      let selector = null;
+      if (el.id) selector = `#${el.id}`;
+      else if (targetAttr) selector = `[data-nesa-target="${targetAttr}"]`;
+      else if (aria) selector = `[aria-label="${aria.replace(/"/g, '\\"')}"]`;
+      else if (title) selector = `[title="${title.replace(/"/g, '\\"')}"]`;
+      CharacterActionLearner.learnUIElement(key, {
+        selector,
+        text: (el.innerText || aria || title || key).trim().slice(0, 48),
+        tagName: el.tagName?.toLowerCase() || "button",
+      });
+    }
+  };
+
+  const FRAME_KEEP_OPEN_TOOLS = new Set([
+    "repositionWidget",
+    "exitFrameAndNavigate",
+    "walkOnScreen",
+    "returnToFrame",
+    "executeCharacterAction",
+    "learnCharacterAction",
+    "inspectScreenComponent",
+    "clickScreenComponent",
+    "highlightScreenComponent",
+    "expressEmotion",
+  ]);
+
   const handleToolCall = async (e) => {
     const d = e?.detail || {}, route = d.args?.route || d.route, cid = d.id || d.callId || ("call_" + Date.now());
-    if (window.innerWidth < 768 && d.name !== "repositionWidget" && reposition) reposition("minimize");
+    if (window.innerWidth < 768 && !FRAME_KEEP_OPEN_TOOLS.has(d.name) && !FrameAwareCharacterController.isOutsideFrame() && reposition) {
+      reposition("minimize");
+    }
     if (d.name === "navigatePage") {
       if (!route) respondToTool(cid, "navigatePage", { status: "error", message: "Missing route" });
       else if (!isAllowedRoute(route)) respondToTool(cid, "navigatePage", { status: "error", message: `Route ${route} is outside the allowed app routes and was not opened` });
@@ -98,10 +180,50 @@ export function registerNesaActions(ctx) {
       respondToTool(cid, "executeCharacterAction", res);
       return;
     }
+    if (d.name === "learnCharacterAction") {
+      const args = d.args || d;
+      const res = await GeminiCharacterBridge.learnAction(args);
+      respondToTool(cid, "learnCharacterAction", res);
+      return;
+    }
+    if (d.name === "exitFrameAndNavigate") {
+      const args = d.args || d;
+      const res = await FrameAwareCharacterController.exitFrameAndNavigate(args);
+      respondToTool(cid, "exitFrameAndNavigate", res);
+      return;
+    }
+    if (d.name === "walkOnScreen") {
+      const args = d.args || d;
+      const res = await FrameAwareCharacterController.walkAlongBottom(args.direction || "patrol", args);
+      respondToTool(cid, "walkOnScreen", res);
+      return;
+    }
+    if (d.name === "returnToFrame") {
+      const res = await FrameAwareCharacterController.returnToFrame();
+      respondToTool(cid, "returnToFrame", res);
+      return;
+    }
     if (d.name === "inspectScreenComponent") {
-      const target = d.args?.target || d.target || "this component";
-      const res = await ScreenTargetManager.inspectAndExplain(target, d.args || d);
+      const target = d.args?.target || d.target || d.args?.targetComponent || "this component";
+      const res = FrameAwareCharacterController.isOutsideFrame()
+        ? await FrameAwareCharacterController.navigateToComponent(target, d.args || d)
+        : await ScreenTargetManager.inspectAndExplain(target, d.args || d);
       respondToTool(cid, "inspectScreenComponent", res);
+      return;
+    }
+    if (d.name === "clickScreenComponent") {
+      const target = d.args?.target || d.target || d.args?.targetComponent;
+      const res = await FrameAwareCharacterController.clickComponent(target);
+      respondToTool(cid, "clickScreenComponent", res);
+      return;
+    }
+    if (d.name === "highlightScreenComponent") {
+      const target = d.args?.target || d.target || d.args?.targetComponent;
+      const resolved = ScreenTargetManager.resolveTarget(target);
+      if (resolved?.element) {
+        FrameAwareCharacterController.highlightElement(resolved.element, d.args?.duration || 4000);
+      }
+      respondToTool(cid, "highlightScreenComponent", { success: Boolean(resolved?.element), target: resolved?.label || target });
       return;
     }
     if (d.name === "switchCharacter") {
@@ -131,6 +253,19 @@ export function registerNesaActions(ctx) {
     await runNesaDataTool(ctx, d, cid);
   };
 
-  window.addEventListener("nesa:toolcall", handleToolCall); window.addEventListener("auth:logout", handleLogout); window.addEventListener("nesa:mic_lost", handleMicLost); window.addEventListener("nesa:limit_reached", handleLimitReached); window.addEventListener("app:sidebar:open", handleSidebarOpen);
-  return () => { window.removeEventListener("nesa:toolcall", handleToolCall); window.removeEventListener("auth:logout", handleLogout); window.removeEventListener("nesa:mic_lost", handleMicLost); window.removeEventListener("nesa:limit_reached", handleLimitReached); window.removeEventListener("app:sidebar:open", handleSidebarOpen); };
+  window.addEventListener("nesa:toolcall", handleToolCall);
+  window.addEventListener("click", handleManualUserClick, true);
+  window.addEventListener("auth:logout", handleLogout);
+  window.addEventListener("nesa:mic_lost", handleMicLost);
+  window.addEventListener("nesa:limit_reached", handleLimitReached);
+  window.addEventListener("app:sidebar:open", handleSidebarOpen);
+  return () => {
+    window.__nesaDashboardActionsActive = false;
+    window.removeEventListener("nesa:toolcall", handleToolCall);
+    window.removeEventListener("click", handleManualUserClick, true);
+    window.removeEventListener("auth:logout", handleLogout);
+    window.removeEventListener("nesa:mic_lost", handleMicLost);
+    window.removeEventListener("nesa:limit_reached", handleLimitReached);
+    window.removeEventListener("app:sidebar:open", handleSidebarOpen);
+  };
 }

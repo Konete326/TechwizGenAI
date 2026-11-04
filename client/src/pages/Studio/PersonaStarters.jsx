@@ -1,6 +1,5 @@
-import { Sparkle, Code, ChartBar, FileText, GitFork, ArrowRight, Lightbulb, Compass } from "@phosphor-icons/react";
+import { Code, ChartBar, FileText, ArrowRight, Lightbulb } from "@phosphor-icons/react";
 import logoImg from "@/assets/logo.png";
-import { ProviderIcon } from "./ModelSelector";
 
 const QUICK_STARTERS = [
   {
@@ -33,11 +32,9 @@ const QUICK_STARTERS = [
   }
 ];
 
-export function PersonaStarters({ persona = "general", onSelectStarter, selectedModel = "gemini-3.6-flash" }) {
+export function PersonaStarters({ onSelectStarter }) {
   return (
     <div className="w-full max-w-3xl mx-auto px-4 py-8 sm:py-16 flex flex-col items-center text-center animate-in fade-in duration-300">
-      
-      {/* Emblem & Branding */}
       <div className="relative mb-4 group">
         <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-surface-card border border-border shadow-xl flex items-center justify-center p-3 relative z-10 transition-transform group-hover:scale-105 duration-200">
           <img src={logoImg} alt="Techwiz GenAI" className="w-full h-full object-contain" />
@@ -45,7 +42,6 @@ export function PersonaStarters({ persona = "general", onSelectStarter, selected
         <div className="absolute inset-0 rounded-2xl bg-accent/20 blur-xl -z-0 scale-125 opacity-70 group-hover:opacity-100 transition-opacity" />
       </div>
 
-      {/* Greeting Title */}
       <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold text-text-primary tracking-tight mb-2">
         What can I help you with today?
       </h1>
@@ -53,7 +49,6 @@ export function PersonaStarters({ persona = "general", onSelectStarter, selected
         Choose a prompt starter below, ask complex coding questions, generate artifacts, or chat naturally by voice with Nisa.
       </p>
 
-      {/* 4-Card Starter Grid (LibreChat Style) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full text-left">
         {QUICK_STARTERS.map((item, idx) => {
           const Icon = item.icon;

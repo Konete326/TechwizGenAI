@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { PhoneCall, Trash, DownloadSimple, SidebarSimple, Plus } from "@phosphor-icons/react";
 import { useToast } from "@/context/ToastContext";
@@ -48,13 +48,13 @@ export function Studio() {
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
 
-  const [prevSessionId, setPrevSessionId] = useState(null);
-  if (activeSessionId !== prevSessionId) {
-    setPrevSessionId(activeSessionId);
-    if (activeSession?.persona && activeSession.persona !== activePersona) {
-      setActivePersona(activeSession.persona);
+  const handleSelectSession = (sid) => {
+    setActiveSessionId(sid);
+    const targetSession = sessions.find((s) => s.id === sid);
+    if (targetSession?.persona) {
+      setActivePersona(targetSession.persona);
     }
-  }
+  };
 
   const handleSelectPersona = (id) => {
     setActivePersona(id);
@@ -65,7 +65,9 @@ export function Studio() {
     setSelectedModel(id);
     try {
       localStorage.setItem("selected_ai_model", id);
-    } catch (_) {}
+    } catch {
+      void 0;
+    }
   };
 
   const { handleSendMessage, handleRegenerate, abortControllerRef } = useStudioStream({
@@ -119,25 +121,19 @@ export function Studio() {
 
   return (
     <div className="flex h-full w-full bg-surface-base text-text-primary overflow-hidden select-none">
-      {/* LibreChat Collapsible Sidebar */}
       <ChatSidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         sessions={sessions}
         activeSessionId={activeSessionId}
-        onSelectSession={setActiveSessionId}
+        onSelectSession={handleSelectSession}
         onNewChat={() => createSession(activePersona)}
         onDeleteSession={handleDeleteSession}
         onRenameSession={renameSession}
       />
 
-      {/* Main Chat Interface */}
       <main className="flex-1 flex flex-col h-full min-w-0 relative bg-surface-base dark:bg-[#212121] overflow-hidden">
-        
-        {/* LibreChat Top Header Bar */}
         <div className="h-13 border-b border-border/80 dark:border-white/10 px-3 sm:px-4 flex items-center justify-between bg-surface-card/60 dark:bg-zinc-950/40 backdrop-blur-md shrink-0 z-10">
-          
-          {/* Left: Sidebar Toggle, New Chat, Active Title */}
           <div className="flex items-center gap-2 truncate pr-2">
             {!isSidebarOpen && (
               <div className="flex items-center gap-1 shrink-0">
@@ -153,6 +149,7 @@ export function Studio() {
                 </button>
                 <button
                   type="button"
+                  data-nesa-target="new_chat_btn"
                   onClick={() => createSession(activePersona)}
                   title="New Chat"
                   aria-label="New Chat"
@@ -170,7 +167,6 @@ export function Studio() {
             </div>
           </div>
 
-          {/* Center: Model Selector Dropdown */}
           <div className="hidden sm:flex items-center justify-center shrink-0">
             <ModelSelector
               selectedModel={selectedModel}
@@ -178,11 +174,10 @@ export function Studio() {
             />
           </div>
 
-          {/* Right: Actions (Call Nesa, Presets, Clear, Export) */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Call Nesa 3D Companion Button */}
             <button
               type="button"
+              data-nesa-target="call_nisa_btn"
               onClick={startCall}
               disabled={isStreaming || isCallActive}
               title="Call Nisa (3D Avatar & Voice Companion)"
@@ -194,7 +189,6 @@ export function Studio() {
               <span className="hidden md:inline">Call Nisa</span>
             </button>
 
-            {/* Persona Preset Selector */}
             <div className="hidden lg:block">
               <PersonaSelector
                 selectedPersona={activePersona}
@@ -203,7 +197,6 @@ export function Studio() {
               />
             </div>
 
-            {/* Clear Conversation */}
             <button
               type="button"
               data-nesa-target="clear_chat_btn"
@@ -216,7 +209,6 @@ export function Studio() {
               <Trash size={15} />
             </button>
 
-            {/* Export Chat */}
             <button
               type="button"
               data-nesa-target="export_chat_btn"
@@ -231,7 +223,6 @@ export function Studio() {
           </div>
         </div>
 
-        {/* Chat Canvas & Input Area / Split Screen for Artifacts */}
         <div className="flex-1 flex min-w-0 h-full overflow-hidden relative">
           <div
             className={`flex flex-col min-w-0 h-full transition-all duration-200 ${
@@ -271,7 +262,6 @@ export function Studio() {
             />
           </div>
 
-          {/* Artifact Sidecar Panel */}
           {activeArtifact && (
             <ArtifactPanel
               key={activeArtifact.id || activeArtifact.url || "active-artifact"}
@@ -282,7 +272,6 @@ export function Studio() {
         </div>
       </main>
 
-      {/* Clear Chat Confirmation Modal */}
       <ConfirmModal
         isOpen={isClearModalOpen}
         onClose={() => setIsClearModalOpen(false)}

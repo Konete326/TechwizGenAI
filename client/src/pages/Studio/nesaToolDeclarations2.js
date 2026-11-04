@@ -63,31 +63,131 @@ export const NESA_TOOL_DECLARATIONS_2 = [
   },
   {
     name: "executeCharacterAction",
-    description: "Request the 3D character (Nisa) to perform a physical action, spatial movement, or gesture. Actions: move_forward, move_backward, step_back, come_closer, move_away, move_left, move_right, turn_body_left, turn_body_right, turn_around, show_back, face_camera, walk, walk_to, handshake, handshake_greeting, extend_hand, reach_out, clap, wave (right/left/both), point (left/right/up/down), raise_hand, lower_hands, return_to_center, stand_straight, reset_pose, nod, shake_head, adjust_hair, smile, wide_smile, show_teeth, laugh, thinking, greeting.",
+    description: "Request the 3D character (Nisa) to perform a physical action, spatial movement, gesture, or dynamically self-learn a new action. Actions: exit_frame, come_outside, step_out, bahar_aao, walk_bottom, roam_bottom, walk_left, walk_right, walk_center, look_around, look_everywhere, return_to_frame, go_back, wapas_jao, andar_jao, move_forward, move_backward, step_back, come_closer, move_away, move_left, move_right, turn_body_left, turn_body_right, turn_around, show_back, face_camera, walk, walk_to, handshake, handshake_greeting, extend_hand, reach_out, clap, wave, wave_right, wave_left, wave_both, point, point_left, point_right, point_up, point_down, raise_hand, lower_hands, return_to_center, stand_straight, reset_pose, nod, shake_head, adjust_hair, smile, wide_smile, show_teeth, laugh, thinking, greeting, salute, adab, namaste, thumbs_up, peace_sign, heart_hands, cross_arms, hands_on_hips, stretch, celebrate, dance, jump, spin, curtsy, blow_kiss, listen_closely, wink, OR any custom action name.",
     parameters: {
       type: "OBJECT",
       properties: {
         actionId: {
           type: "STRING",
-          description: "Action identifier to execute (e.g. handshake, move_forward, move_backward, turn_around, face_camera, walk, point_left, point_right, return_to_center, stand_straight, show_teeth, laugh, wave, clap)."
+          description: "Action identifier to execute or self-learn (e.g. exit_frame, walk_bottom, look_around, return_to_frame, handshake, salute, adab, dance, spin, wave, clap)."
         },
         parameters: {
           type: "OBJECT",
-          description: "Optional action parameters (e.g. { direction: 'left' } for point, { z: 0.6 } for walk, { intensity: 0.9 } for smile/teeth)."
+          description: "Optional action parameters (e.g. { direction: 'left' }, { description: 'raise both hands and bow' } for learning a new gesture)."
         }
       },
       required: ["actionId"]
     }
   },
   {
+    name: "learnCharacterAction",
+    description: "Teach, validate, and permanently save a new 3D physical gesture or action to Nisa's self-learning memory so she can perform it now and in the future.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        actionId: {
+          type: "STRING",
+          description: "Unique name of the new action (e.g. 'royal_salute', 'adab', 'victory_dance')."
+        },
+        description: {
+          type: "STRING",
+          description: "Natural description of how Nisa's arms, hands, head, spine, or legs should move."
+        },
+        duration: {
+          type: "NUMBER",
+          description: "Duration in seconds (default 2.2)."
+        }
+      },
+      required: ["actionId", "description"]
+    }
+  },
+  {
+    name: "exitFrameAndNavigate",
+    description: "Step out of the video call window onto the main screen with a smooth exit animation (leaving the video call frame behind as an empty window without buttons), walk along the bottom of the screen, look around everywhere, or walk to a specific UI component.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        target: {
+          type: "STRING",
+          description: "Optional UI component to walk to after stepping out (e.g. 'sidebar', 'chat_input', 'model_selector', 'settings'). Omit to step out and walk along the bottom of the screen."
+        },
+        direction: {
+          type: "STRING",
+          description: "Optional direction to walk along the bottom of the screen ('left', 'right', 'center', or 'patrol')."
+        },
+        click: {
+          type: "BOOLEAN",
+          description: "Whether Nisa should also click the target component once she reaches it."
+        }
+      }
+    }
+  },
+  {
+    name: "walkOnScreen",
+    description: "Walk along the bottom of the screen (left, right, center, or patrol across the bottom) while looking around everywhere.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        direction: {
+          type: "STRING",
+          description: "Direction to walk along the bottom of the screen: 'left', 'right', 'center', or 'patrol'."
+        },
+        lookAround: {
+          type: "BOOLEAN",
+          description: "Whether Nisa should look around everywhere while walking (default true)."
+        }
+      }
+    }
+  },
+  {
+    name: "returnToFrame",
+    description: "Smoothly walk Nisa from the bottom of the screen back to the empty video call window and step back inside into her normal portrait frame.",
+    parameters: {
+      type: "OBJECT",
+      properties: {}
+    }
+  },
+  {
     name: "inspectScreenComponent",
-    description: "Look at and explain an on-screen UI component when the user asks 'yahan dekho, ye component kya hai', 'look here', or asks about a UI element. Nisha identifies the component, turns her head and gaze toward its position, points towards it, and explains its purpose.",
+    description: "Look at, walk to, point at, highlight, and explain an on-screen UI component when the user asks 'yahan dekho, ye component kya hai', 'look here', or asks about a UI element.",
     parameters: {
       type: "OBJECT",
       properties: {
         target: {
           type: "STRING",
           description: "Name, direction, or description of the UI component to inspect (e.g. 'sidebar', 'model_selector', 'chat_input', 'call_nisa_btn', 'left', 'right', 'top', 'bottom', 'center', 'this component')."
+        }
+      },
+      required: ["target"]
+    }
+  },
+  {
+    name: "clickScreenComponent",
+    description: "Have Nisa physically step out / walk to a UI component on the screen, reach out, and click it.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        target: {
+          type: "STRING",
+          description: "Name, text, or key of the UI button or link to click."
+        }
+      },
+      required: ["target"]
+    }
+  },
+  {
+    name: "highlightScreenComponent",
+    description: "Highlight an on-screen UI component with a glowing spotlight ring.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        target: {
+          type: "STRING",
+          description: "Name, text, or key of the UI component to highlight."
+        },
+        duration: {
+          type: "NUMBER",
+          description: "Duration in milliseconds (default 4000)."
         }
       },
       required: ["target"]

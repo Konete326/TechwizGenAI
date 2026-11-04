@@ -28,26 +28,36 @@ export function NesaCallInterface({
 
   useEffect(() => {
     if (callPhase === "ringing") {
-      setShowRinging(true);
-      setIsFadingRinging(false);
+      const initTimer = setTimeout(() => {
+        setShowRinging(true);
+        setIsFadingRinging(false);
+      }, 0);
       const stopTone = playRingingTone();
       const isTopWindow = typeof window !== "undefined" && window.self === window.top;
       const hasUserActive = typeof navigator !== "undefined" && Boolean(navigator.userActivation?.hasBeenActive);
       const hasVib = isTopWindow && hasUserActive && typeof navigator !== "undefined" && typeof navigator.vibrate === "function";
-      const doVib = () => { try { if (navigator.userActivation?.hasBeenActive) navigator.vibrate([400, 200, 400, 1000]); } catch (_) {} };
+      const doVib = () => { try { if (navigator.userActivation?.hasBeenActive) navigator.vibrate([400, 200, 400, 1000]); } catch { void 0; } };
       if (hasVib) doVib();
       const vibId = hasVib ? setInterval(doVib, 2000) : null;
-      return () => { stopTone(); if (vibId) clearInterval(vibId); if (hasVib) { try { navigator.vibrate(0); } catch (_) {} } };
+      return () => {
+        clearTimeout(initTimer);
+        stopTone();
+        if (vibId) clearInterval(vibId);
+        if (hasVib) { try { navigator.vibrate(0); } catch { void 0; } }
+      };
     }
     if (callPhase === "connected") {
-      setIsFadingRinging(true);
+      const startFade = setTimeout(() => setIsFadingRinging(true), 0);
       const fadeTimer = setTimeout(() => { setShowRinging(false); setIsFadingRinging(false); }, 700);
       const timer = setInterval(() => setDuration((p) => p + 1), 1000);
-      return () => { clearTimeout(fadeTimer); clearInterval(timer); };
+      return () => { clearTimeout(startFade); clearTimeout(fadeTimer); clearInterval(timer); };
     }
-    setShowRinging(false);
-    setIsFadingRinging(false);
-    setDuration(0);
+    const resetTimer = setTimeout(() => {
+      setShowRinging(false);
+      setIsFadingRinging(false);
+      setDuration(0);
+    }, 0);
+    return () => clearTimeout(resetTimer);
   }, [callPhase]);
 
   useEffect(() => {

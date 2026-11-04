@@ -1,5 +1,5 @@
 import { useRef, useEffect } from "react";
-import { ArrowUp, Paperclip, Stop, Microphone, Plus, Globe } from "@phosphor-icons/react";
+import { ArrowUp, Stop, Microphone, Plus } from "@phosphor-icons/react";
 import { useChatInputSubmit } from "./useChatInputSubmit";
 import { useSpeechToText } from "./useSpeechToText";
 import { ImageCropModal } from "./ImageCropModal";
@@ -68,7 +68,7 @@ export function ChatInput({
   });
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 md:px-8 pb-3 sm:pb-4 pt-1 shrink-0">
+    <div data-nesa-target="chat_input_dock" className="w-full max-w-4xl mx-auto px-3 sm:px-6 md:px-8 pb-3 sm:pb-4 pt-1 shrink-0">
       <form onSubmit={handleFormSubmit} className="relative w-full">
         <input
           ref={fileInputRef}
@@ -79,10 +79,7 @@ export function ChatInput({
           className="hidden"
         />
 
-        {/* Floating LibreChat Input Container */}
         <div className="flex flex-col rounded-3xl bg-surface-card/95 dark:bg-zinc-900/90 border border-border/80 dark:border-white/10 shadow-lg dark:shadow-2xl backdrop-blur-md transition-all focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/10 p-2.5 sm:p-3 space-y-2">
-          
-          {/* Attached Files Preview */}
           <AttachedPreview
             attachedImages={currentImgList}
             attachedDocs={attachedDocs}
@@ -90,9 +87,9 @@ export function ChatInput({
             onRemoveDoc={removeDoc}
           />
 
-          {/* Text Input Area */}
           <textarea
             ref={textareaRef}
+            data-nesa-target="chat_input"
             rows={1}
             value={inputPrompt}
             onChange={(e) => setInputPrompt(e.target.value)}
@@ -102,10 +99,7 @@ export function ChatInput({
             className="w-full bg-transparent text-text-primary text-xs sm:text-[13px] resize-none focus:outline-none px-2 py-1 leading-relaxed max-h-40 placeholder:text-text-muted"
           />
 
-          {/* Bottom Bar Inside Input Box */}
           <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/40 dark:border-white/5">
-            
-            {/* Left Controls: Attachments & Presets */}
             <div className="flex items-center gap-1.5 flex-wrap">
               <button
                 type="button"
@@ -144,7 +138,6 @@ export function ChatInput({
               )}
             </div>
 
-            {/* Right Controls: STT & Submit / Stop Button */}
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
@@ -174,6 +167,7 @@ export function ChatInput({
               ) : (
                 <button
                   type="submit"
+                  data-nesa-target="chat_send"
                   disabled={!inputPrompt.trim() && !hasAttachment}
                   className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:bg-accent-hover transition-all cursor-pointer shadow-xs shrink-0"
                   title="Send message (Enter)"
@@ -183,12 +177,10 @@ export function ChatInput({
                 </button>
               )}
             </div>
-
           </div>
         </div>
       </form>
 
-      {/* LibreChat Footer Disclaimer */}
       <p className="text-[10px] text-center text-text-muted/70 mt-1.5 select-none font-sans">
         Techwiz AI can make mistakes. Verify important information.
       </p>
