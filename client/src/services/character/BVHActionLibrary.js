@@ -211,6 +211,10 @@ class BVHActionLibraryClass {
     AnimationManager.stopClip(name, fade);
   }
 
+  stopLocomotion(fade = 0.3) {
+    AnimationManager.stopClip(LOCOMOTION_KEY, fade);
+  }
+
   beginLocomotion(speed = "normal") {
     const choice = SPEED_TO_CLIP[String(speed).toLowerCase()] || SPEED_TO_CLIP.normal;
     const clipName = this.has(choice.name) ? choice.name : choice.fallback || choice.name;

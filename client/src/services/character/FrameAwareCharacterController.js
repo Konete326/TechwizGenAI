@@ -70,18 +70,19 @@ class FrameAwareCharacterControllerClass {
     this._transitionId += 1;
     this.clearHighlight();
     this._currentTargetComponent = null;
-    if (this._state !== FRAME_STATES.IN_FRAME) {
-      this._setState(FRAME_STATES.IN_FRAME);
-    }
+    if (this._state !== FRAME_STATES.IN_FRAME) this._setState(FRAME_STATES.IN_FRAME);
+  }
+
+  async decelerateAndHalt() {
+    if (this._state !== FRAME_STATES.NAVIGATING_TO_TARGET) return;
+    this._transitionId += 1;
+    CharacterController.stopActiveGesture(0.32);
+    this._setState(FRAME_STATES.OUTSIDE_FRAME, { position: { ...this._outsidePosition } });
+    await CharacterController._execFaceCamera();
   }
 
   getOutsideRect() {
-    return {
-      left: this._outsidePosition.x,
-      top: this._outsidePosition.y,
-      width: this._outsidePosition.width,
-      height: this._outsidePosition.height,
-    };
+    return { left: this._outsidePosition.x, top: this._outsidePosition.y, width: this._outsidePosition.width, height: this._outsidePosition.height };
   }
 
   getFrameRect() { return { ...this._frameRect }; }
@@ -99,14 +100,8 @@ class FrameAwareCharacterControllerClass {
   }
 
   setFrameRect(rect) {
-    if (!rect) return;
-    if (rect.width > 20 && rect.height > 20 && rect.left > -1000 && rect.top > -1000) {
-      this._frameRect = {
-        left: Math.round(rect.left),
-        top: Math.round(rect.top),
-        width: Math.round(rect.width),
-        height: Math.round(rect.height),
-      };
+    if (rect?.width > 20 && rect?.height > 20 && rect?.left > -1000 && rect?.top > -1000) {
+      this._frameRect = { left: Math.round(rect.left), top: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) };
     }
   }
 
@@ -225,6 +220,7 @@ class FrameAwareCharacterControllerClass {
       position: { x: startX, y: startY, width: outW, height: outH },
     });
 
+    const myTid = this._transitionId;
     const startTime = performance.now();
     let rafId = null;
     await new Promise((resolve) => {
@@ -233,6 +229,10 @@ class FrameAwareCharacterControllerClass {
         : CharacterController._execWalk({ duration: durationSec, direction: walkDir, speed: speedKey, z: 0.08 });
 
       const stepFrame = (now) => {
+        if (this._transitionId !== myTid) {
+          resolve();
+          return;
+        }
         const p = Math.min(1, (now - startTime) / (durationSec * 1000));
         const pt = safePath.sampleAt(p);
         this._emitContinuousMove({ x: pt.x, y: pt.y, width: outW, height: outH }, true);
@@ -245,8 +245,10 @@ class FrameAwareCharacterControllerClass {
       rafId = requestAnimationFrame(stepFrame);
     });
     if (rafId && typeof cancelAnimationFrame === "function") cancelAnimationFrame(rafId);
-    this._emitContinuousMove({ x: endX, y: endY, width: outW, height: outH }, true);
-    await CharacterController._execFaceCamera();
+    if (this._transitionId === myTid) {
+      this._emitContinuousMove({ x: endX, y: endY, width: outW, height: outH }, true);
+      await CharacterController._execFaceCamera();
+    }
   }
 
   async exitFrameAndNavigate(params = {}, extraOptions = {}) {

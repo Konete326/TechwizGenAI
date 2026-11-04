@@ -12,14 +12,33 @@ function computeResponsiveOutsideSize() {
   return { width, height, vw, vh };
 }
 
+function getBottomDockOffset() {
+  if (typeof document === "undefined") return 6;
+  const dock = document.querySelector('[data-nesa-target="chat_input_dock"], form');
+  if (dock && typeof dock.getBoundingClientRect === "function") {
+    const r = dock.getBoundingClientRect();
+    const vh = window.innerHeight || 800;
+    if (r.height > 30 && r.top < vh) {
+      const overlapH = vh - r.top;
+      if (overlapH > 16 && overlapH < 260) {
+        return Math.min(115, Math.round(overlapH + 8));
+      }
+    }
+  }
+  return 6;
+}
+
 function resolveSafeOutsidePosition(rawPos) {
   const { width: defW, height: defH, vw, vh } = computeResponsiveOutsideSize();
   const safeW = Number.isFinite(rawPos?.width) && rawPos.width >= 120 ? Math.round(rawPos.width) : defW;
   const safeH = Number.isFinite(rawPos?.height) && rawPos.height >= 180 ? Math.round(rawPos.height) : defH;
+  const bottomOffset = getBottomDockOffset();
   const rawX = Number.isFinite(rawPos?.x) ? rawPos.x : Math.max(24, vw - safeW - 390);
-  const rawY = Number.isFinite(rawPos?.y) ? rawPos.y : Math.max(24, vh - safeH - 6);
+  const rawY = Number.isFinite(rawPos?.y) ? rawPos.y : Math.max(24, vh - safeH - bottomOffset);
   const safeX = Math.round(Math.max(12, Math.min(Math.max(12, vw - safeW - 12), rawX)));
-  const safeY = Math.round(Math.max(12, Math.min(Math.max(12, vh - safeH), rawY)));
+  const isNearFloor = rawY >= vh - safeH - 35;
+  const maxAllowedY = isNearFloor ? Math.max(12, vh - safeH - bottomOffset) : Math.max(12, vh - safeH);
+  const safeY = Math.round(Math.max(12, Math.min(maxAllowedY, rawY)));
   return { x: safeX, y: safeY, width: safeW, height: safeH };
 }
 
@@ -31,7 +50,7 @@ function getOrCreateOutsidePresenter() {
     el.id = "nisa-outside-presenter";
     el.style.cssText = [
       "position:fixed",
-      "z-index:9999",
+      "z-index:99999",
       "pointer-events:none",
       "display:none",
       "will-change:left,top,width,height",
@@ -96,6 +115,17 @@ export function useFrameAwarePresentation({ containerRef, canvasRef, rendererRef
       presenter.style.height = `${safePos.height}px`;
     };
     window.addEventListener("nisa:frame_move", handleContinuousMove);
+
+    const handleGlobalClickInterrupt = (e) => {
+      if (!FrameAwareCharacterController.isOutsideFrame()) return;
+      if (FrameAwareCharacterController.getState() !== FRAME_STATES.NAVIGATING_TO_TARGET) return;
+      const target = e.target;
+      if (!target?.closest) return;
+      if (target.closest("button, input, textarea, select, a, [role='button']")) {
+        FrameAwareCharacterController.decelerateAndHalt();
+      }
+    };
+    window.addEventListener("click", handleGlobalClickInterrupt, true);
 
     let isDragging = false;
     let dragStartX = 0;
@@ -381,6 +411,7 @@ export function useFrameAwarePresentation({ containerRef, canvasRef, rendererRef
       window.removeEventListener("pointerup", handleWindowPointerUp);
       window.removeEventListener("resize", updateRect);
       window.removeEventListener("nisa:frame_move", handleContinuousMove);
+      window.removeEventListener("click", handleGlobalClickInterrupt, true);
       unsub();
       const presenter = typeof document !== "undefined" ? document.getElementById("nisa-outside-presenter") : null;
       if (initialCanvas && initialContainer && initialCanvas.parentElement !== initialContainer) {

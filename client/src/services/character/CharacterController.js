@@ -387,6 +387,19 @@ class CharacterControllerClass {
   }
 
   startHairAdjustGesture(options = {}) { return UpperGestures.execHairAdjust(this, options); }
+  stopActiveGesture(fadeSec = 0.28) {
+    if (!this._activeGesture) return;
+    const g = this._activeGesture;
+    this._activeGesture = null;
+    BVHActionLibrary.stopLocomotion(fadeSec);
+    this._resetArmsToRest();
+    this._resetLegsToRest();
+    this._rootPositionTarget.y = 0;
+    this._rootRotationTarget.y = 0;
+    this._bodyTarget.roll = 0;
+    this._gestureOffset = { pitch: 0, yaw: 0, roll: 0 };
+    g.resolve?.({ success: false, interrupted: true });
+  }
   _execStepOutWindow(duration = 0.7) { return SpatialGestures.execStepOutWindow(this, duration); }
   _execStepInWindow(duration = 0.85) { return SpatialGestures.execStepInWindow(this, duration); }
   _execWalk(params = {}) { return SpatialGestures.execWalk(this, params); }
