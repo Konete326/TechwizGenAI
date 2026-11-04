@@ -1,5 +1,6 @@
 import CameraFramingManager, { FRAMING_MODES } from "./CameraFramingManager.js";
 import BoneControlSystem from "./BoneControlSystem.js";
+import BVHActionLibrary from "./BVHActionLibrary.js";
 import { REST_ARM_POSE, envelopeWeights, smoothStep } from "./CharacterPoseConstants.js";
 
 const WALK_MODES = {
@@ -87,15 +88,17 @@ export function execWalk(ctrl, params = {}) {
 
   if (dir === "left") {
     targetX = typeof params.x === "number" ? params.x : -0.22;
-    targetYaw = -0.28;
+    targetYaw = -1.32;
   } else if (dir === "right") {
     targetX = typeof params.x === "number" ? params.x : 0.22;
-    targetYaw = 0.28;
+    targetYaw = 1.32;
   } else if (dir === "closer" || dir === "forward") {
     targetZ = typeof params.z === "number" ? params.z : Math.min(0.24, startZ + 0.14);
   } else if (dir === "backward" || dir === "away") {
     targetZ = typeof params.z === "number" ? params.z : Math.max(-0.35, startZ - 0.16);
   }
+
+  const locomotion = BVHActionLibrary.beginLocomotion(speed);
 
   return new Promise((resolve) => {
     ctrl._activeGesture = {
@@ -103,6 +106,7 @@ export function execWalk(ctrl, params = {}) {
       elapsed: 0,
       duration,
       resolve: () => {
+        locomotion.end();
         ctrl._resetArmsToRest();
         ctrl._resetLegsToRest();
         ctrl._rootPositionTarget.y = 0;
@@ -115,8 +119,9 @@ export function execWalk(ctrl, params = {}) {
         const s = smoothStep(progress);
         ctrl._rootPositionTarget.x = startX + (targetX - startX) * s;
         ctrl._rootPositionTarget.z = startZ + (targetZ - startZ) * s;
-        const turnEnv = envelopeWeights(progress, 0.2, 0.25);
+        const turnEnv = envelopeWeights(progress, 0.14, 0.18);
         ctrl._rootRotationTarget.y = startYaw + (targetYaw - startYaw) * turnEnv;
+        ctrl._headTarget.y = targetYaw * 0.22 * turnEnv;
         applyNaturalWalkTick(ctrl, progress, duration, { direction: dir, speed });
       },
     };

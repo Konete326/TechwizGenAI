@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
 import ActionRegistry from "../../services/character/ActionRegistry.js";
 import ExpressionManager from "../../services/character/ExpressionManager.js";
 import AnimationManager from "../../services/character/AnimationManager.js";
+import BVHActionLibrary from "../../services/character/BVHActionLibrary.js";
 import CharacterController from "../../services/character/CharacterController.js";
 import VoiceSyncManager from "../../services/character/VoiceSyncManager.js";
 import CharacterStateManager, { CHARACTER_STATES } from "../../services/character/CharacterStateManager.js";
@@ -54,12 +55,29 @@ export function CharacterRenderer({ isSpeaking, characterId, onFallbackToVoice, 
     }
   }, [isSpeaking]);
 
-  const handleMouseMove = useCallback((e) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    const y = ((e.clientY - rect.top) / rect.height) * 2 - 1;
-    CharacterController.setLookTarget(x, -y);
+  useEffect(() => {
+    const handleGlobalPointerMove = (e) => {
+      let centerX = window.innerWidth * 0.5;
+      let centerY = window.innerHeight * 0.5;
+      if (FrameAwareCharacterController.isOutsideFrame()) {
+        const pos = FrameAwareCharacterController.getOutsidePosition();
+        centerX = pos.x + (pos.width || 240) * 0.5;
+        centerY = pos.y + (pos.height || 400) * 0.28;
+      } else if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        centerX = rect.left + rect.width * 0.5;
+        centerY = rect.top + rect.height * 0.35;
+      }
+      const dx = (e.clientX - centerX) / (window.innerWidth * 0.45);
+      const dy = (e.clientY - centerY) / (window.innerHeight * 0.45);
+      CharacterController.setLookTarget(
+        Math.max(-1, Math.min(1, dx)),
+        Math.max(-1, Math.min(1, -dy))
+      );
+    };
+
+    window.addEventListener("pointermove", handleGlobalPointerMove, { passive: true });
+    return () => window.removeEventListener("pointermove", handleGlobalPointerMove);
   }, []);
 
   useEffect(() => {
@@ -253,6 +271,7 @@ export function CharacterRenderer({ isSpeaking, characterId, onFallbackToVoice, 
 
         const mixer = new THREE.AnimationMixer(adapter.root);
         AnimationManager.setMixer(mixer, adapter.root);
+        BVHActionLibrary.initialize();
         VoiceSyncManager.start();
 
         const currentAspect = container.clientWidth / Math.max(1, container.clientHeight);
@@ -308,7 +327,6 @@ export function CharacterRenderer({ isSpeaking, characterId, onFallbackToVoice, 
         FrameAwareCharacterController.updateLandmarks(adapterRef.current, camera);
       }
       CameraFramingManager.update(camera, delta);
-      AnimationManager.update(delta);
 
       renderer.render(scene, camera);
     };
@@ -377,7 +395,6 @@ export function CharacterRenderer({ isSpeaking, characterId, onFallbackToVoice, 
       style={{
         boxShadow: isOutside ? "inset 0 0 48px rgba(0,0,0,0.88)" : "none",
       }}
-      onMouseMove={handleMouseMove}
     >
       <canvas
         ref={canvasRef}

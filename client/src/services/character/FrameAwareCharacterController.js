@@ -228,19 +228,23 @@ class FrameAwareCharacterControllerClass {
 
     const startTime = performance.now();
     let rafId = null;
-    const stepFrame = (now) => {
-      const p = Math.min(1, (now - startTime) / (durationSec * 1000));
-      const pt = safePath.sampleAt(p);
-      this._emitContinuousMove({ x: pt.x, y: pt.y, width: outW, height: outH }, true);
-      if (p < 1) rafId = requestAnimationFrame(stepFrame);
-    };
-    if (typeof requestAnimationFrame === "function") rafId = requestAnimationFrame(stepFrame);
+    await new Promise((resolve) => {
+      const walkPromise = safePath.hasObstacle
+        ? CharacterController._execJump({ duration: durationSec })
+        : CharacterController._execWalk({ duration: durationSec, direction: walkDir, speed: speedKey, z: 0.08 });
 
-    if (safePath.hasObstacle) {
-      await CharacterController._execJump({ duration: durationSec });
-    } else {
-      await CharacterController._execWalk({ duration: durationSec, direction: walkDir, speed: speedKey, z: 0.08 });
-    }
+      const stepFrame = (now) => {
+        const p = Math.min(1, (now - startTime) / (durationSec * 1000));
+        const pt = safePath.sampleAt(p);
+        this._emitContinuousMove({ x: pt.x, y: pt.y, width: outW, height: outH }, true);
+        if (p < 1) {
+          rafId = requestAnimationFrame(stepFrame);
+        } else {
+          walkPromise.catch(() => {}).then(() => resolve());
+        }
+      };
+      rafId = requestAnimationFrame(stepFrame);
+    });
     if (rafId && typeof cancelAnimationFrame === "function") cancelAnimationFrame(rafId);
     this._emitContinuousMove({ x: endX, y: endY, width: outW, height: outH }, true);
   }

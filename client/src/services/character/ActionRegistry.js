@@ -221,6 +221,10 @@ class ActionRegistryClass {
     return this._executors.has(id);
   }
 
+  getExecutor(id) {
+    return this._executors.get(id) ?? null;
+  }
+
   async execute(id, params = {}) {
     const action = this._actions.get(id);
     if (!action) return { success: false, error: `Action '${id}' not found` };

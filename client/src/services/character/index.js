@@ -1,6 +1,7 @@
 export { default as ActionRegistry } from "./ActionRegistry.js";
 export { default as CharacterStateManager, CHARACTER_STATES } from "./CharacterStateManager.js";
 export { default as AnimationManager } from "./AnimationManager.js";
+export { default as BVHActionLibrary } from "./BVHActionLibrary.js";
 export { default as ExpressionManager } from "./ExpressionManager.js";
 export { default as VoiceSyncManager } from "./VoiceSyncManager.js";
 export { default as CharacterController } from "./CharacterController.js";

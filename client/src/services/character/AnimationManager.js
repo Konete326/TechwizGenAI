@@ -17,6 +17,8 @@ class AnimationManagerClass {
     this._actions = new Map();
     /** @type {Map<string, number>} priority of active actions */
     this._priorities = new Map();
+    this._entries = new Map();
+    this._clock = 0;
   }
 
   /**
@@ -31,7 +33,64 @@ class AnimationManagerClass {
 
   /** Called each animation frame by CharacterRenderer. */
   update(delta) {
+    this._clock += delta;
+    this._tickClips();
     this._mixer?.update(delta);
+  }
+
+  hasActiveClip() {
+    return this._entries.size > 0;
+  }
+
+  playClip(clip, opts = {}) {
+    if (!this._mixer || !clip) return Promise.resolve({ success: false, error: "mixer_unavailable" });
+    const key = opts.key || clip.name;
+    const loop = Boolean(opts.loop);
+    const fadeIn = opts.fadeIn ?? 0.25;
+    const fadeOut = opts.fadeOut ?? 0.3;
+    const previous = this._entries.get(key);
+    if (previous) {
+      previous.resolve({ success: true, interrupted: true });
+      this._entries.delete(key);
+    }
+    for (const [otherKey] of this._entries) this.stopClip(otherKey, fadeIn, true);
+    const action = this._mixer.clipAction(clip);
+    action.reset();
+    action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
+    action.clampWhenFinished = true;
+    action.timeScale = opts.timeScale ?? 1;
+    action.setEffectiveWeight(1);
+    action.fadeIn(fadeIn);
+    action.play();
+    return new Promise((resolve) => {
+      this._entries.set(key, { action, clip, loop, fadeOut, resolve, endAt: null, interrupted: false });
+    });
+  }
+
+  stopClip(key, fade = 0.3, interrupted = false) {
+    const entry = this._entries.get(key);
+    if (!entry || entry.endAt !== null) return;
+    entry.action.fadeOut(fade);
+    entry.endAt = this._clock + fade;
+    entry.interrupted = interrupted;
+  }
+
+  _tickClips() {
+    for (const [key, entry] of this._entries) {
+      if (entry.endAt === null) {
+        if (entry.loop) continue;
+        const scale = Math.abs(entry.action.timeScale) || 1;
+        const remaining = (entry.clip.duration - entry.action.time) / scale;
+        if (remaining <= entry.fadeOut) {
+          entry.action.fadeOut(Math.max(0.05, remaining));
+          entry.endAt = this._clock + Math.max(0.05, remaining);
+        }
+      } else if (this._clock >= entry.endAt) {
+        entry.action.stop();
+        this._entries.delete(key);
+        entry.resolve({ success: true, interrupted: entry.interrupted });
+      }
+    }
   }
 
   /**
@@ -134,6 +193,11 @@ class AnimationManagerClass {
   }
 
   dispose() {
+    for (const entry of this._entries.values()) {
+      entry.action.stop();
+      entry.resolve({ success: true, interrupted: true });
+    }
+    this._entries.clear();
     this.stopAll();
     this._mixer?.stopAllAction();
     this._clips.clear();

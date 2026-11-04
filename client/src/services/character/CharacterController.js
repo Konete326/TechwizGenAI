@@ -13,6 +13,7 @@ import BoneControlSystem from "./BoneControlSystem.js";
 import { REST_ARM_POSE, REST_LEG_POSE } from "./CharacterPoseConstants.js";
 import * as UpperGestures from "./CharacterGesturesUpper.js";
 import * as SpatialGestures from "./CharacterGesturesSpatial.js";
+import AnimationManager from "./AnimationManager.js";
 
 export { REST_ARM_POSE, REST_LEG_POSE };
 
@@ -257,20 +258,24 @@ class CharacterControllerClass {
       }
     }
 
+    const clipActive = AnimationManager.hasActiveClip();
     IdleBehaviorManager.update(delta, {
       adapter,
       isSpeaking: this._isSpeaking,
-      hasActiveAction: Boolean(this._activeGesture),
+      hasActiveAction: Boolean(this._activeGesture) || clipActive,
       characterController: this,
     });
 
     EmotionEngine.update(delta, adapter);
     this._updateSpeechCadenceLayer(delta);
-    this._applyHeadTransform(adapter, delta);
-    this._applyBodyTransform(adapter, delta);
-    this._applyArmTransforms(adapter, delta);
-    this._applyLegTransforms(adapter, delta);
-    BoneControlSystem.enforceForwardHandSafety(adapter, this._activeGesture?.name?.toUpperCase() || "");
+    if (!clipActive) this._applyHeadTransform(adapter, delta);
+    this._applyBodyTransform(adapter, delta, clipActive);
+    if (!clipActive) {
+      this._applyArmTransforms(adapter, delta);
+      this._applyLegTransforms(adapter, delta);
+      BoneControlSystem.enforceForwardHandSafety(adapter, this._activeGesture?.name?.toUpperCase() || "");
+    }
+    AnimationManager.update(delta);
     adapter.update(delta);
   }
 
@@ -315,7 +320,7 @@ class CharacterControllerClass {
     if (rightEye) rightEye.rotation.set(eyePitch, eyeYaw, 0);
   }
 
-  _applyBodyTransform(adapter, delta) {
+  _applyBodyTransform(adapter, delta, skipSpineRoll = false) {
     const lerpPos = Math.min(1.0, delta * 6.5);
     const lerpRot = Math.min(1.0, delta * 7.0);
     const targetPos = new THREE.Vector3(
@@ -336,7 +341,7 @@ class CharacterControllerClass {
     const lerpLean = Math.min(1.0, delta * 8.0);
     this._bodyCurrent.roll += (this._bodyTarget.roll - this._bodyCurrent.roll) * lerpLean;
     const spine = adapter.getHumanoidBone("spine");
-    if (spine) spine.rotation.z = this._bodyCurrent.roll;
+    if (spine && !skipSpineRoll) spine.rotation.z = this._bodyCurrent.roll;
   }
 
   _applyArmTransforms(adapter, delta) {

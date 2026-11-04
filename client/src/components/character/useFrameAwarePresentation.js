@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import CameraFramingManager, { FRAMING_MODES } from "../../services/character/CameraFramingManager.js";
 import FrameAwareCharacterController, { FRAME_STATES } from "../../services/character/FrameAwareCharacterController.js";
+import ActionRegistry from "../../services/character/ActionRegistry.js";
+import EmotionEngine, { EMOTIONS } from "../../services/character/EmotionEngine.js";
 
 function computeResponsiveOutsideSize() {
   const vw = typeof window !== "undefined" ? window.innerWidth || 1280 : 1280;
@@ -95,6 +97,151 @@ export function useFrameAwarePresentation({ containerRef, canvasRef, rendererRef
     };
     window.addEventListener("nisa:frame_move", handleContinuousMove);
 
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let elemStartX = 0;
+    let elemStartY = 0;
+    let velocityHistory = [];
+    let throwRafId = null;
+
+    const stopThrowSimulation = () => {
+      if (throwRafId) {
+        cancelAnimationFrame(throwRafId);
+        throwRafId = null;
+      }
+    };
+
+    const handlePresenterPointerDown = (e) => {
+      if (!FrameAwareCharacterController.isOutsideFrame()) return;
+      const presenter = document.getElementById("nisa-outside-presenter");
+      if (!presenter) return;
+      stopThrowSimulation();
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      const curPos = FrameAwareCharacterController.getOutsidePosition();
+      elemStartX = curPos.x;
+      elemStartY = curPos.y;
+      velocityHistory = [{ time: performance.now(), x: e.clientX, y: e.clientY }];
+      presenter.style.cursor = "grabbing";
+      presenter.style.transition = "none";
+    };
+
+    const handleWindowPointerMove = (e) => {
+      if (!isDragging) return;
+      const presenter = document.getElementById("nisa-outside-presenter");
+      if (!presenter) return;
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      const curPos = FrameAwareCharacterController.getOutsidePosition();
+      const safeW = curPos.width || 240;
+      const safeH = curPos.height || 400;
+      const nextX = Math.round(Math.max(8, Math.min(window.innerWidth - safeW - 8, elemStartX + dx)));
+      const nextY = Math.round(Math.max(8, Math.min(window.innerHeight - safeH, elemStartY + dy)));
+
+      presenter.style.left = `${nextX}px`;
+      presenter.style.top = `${nextY}px`;
+      FrameAwareCharacterController.setOutsidePosition({ x: nextX, y: nextY, width: safeW, height: safeH });
+
+      const now = performance.now();
+      velocityHistory.push({ time: now, x: e.clientX, y: e.clientY });
+      if (velocityHistory.length > 6) velocityHistory.shift();
+    };
+
+    const handleWindowPointerUp = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      const presenter = document.getElementById("nisa-outside-presenter");
+      if (!presenter) return;
+      presenter.style.cursor = "grab";
+
+      let vx = 0;
+      let vy = 0;
+      if (velocityHistory.length >= 2) {
+        const first = velocityHistory[0];
+        const last = velocityHistory[velocityHistory.length - 1];
+        const dt = Math.max(0.016, (last.time - first.time) / 1000);
+        vx = Math.max(-2400, Math.min(2400, (last.x - first.x) / dt));
+        vy = Math.max(-2400, Math.min(2400, (last.y - first.y) / dt));
+      }
+
+      const curPos = FrameAwareCharacterController.getOutsidePosition();
+      const safeW = curPos.width || 240;
+      const safeH = curPos.height || 400;
+      let posX = curPos.x;
+      let posY = curPos.y;
+      const groundFloor = Math.max(24, window.innerHeight - safeH - 6);
+
+      const releaseSpeed = Math.hypot(vx, vy);
+      if (releaseSpeed < 140) {
+        presenter.style.transition = "top 0.45s cubic-bezier(0.25, 1, 0.5, 1)";
+        presenter.style.top = `${groundFloor}px`;
+        FrameAwareCharacterController.setOutsidePosition({ x: posX, y: groundFloor, width: safeW, height: safeH });
+        return;
+      }
+
+      let lastTime = performance.now();
+      let bouncedWall = false;
+
+      const physicsTick = (now) => {
+        const delta = Math.min(0.05, (now - lastTime) / 1000);
+        lastTime = now;
+
+        posX += vx * delta;
+        posY += vy * delta;
+        vy += 2200 * delta;
+        vx *= 0.985;
+
+        if (posX <= 8) {
+          posX = 8;
+          vx = -vx * 0.55;
+          bouncedWall = true;
+        } else if (posX >= window.innerWidth - safeW - 8) {
+          posX = window.innerWidth - safeW - 8;
+          vx = -vx * 0.55;
+          bouncedWall = true;
+        }
+
+        if (posY <= 8) {
+          posY = 8;
+          vy = -vy * 0.4;
+          bouncedWall = true;
+        }
+
+        if (posY >= groundFloor) {
+          posY = groundFloor;
+          stopThrowSimulation();
+          presenter.style.left = `${Math.round(posX)}px`;
+          presenter.style.top = `${Math.round(posY)}px`;
+          FrameAwareCharacterController.setOutsidePosition({ x: Math.round(posX), y: Math.round(posY), width: safeW, height: safeH });
+
+          if (bouncedWall || Math.abs(vy) > 360) {
+            EmotionEngine.setEmotion(EMOTIONS.SAD, { intensity: 1.0, duration: 4500 });
+            ActionRegistry.execute("hurt_impact", { duration: 2200 }).catch(() => {});
+            setTimeout(() => {
+              ActionRegistry.execute("standup", { duration: 3200 }).catch(() => {});
+            }, 2300);
+          }
+          return;
+        }
+
+        presenter.style.left = `${Math.round(posX)}px`;
+        presenter.style.top = `${Math.round(posY)}px`;
+        FrameAwareCharacterController.setOutsidePosition({ x: Math.round(posX), y: Math.round(posY), width: safeW, height: safeH });
+        throwRafId = requestAnimationFrame(physicsTick);
+      };
+
+      throwRafId = requestAnimationFrame(physicsTick);
+    };
+
+    const presenterEl = getOrCreateOutsidePresenter();
+    if (presenterEl) {
+      presenterEl.addEventListener("pointerdown", handlePresenterPointerDown);
+    }
+    window.addEventListener("pointermove", handleWindowPointerMove);
+    window.addEventListener("pointerup", handleWindowPointerUp);
+
     const unsub = FrameAwareCharacterController.onStateChange((evt) => {
       setFrameState(evt.state);
       const presenter = getOrCreateOutsidePresenter();
@@ -152,11 +299,12 @@ export function useFrameAwarePresentation({ containerRef, canvasRef, rendererRef
         canvas.style.width = "100%";
         canvas.style.height = "100%";
 
-        if (evt.state === FRAME_STATES.EXITING_FRAME) {
-          presenter.style.transition =
-            "left 0.85s cubic-bezier(0.22, 1, 0.36, 1), top 0.85s cubic-bezier(0.22, 1, 0.36, 1), width 0.65s cubic-bezier(0.22, 1, 0.36, 1), height 0.65s cubic-bezier(0.22, 1, 0.36, 1)";
+        if (evt.state === FRAME_STATES.OUTSIDE_FRAME) {
+          presenter.style.pointerEvents = "auto";
+          presenter.style.cursor = "grab";
         } else {
-          presenter.style.transition = "width 0.35s ease, height 0.35s ease";
+          presenter.style.pointerEvents = "none";
+          presenter.style.cursor = "default";
         }
 
         void presenter.offsetWidth;
@@ -227,6 +375,10 @@ export function useFrameAwarePresentation({ containerRef, canvasRef, rendererRef
     });
 
     return () => {
+      stopThrowSimulation();
+      if (presenterEl) presenterEl.removeEventListener("pointerdown", handlePresenterPointerDown);
+      window.removeEventListener("pointermove", handleWindowPointerMove);
+      window.removeEventListener("pointerup", handleWindowPointerUp);
       window.removeEventListener("resize", updateRect);
       window.removeEventListener("nisa:frame_move", handleContinuousMove);
       unsub();
