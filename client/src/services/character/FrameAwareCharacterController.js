@@ -208,19 +208,18 @@ class FrameAwareCharacterControllerClass {
     const endX = Number.isFinite(targetPos.x) ? targetPos.x : startX;
     const endY = Number.isFinite(targetPos.y) ? targetPos.y : startY;
 
-    const safePath = CharacterPhysicsEngine.computeSafePath(
-      { x: startX, y: startY },
-      { x: endX, y: endY },
-      outW,
-      outH
-    );
+    if (Math.hypot(endX - startX, endY - startY) < 4) {
+      this._emitContinuousMove({ x: endX, y: endY, width: outW, height: outH }, true);
+      return;
+    }
 
+    const safePath = CharacterPhysicsEngine.computeSafePath({ x: startX, y: startY }, { x: endX, y: endY }, outW, outH);
     const distPx = Math.hypot(endX - startX, endY - startY);
     const speedKey = options.speed && WALK_SPEED_PX[options.speed] ? options.speed : "normal";
-    const computedDur = Math.max(1.25, Math.min(3.8, distPx / WALK_SPEED_PX[speedKey]));
+    const computedDur = Math.max(1.3, Math.min(4.0, distPx / WALK_SPEED_PX[speedKey]));
     const durationSec = options.duration ? (options.duration > 20 ? options.duration / 1000 : options.duration) : computedDur;
     const dx = endX - startX;
-    const walkDir = dx < -15 ? "left" : dx > 15 ? "right" : "forward";
+    const walkDir = dx < -10 ? "left" : dx > 10 ? "right" : "forward";
 
     this._setState(FRAME_STATES.NAVIGATING_TO_TARGET, {
       position: { x: startX, y: startY, width: outW, height: outH },
@@ -247,6 +246,7 @@ class FrameAwareCharacterControllerClass {
     });
     if (rafId && typeof cancelAnimationFrame === "function") cancelAnimationFrame(rafId);
     this._emitContinuousMove({ x: endX, y: endY, width: outW, height: outH }, true);
+    await CharacterController._execFaceCamera();
   }
 
   async exitFrameAndNavigate(params = {}, extraOptions = {}) {
@@ -264,12 +264,13 @@ class FrameAwareCharacterControllerClass {
     const { width: outW, height: outH } = getResponsiveOutsideDimensions();
 
     if (!this.isOutsideFrame()) {
-      this.setOutsidePosition({
+      const startPos = {
         x: this._frameRect.left,
         y: this._frameRect.top,
         width: Math.max(200, this._frameRect.width),
         height: Math.max(280, this._frameRect.height),
-      });
+      };
+      this.setOutsidePosition(startPos);
       this._setState(FRAME_STATES.PREPARING_EXIT);
 
       CameraFramingManager.setMode(FRAMING_MODES.FULL_BODY);
@@ -278,10 +279,8 @@ class FrameAwareCharacterControllerClass {
 
       const desiredExitX = this._frameRect.left - outW - 22;
       const groundLanding = CharacterPhysicsEngine.getGroundPosition(outW, outH, desiredExitX);
-      this.setOutsidePosition(groundLanding);
-      this._setState(FRAME_STATES.EXITING_FRAME, { position: groundLanding });
-
-      await CharacterController._execWalk({ duration: 1.15, z: 0.1, speed: "normal" });
+      this._setState(FRAME_STATES.EXITING_FRAME, { position: startPos });
+      await this.animateOutsideMove(groundLanding, { speed: "normal", duration: 1.4 });
       if (this._transitionId !== tid) return { success: false, cancelled: true, state: this._state };
       this._setState(FRAME_STATES.OUTSIDE_FRAME, { position: groundLanding });
     }
@@ -437,7 +436,6 @@ class FrameAwareCharacterControllerClass {
     const { width: outW, height: outH, vw } = getResponsiveOutsideDimensions();
     const groundPos = CharacterPhysicsEngine.getGroundPosition(outW, outH);
     if (!el || typeof el.getBoundingClientRect !== "function") {
-      this.setOutsidePosition(groundPos);
       return { ...groundPos, direction: "right" };
     }
 
@@ -446,7 +444,6 @@ class FrameAwareCharacterControllerClass {
     const desiredX = targetCenterX < vw * 0.5 ? Math.min(vw - outW - 20, Math.round(r.right + 16)) : Math.max(20, Math.round(r.left - outW - 16));
     const direction = targetCenterX < vw * 0.5 ? "left" : "right";
     const safeGround = CharacterPhysicsEngine.getGroundPosition(outW, outH, desiredX);
-    this.setOutsidePosition(safeGround);
     return { ...safeGround, direction };
   }
 
@@ -474,8 +471,8 @@ class FrameAwareCharacterControllerClass {
       height: Math.max(260, Math.round(this._frameRect.height)),
     };
 
-    this._setState(FRAME_STATES.RETURNING_TO_FRAME, { position: frameTarget });
-    await CharacterController._execWalk({ duration: 1.05, z: 0, speed: "normal" });
+    this._setState(FRAME_STATES.RETURNING_TO_FRAME, { position: { ...this._outsidePosition } });
+    await this.animateOutsideMove(frameTarget, { speed: "normal", duration: 1.6 });
     if (this._transitionId !== tid) return { success: false, cancelled: true, state: this._state };
 
     CameraFramingManager.setMode(FRAMING_MODES.HEAD_AND_SHOULDERS);

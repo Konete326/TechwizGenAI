@@ -178,18 +178,28 @@ class BVHActionLibraryClass {
       if (!entry) return { success: false, error: "clip_not_found" };
       const clip = await this.getClip(name);
       if (!clip || clip.tracks.length === 0) return { success: false, error: "rig_incompatible" };
-      const timeScale = Math.min(2, Math.max(0.4, Number(params.speedScale) || 1));
+      const blend = Number.isFinite(params.blendDuration) ? params.blendDuration : 0.25;
+      const fadeIn = params.fadeIn ?? blend;
+      const fadeOut = params.fadeOut ?? blend;
+      let timeScale = Number(params.speedScale ?? params.timeScale ?? 1);
+      if (params.duration && clip.duration > 0 && !params.loop) {
+        const reqSec = params.duration > 20 ? params.duration / 1000 : params.duration;
+        if (reqSec > 0.4) {
+          timeScale = Math.min(2.5, Math.max(0.5, clip.duration / reqSec));
+        }
+      }
+      timeScale = Math.min(2.5, Math.max(0.4, timeScale));
       const loop = Boolean(params.loop ?? false) && Boolean(entry.loop);
       const playing = AnimationManager.playClip(clip, {
         key: name,
         loop,
         timeScale,
-        fadeIn: params.fadeIn ?? 0.3,
-        fadeOut: params.fadeOut ?? 0.35,
+        fadeIn,
+        fadeOut,
       });
       if (loop && params.duration) {
         const ms = params.duration > 20 ? params.duration : params.duration * 1000;
-        setTimeout(() => AnimationManager.stopClip(name, 0.35), ms);
+        setTimeout(() => AnimationManager.stopClip(name, fadeOut), ms);
       }
       return await playing;
     } catch (err) {
